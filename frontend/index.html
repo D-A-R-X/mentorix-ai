@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mentorix AI</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="container">
+    <h2>Mentorix AI</h2>
+    <p>Career Decision Stability & Risk Analyzer</p>
+
+    <input type="number" id="cgpa" placeholder="CGPA (0–10)">
+    <input type="number" id="backlogs" placeholder="Backlogs (0 or 1)">
+    <input type="number" id="tech" placeholder="Tech Interest (1–5)">
+    <input type="number" id="core" placeholder="Core Interest (1–5)">
+    <input type="number" id="mgmt" placeholder="Management Interest (1–5)">
+    <input type="number" id="confidence" placeholder="Confidence Level (1–5)">
+    <input type="number" id="changes" placeholder="Career Changes Count">
+    <input type="number" id="time" placeholder="Decision Time (months)">
+
+    <button onclick="analyze()">Analyze Decision</button>
+
+    <div id="result"></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
