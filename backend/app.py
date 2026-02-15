@@ -138,7 +138,7 @@ def analyze_risk(data: StudentInput):
         raise HTTPException(status_code=500, detail="Prediction failed. Please try again later.") from exc
 
     explanation = build_risk_explanation(data, risk)
-    recommendations = generate_recommendations(data, risk)
+    recommendations = generate_recommendations(data.model_dump(), risk)
 
     return {
         "risk_level": risk,

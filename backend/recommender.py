@@ -1,26 +1,28 @@
-def generate_recommendations(data, risk_level):
-    if data.tech_interest >= data.core_interest:
-        career = "Software / IT Path"
-        recommended_track = "Tech Skill Acceleration"
-    else:
-        career = "Core Engineering Path"
-        recommended_track = "Core Discipline Mastery"
+import json
+from pathlib import Path
+from typing import Any, Dict
 
-    notes = []
+COURSE_CATALOG_PATH = Path(__file__).with_name("course_catalog.json")
 
-    if data.confidence <= 2:
-        notes.append("Exploratory learning recommended")
+with COURSE_CATALOG_PATH.open("r", encoding="utf-8") as file:
+    course_catalog = json.load(file)
 
-    if data.backlogs >= 5:
-        notes.append("Recovery-focused learning plan required")
 
-    if not notes:
-        notes.append("Maintain consistent progress with milestone-based learning")
+def generate_recommendations(student_data: Dict[str, Any], risk_level: str) -> Dict[str, Any]:
+    if student_data["tech_interest"] >= student_data["core_interest"]:
+        track = "software_track"
+        career = "Software / IT Career Path"
+    elif student_data["core_interest"] > student_data["tech_interest"]:
+        track = "core_track"
+        career = "Core Engineering Career Path"
 
-    focus_message = " | ".join(notes)
+    if student_data["confidence"] <= 2:
+        track = "foundation_track"
+
+    selected_courses = course_catalog[track]
 
     return {
         "career_path": career,
-        "focus_message": focus_message,
-        "recommended_track": recommended_track,
+        "track": track,
+        "courses": selected_courses,
     }
