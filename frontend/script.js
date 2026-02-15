@@ -10,7 +10,7 @@ async function analyze() {
     decision_time: parseInt(document.getElementById("time").value)
   };
 
-  const res = await fetch("https://probable-space-pancake-5gr4gg577rp4cvwq9-8000.app.github.dev/analyze-risk", {
+  const res = await fetch("https://mentorix-ai-backend.onrender.com/analyze-risk", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data)
