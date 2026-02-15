@@ -1,18 +1,44 @@
-from fastapi import FastAPI
+import logging
+import os
+import time
+from typing import List
+
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 import pickle
 import numpy as np
 
+from risk_explanation import build_risk_explanation
+
 app = FastAPI(title="Mentorix AI")
 
-# CORS (for Vercel frontend later)
+# Structured logging
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO"),
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
+logger = logging.getLogger("mentorix-api")
 
+
+def get_cors_origins() -> List[str]:
+    """Read CORS origins from environment variable.
+
+    Use comma-separated values in CORS_ORIGINS, e.g.
+    https://your-frontend.vercel.app,https://mentorix.example.com
+    """
+    raw_origins = os.getenv("CORS_ORIGINS", "*")
+    return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+
+# CORS (for Vercel frontend later)
+cors_origins = get_cors_origins()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # allow all for dev
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    allow_credentials=False if cors_origins == ["*"] else True,
     allow_methods=["*"],   # VERY IMPORTANT
     allow_headers=["*"],
 )
@@ -23,32 +49,61 @@ with open("model/risk_model.pkl", "rb") as f:
     model = pickle.load(f)
 
 class StudentInput(BaseModel):
-    cgpa: float
-    backlogs: int
-    tech_interest: int
-    core_interest: int
-    management_interest: int
-    confidence: int
-    career_changes: int
-    decision_time: int
+    cgpa: float = Field(..., ge=0, le=10, description="CGPA must be between 0 and 10")
+    backlogs: int = Field(..., ge=0, le=20, description="Backlogs must be between 0 and 20")
+    tech_interest: int = Field(..., ge=1, le=5, description="Tech interest must be between 1 and 5")
+    core_interest: int = Field(..., ge=1, le=5, description="Core interest must be between 1 and 5")
+    management_interest: int = Field(..., ge=1, le=5, description="Management interest must be between 1 and 5")
+    confidence: int = Field(..., ge=1, le=5, description="Confidence level must be between 1 and 5")
+    career_changes: int = Field(..., ge=0, description="Career changes must be 0 or greater")
+    decision_time: int = Field(..., ge=0, description="Decision time must be 0 or greater")
 
-def explain_risk(data, prediction):
-    reasons = []
 
-    if data.confidence <= 2:
-        reasons.append("Low confidence in career decision")
-    if data.career_changes >= 3:
-        reasons.append("Frequent career preference changes")
-    if data.cgpa < 6.5:
-        reasons.append("Low academic alignment")
-    if prediction == "High" and not reasons:
-        reasons.append("Multiple moderate risk indicators")
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    duration_ms = round((time.time() - start) * 1000, 2)
 
-    return reasons
+    logger.info(
+        "request_completed",
+        extra={
+            "method": request.method,
+            "path": request.url.path,
+            "status_code": response.status_code,
+            "duration_ms": duration_ms,
+            "client": request.client.host if request.client else None,
+        },
+    )
+    return response
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    messages = []
+    for err in exc.errors():
+        field = ".".join(str(loc) for loc in err.get("loc", []) if loc != "body")
+        if not field:
+            field = "request"
+        messages.append(f"{field}: {err.get('msg', 'Invalid input')}")
+
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": "Input validation failed",
+            "errors": messages,
+            "path": request.url.path,
+        },
+    )
 
 @app.get("/")
 def root():
     return {"status": "Mentorix AI backend running"}
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 @app.post("/analyze-risk")
 def analyze_risk(data: StudentInput):
@@ -63,11 +118,27 @@ def analyze_risk(data: StudentInput):
         data.decision_time
     ]])
 
-    risk = model.predict(features)[0]
-    reasons = explain_risk(data, risk)
+    try:
+        risk = model.predict(features)[0]
+    except Exception as exc:
+        logger.exception("prediction_failed")
+        raise HTTPException(status_code=500, detail="Prediction failed. Please try again later.") from exc
+
+    explanation = build_risk_explanation(data, risk)
 
     return {
         "risk_level": risk,
         "stability_score": round(1.0 - (0.33 if risk == "High" else 0.15 if risk == "Medium" else 0.05), 2),
-        "reasons": reasons
+        "reasons": explanation["reasons"],
+        "summary": explanation["summary"],
     }
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(
+        "app:app",
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", "8000")),
+        reload=False,
+    )
