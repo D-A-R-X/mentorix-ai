@@ -13,6 +13,9 @@ import numpy as np
 
 from risk_explanation import build_risk_explanation
 
+from recommender import generate_recommendations
+
+
 app = FastAPI(title="Mentorix AI")
 
 # Structured logging
@@ -50,7 +53,9 @@ with open("model/risk_model.pkl", "rb") as f:
 
 class StudentInput(BaseModel):
     cgpa: float = Field(..., ge=0, le=10, description="CGPA must be between 0 and 10")
+
     backlogs: int = Field(..., ge=0, le=20, description="Backlogs must be between 0 and 20")
+    backlogs: int = Field(..., ge=0, description="Backlogs must be 0 or greater")
     tech_interest: int = Field(..., ge=1, le=5, description="Tech interest must be between 1 and 5")
     core_interest: int = Field(..., ge=1, le=5, description="Core interest must be between 1 and 5")
     management_interest: int = Field(..., ge=1, le=5, description="Management interest must be between 1 and 5")
@@ -105,6 +110,7 @@ def root():
 def health():
     return {"status": "ok"}
 
+
 @app.post("/analyze-risk")
 def analyze_risk(data: StudentInput):
     features = np.array([[
@@ -114,9 +120,33 @@ def analyze_risk(data: StudentInput):
         data.core_interest,
         data.management_interest,
         data.confidence,
-        data.career_changes,
-        data.decision_time
+def normalize_input(data: StudentInput) -> np.ndarray:
+    normalized_backlogs = min(float(np.log1p(data.backlogs)), 3.0)
+    normalized_cgpa = data.cgpa / 10
+    normalized_tech_interest = data.tech_interest / 5
+    normalized_core_interest = data.core_interest / 5
+    normalized_management_interest = data.management_interest / 5
+    normalized_confidence = data.confidence / 5
+    normalized_decision_time = min(data.decision_time / 24, 1)
+
+    return np.array([[
+        normalized_cgpa,
+        normalized_backlogs,
+        normalized_tech_interest,
+        normalized_core_interest,
+        normalized_management_interest,
+        normalized_confidence,
+
+        normalized_decision_time,
     ]])
+
+
+=======
+
+@app.post("/analyze-risk")
+def analyze_risk(data: StudentInput):
+    features = normalize_input(data)
+
 
     try:
         risk = model.predict(features)[0]
@@ -126,11 +156,25 @@ def analyze_risk(data: StudentInput):
 
     explanation = build_risk_explanation(data, risk)
 
+
     return {
         "risk_level": risk,
         "stability_score": round(1.0 - (0.33 if risk == "High" else 0.15 if risk == "Medium" else 0.05), 2),
         "reasons": explanation["reasons"],
         "summary": explanation["summary"],
+=======
+    input_dict = data.model_dump()
+    risk_level = risk
+    recommendation = generate_recommendations(input_dict, risk_level)
+    score = round(1.0 - (0.33 if risk == "High" else 0.15 if risk == "Medium" else 0.05), 2)
+    reasons = explanation["reasons"]
+
+    return {
+        "risk_level": risk,
+        "stability_score": score,
+        "reasons": reasons,
+        "recommendation": recommendation,
+
     }
 
 if __name__ == "__main__":
