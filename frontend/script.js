@@ -146,11 +146,12 @@ async function analyze() {
     decision_time: parseInt(document.getElementById("time").value)
   };
 
-  const res = await fetch("https://probable-space-pancake-5gr4gg577rp4cvwq9-8000.app.github.dev/analyze-risk", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  });
+  try {
+    const res = await fetch("https://probable-space-pancake-5gr4gg577rp4cvwq9-8000.app.github.dev/analyze-risk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
 
     const result = await res.json();
     const riskLevel = String(result.risk_level || "");

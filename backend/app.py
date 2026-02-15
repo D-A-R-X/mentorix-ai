@@ -12,9 +12,8 @@ import pickle
 import numpy as np
 
 from risk_explanation import build_risk_explanation
-
 from recommender import generate_recommendations
-
+from career_mapper import infer_career_direction
 
 app = FastAPI(title="Mentorix AI")
 
@@ -53,8 +52,6 @@ with open("model/risk_model.pkl", "rb") as f:
 
 class StudentInput(BaseModel):
     cgpa: float = Field(..., ge=0, le=10, description="CGPA must be between 0 and 10")
-
-    backlogs: int = Field(..., ge=0, le=20, description="Backlogs must be between 0 and 20")
     backlogs: int = Field(..., ge=0, description="Backlogs must be 0 or greater")
     tech_interest: int = Field(..., ge=1, le=5, description="Tech interest must be between 1 and 5")
     core_interest: int = Field(..., ge=1, le=5, description="Core interest must be between 1 and 5")
@@ -110,16 +107,6 @@ def root():
 def health():
     return {"status": "ok"}
 
-
-@app.post("/analyze-risk")
-def analyze_risk(data: StudentInput):
-    features = np.array([[
-        data.cgpa,
-        data.backlogs,
-        data.tech_interest,
-        data.core_interest,
-        data.management_interest,
-        data.confidence,
 def normalize_input(data: StudentInput) -> np.ndarray:
     normalized_backlogs = min(float(np.log1p(data.backlogs)), 3.0)
     normalized_cgpa = data.cgpa / 10
@@ -136,17 +123,14 @@ def normalize_input(data: StudentInput) -> np.ndarray:
         normalized_core_interest,
         normalized_management_interest,
         normalized_confidence,
-
+        data.career_changes,
         normalized_decision_time,
     ]])
 
 
-=======
-
 @app.post("/analyze-risk")
 def analyze_risk(data: StudentInput):
     features = normalize_input(data)
-
 
     try:
         risk = model.predict(features)[0]
@@ -155,17 +139,10 @@ def analyze_risk(data: StudentInput):
         raise HTTPException(status_code=500, detail="Prediction failed. Please try again later.") from exc
 
     explanation = build_risk_explanation(data, risk)
-
-
-    return {
-        "risk_level": risk,
-        "stability_score": round(1.0 - (0.33 if risk == "High" else 0.15 if risk == "Medium" else 0.05), 2),
-        "reasons": explanation["reasons"],
-        "summary": explanation["summary"],
-=======
     input_dict = data.model_dump()
     risk_level = risk
     recommendation = generate_recommendations(input_dict, risk_level)
+    career_direction, insight = infer_career_direction(data)
     score = round(1.0 - (0.33 if risk == "High" else 0.15 if risk == "Medium" else 0.05), 2)
     reasons = explanation["reasons"]
 
@@ -174,7 +151,8 @@ def analyze_risk(data: StudentInput):
         "stability_score": score,
         "reasons": reasons,
         "recommendation": recommendation,
-
+        "career_direction": career_direction,
+        "insight": insight,
     }
 
 if __name__ == "__main__":
