@@ -13,7 +13,6 @@ import numpy as np
 
 from risk_explanation import build_risk_explanation
 from recommender import generate_recommendations
-from career_mapper import infer_career_direction
 
 app = FastAPI(title="Mentorix AI")
 
@@ -30,19 +29,24 @@ def get_cors_origins() -> List[str]:
 
     Use comma-separated values in CORS_ORIGINS, e.g.
     https://your-frontend.vercel.app,https://mentorix.example.com
-origins = [
-    "https://mentorix-ai.vercel.app",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000"
-]
+    """
+    raw_origins = os.getenv("CORS_ORIGINS", "*")
+    return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+
+# CORS (for Vercel frontend later)
+cors_origins = get_cors_origins()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=cors_origins,
+    allow_credentials=False if cors_origins == ["*"] else True,
+    allow_methods=["*"],   # VERY IMPORTANT
     allow_headers=["*"],
 )
+
+# Load model
+with open("model/risk_model.pkl", "rb") as f:
+    model = pickle.load(f)
 
 class StudentInput(BaseModel):
     cgpa: float = Field(..., ge=0, le=10, description="CGPA must be between 0 and 10")
@@ -54,13 +58,11 @@ class StudentInput(BaseModel):
     career_changes: int = Field(..., ge=0, description="Career changes must be 0 or greater")
     decision_time: int = Field(..., ge=0, description="Decision time must be 0 or greater")
 
-
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start = time.time()
     response = await call_next(request)
     duration_ms = round((time.time() - start) * 1000, 2)
-
     logger.info(
         "request_completed",
         extra={
@@ -72,7 +74,6 @@ async def log_requests(request: Request, call_next):
         },
     )
     return response
-
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -96,35 +97,22 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 def root():
     return {"status": "Mentorix AI backend running"}
 
-
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
-def normalize_input(data: StudentInput) -> np.ndarray:
-    normalized_backlogs = min(float(np.log1p(data.backlogs)), 3.0)
-    normalized_cgpa = data.cgpa / 10
-    normalized_tech_interest = data.tech_interest / 5
-    normalized_core_interest = data.core_interest / 5
-    normalized_management_interest = data.management_interest / 5
-    normalized_confidence = data.confidence / 5
-    normalized_decision_time = min(data.decision_time / 24, 1)
-
-    return np.array([[
-        normalized_cgpa,
-        normalized_backlogs,
-        normalized_tech_interest,
-        normalized_core_interest,
-        normalized_management_interest,
-        normalized_confidence,
-        data.career_changes,
-        normalized_decision_time,
-    ]])
-
-
 @app.post("/analyze-risk")
 def analyze_risk(data: StudentInput):
-    features = normalize_input(data)
+    features = np.array([[
+        data.cgpa,
+        data.backlogs,
+        data.tech_interest,
+        data.core_interest,
+        data.management_interest,
+        data.confidence,
+        data.career_changes,
+        data.decision_time
+    ]])
 
     try:
         risk = model.predict(features)[0]
@@ -133,25 +121,31 @@ def analyze_risk(data: StudentInput):
         raise HTTPException(status_code=500, detail="Prediction failed. Please try again later.") from exc
 
     explanation = build_risk_explanation(data, risk)
-    input_dict = data.model_dump()
-    risk_level = risk
-    recommendation = generate_recommendations(input_dict, risk_level)
-    career_direction, insight = infer_career_direction(data)
-    score = round(1.0 - (0.33 if risk == "High" else 0.15 if risk == "Medium" else 0.05), 2)
-    reasons = explanation["reasons"]
+    student_profile = {
+        "cgpa": data.cgpa,
+        "backlogs": data.backlogs,
+        "tech_interest": data.tech_interest,
+        "core_interest": data.core_interest,
+        "management_interest": data.management_interest,
+        "confidence": data.confidence,
+        "career_changes": data.career_changes,
+        "decision_time": data.decision_time
+    }
+    recommendations = generate_recommendations(student_profile, risk)
+    stability_score = round(1.0 - (0.33 if risk == "High" else 0.15 if risk == "Medium" else 0.05), 2)
 
     return {
         "risk_level": risk,
-        "stability_score": score,
-        "reasons": reasons,
-        "recommendation": recommendation,
-        "career_direction": career_direction,
-        "insight": insight,
+        "stability_score": stability_score,
+        "summary": explanation["summary"],
+        "reasons": explanation["reasons"],
+        "career_direction": recommendations.get("career_direction"),
+        "recommended_courses": recommendations.get("courses"),
+        "insight": recommendations.get("insight")
     }
 
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run(
         "app:app",
         host="0.0.0.0",
