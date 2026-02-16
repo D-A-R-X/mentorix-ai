@@ -1,5 +1,7 @@
+const API_BASE = "https://mentorix-ai-backend.onrender.com";
 const COURSE_PROGRESS_KEY = "mentorix_course_progress";
 const SKILL_WEIGHT = 20;
+console.log("Mentorix JS loaded");
 
 function loadCourseProgress() {
   try {
@@ -128,26 +130,37 @@ function renderCourses(courses) {
 }
 
 async function analyze() {
-  const button = document.getElementById("analyzeBtn");
-  const resultCard = document.getElementById("resultCard");
-  const originalLabel = button.textContent;
+    console.log("Analyze clicked");   // <-- this must print
 
-  button.disabled = true;
-  button.textContent = "Analyzing...";
+    const payload = {
+        cgpa: parseFloat(document.getElementById("cgpa").value),
+        backlogs: parseInt(document.getElementById("backlogs").value),
+        tech_interest: parseInt(document.getElementById("tech_interest").value),
+        core_interest: parseInt(document.getElementById("core_interest").value),
+        management_interest: parseInt(document.getElementById("management_interest").value),
+        confidence: parseInt(document.getElementById("confidence").value),
+        career_changes: parseInt(document.getElementById("career_changes").value),
+        decision_time: parseInt(document.getElementById("decision_time").value)
+    };
 
-  const data = {
-    cgpa: parseFloat(document.getElementById("cgpa").value),
-    backlogs: parseInt(document.getElementById("backlogs").value),
-    tech_interest: parseInt(document.getElementById("tech").value),
-    core_interest: parseInt(document.getElementById("core").value),
-    management_interest: parseInt(document.getElementById("mgmt").value),
-    confidence: parseInt(document.getElementById("confidence").value),
-    career_changes: parseInt(document.getElementById("changes").value),
-    decision_time: parseInt(document.getElementById("time").value)
-  };
+    console.log("Sending payload:", payload);
+
+    const response = await fetch("https://mentorix-ai-backend.onrender.com/analyze-risk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+    console.log("Response:", data);
+
+    document.getElementById("result").innerText =
+        `Risk: ${data.risk_level} | Stability: ${data.stability_score}`;
+}
+
 
   try {
-    const res = await fetch("https://mentorix-ai-backend.onrender.com/analyze-risk", {
+    const res = await fetch(`${API_BASE}/analyze-risk`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
@@ -178,6 +191,18 @@ async function analyze() {
     button.disabled = false;
     button.textContent = originalLabel;
   }
-}
 
+
+// Ensure analyze is globally accessible
+window.analyze = analyze;
 document.addEventListener("DOMContentLoaded", updateProgressInsight);
+document.addEventListener("DOMContentLoaded", function () {
+    const btn = document.getElementById("analyzeBtn");
+
+    if (!btn) {
+        console.error("Analyze button not found");
+        return;
+    }
+
+    btn.addEventListener("click", analyze);
+});
