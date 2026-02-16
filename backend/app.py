@@ -25,11 +25,8 @@ logging.basicConfig(
 logger = logging.getLogger("mentorix-api")
 
 
-def get_cors_origins() -> List[str]:
-    """Read CORS origins from environment variable.
 
-    Use comma-separated values in CORS_ORIGINS, e.g.
-    https://your-frontend.vercel.app,https://mentorix.example.com
+# CORS origins for frontend access
 origins = [
     "https://mentorix-ai.vercel.app",
     "http://localhost:3000",
