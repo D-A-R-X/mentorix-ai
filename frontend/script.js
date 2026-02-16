@@ -154,55 +154,46 @@ async function analyze() {
     const data = await response.json();
     console.log("Response:", data);
 
-    document.getElementById("result").innerText =
-        `Risk: ${data.risk_level} | Stability: ${data.stability_score}`;
+
+async function analyze() {
+    console.log("Analyze clicked");
+
+    const payload = {
+        cgpa: parseFloat(document.getElementById("cgpa").value),
+        backlogs: parseInt(document.getElementById("backlogs").value),
+        tech_interest: parseInt(document.getElementById("tech").value),
+        core_interest: parseInt(document.getElementById("core").value),
+        management_interest: parseInt(document.getElementById("mgmt").value),
+        confidence: parseInt(document.getElementById("confidence").value),
+        career_changes: parseInt(document.getElementById("changes").value),
+        decision_time: parseInt(document.getElementById("time").value)
+    };
+
+    try {
+        const response = await fetch(`${API_BASE}/analyze-risk`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+        console.log(result);
+
+        document.getElementById("riskLevel").textContent = result.risk_level;
+        document.getElementById("stabilityScore").textContent = result.stability_score;
+        document.getElementById("analysisSummary").textContent = result.insight || "Assessment completed.";
+
+        renderCourses(getCoursesByRisk(result.risk_level));
+        updateProgressInsight();
+
+    } catch (error) {
+        console.error(error);
+        document.getElementById("analysisSummary").textContent =
+            "Unable to analyze right now. Please try again.";
+    }
 }
 
-
-  try {
-    const res = await fetch(`${API_BASE}/analyze-risk`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data)
-    });
-
-    const result = await res.json();
-    const riskLevel = String(result.risk_level || "");
-    const riskClass = riskLevel.toLowerCase() === "low" ? "low" : riskLevel.toLowerCase() === "medium" ? "medium" : "high";
-    const scorePercent = Math.max(0, Math.min(100, Math.round((result.stability_score || 0) * 100)));
-
-    document.getElementById("riskLevel").textContent = riskLevel;
-    document.getElementById("riskLevel").className = `risk-level ${riskClass}`;
-    document.getElementById("stabilityScore").textContent = result.stability_score;
-    document.getElementById("analysisSummary").textContent = result.summary || "Assessment completed.";
-    document.getElementById("progressText").textContent = `${scorePercent}%`;
-    document.getElementById("stabilityProgress").style.width = `${scorePercent}%`;
-
-    document.getElementById("careerDirection").textContent = getCareerDirection(result, data);
-
-    renderCourses(getCoursesByRisk(riskLevel));
-
-    resultCard.classList.remove("result-pop");
-    void resultCard.offsetWidth;
-    resultCard.classList.add("result-pop");
-  } catch (error) {
-    document.getElementById("analysisSummary").textContent = "Unable to analyze right now. Please try again.";
-  } finally {
-    button.disabled = false;
-    button.textContent = originalLabel;
-  }
-
-
-// Ensure analyze is globally accessible
-window.analyze = analyze;
-document.addEventListener("DOMContentLoaded", updateProgressInsight);
 document.addEventListener("DOMContentLoaded", function () {
-    const btn = document.getElementById("analyzeBtn");
-
-    if (!btn) {
-        console.error("Analyze button not found");
-        return;
-    }
-
-    btn.addEventListener("click", analyze);
+    document.getElementById("analyzeBtn").addEventListener("click", analyze);
+    updateProgressInsight();
 });
