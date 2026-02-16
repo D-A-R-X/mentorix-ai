@@ -22,7 +22,19 @@ logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
+
 logger = logging.getLogger("mentorix-api")
+
+# Load trained ML model at startup
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "model", "risk_model.pkl")
+
+try:
+    with open(MODEL_PATH, "rb") as f:
+        model = pickle.load(f)
+    logger.info(f"Model loaded successfully from {MODEL_PATH}")
+except Exception as e:
+    logger.exception("Failed to load ML model")
+    raise RuntimeError("Model file missing or corrupted. Ensure risk_model.pkl exists.") from e
 
 
 
