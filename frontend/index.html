@@ -23,42 +23,42 @@
       <div class="input-grid">
         <label>
           <span>CGPA (0–10)</span>
-          <input type="number" id="cgpa" min="0" max="10" step="0.1" placeholder="e.g. 8.2">
+          <input type="number" id="cgpa" min="0" max="10" step="0.1" placeholder="e.g. 8.2" required>
         </label>
 
         <label>
           <span>Backlogs</span>
-          <input type="number" id="backlogs" min="0" placeholder="e.g. 0">
+          <input type="number" id="backlogs" min="0" placeholder="e.g. 0" required>
         </label>
 
         <label>
           <span>Tech Interest (1–5)</span>
-          <input type="number" id="tech" min="1" max="5" placeholder="e.g. 4">
+          <input type="number" id="tech" min="1" max="5" placeholder="e.g. 4" required>
         </label>
 
         <label>
           <span>Core Interest (1–5)</span>
-          <input type="number" id="core" min="1" max="5" placeholder="e.g. 3">
+          <input type="number" id="core" min="1" max="5" placeholder="e.g. 3" required>
         </label>
 
         <label>
           <span>Management Interest (1–5)</span>
-          <input type="number" id="mgmt" min="1" max="5" placeholder="e.g. 2">
+          <input type="number" id="mgmt" min="1" max="5" placeholder="e.g. 2" required>
         </label>
 
         <label>
           <span>Confidence (1–5)</span>
-          <input type="number" id="confidence" min="1" max="5" placeholder="e.g. 4">
+          <input type="number" id="confidence" min="1" max="5" placeholder="e.g. 4" required>
         </label>
 
         <label>
           <span>Career Changes</span>
-          <input type="number" id="changes" min="0" placeholder="e.g. 1">
+          <input type="number" id="changes" min="0" placeholder="e.g. 1" required>
         </label>
 
         <label>
           <span>Decision Time (months)</span>
-          <input type="number" id="time" min="0" placeholder="e.g. 12">
+          <input type="number" id="time" min="0" placeholder="e.g. 12" required>
         </label>
       </div>
 
@@ -101,6 +101,75 @@
 
   <footer class="app-footer">Mentorix AI – Academic Prototype</footer>
 
+        <label>
+          <span>Core Interest (1–5)</span>
+          <input type="number" id="core" min="1" max="5" placeholder="e.g. 3" required>
+        </label>
+
+        <label>
+          <span>Management Interest (1–5)</span>
+          <input type="number" id="mgmt" min="1" max="5" placeholder="e.g. 2" required>
+        </label>
+
+        <label>
+          <span>Confidence (1–5)</span>
+          <input type="number" id="confidence" min="1" max="5" placeholder="e.g. 4" required>
+        </label>
+
+        <label>
+          <span>Career Changes</span>
+          <input type="number" id="changes" min="0" placeholder="e.g. 1" required>
+        </label>
+
+        <label>
+          <span>Decision Time (months)</span>
+          <input type="number" id="time" min="0" placeholder="e.g. 12" required>
+        </label>
+      </div>
+
+      <button id="analyzeBtn" class="analyze-btn" onclick="analyze()">Analyze Decision</button>
+    </section>
+
+    <section class="dashboard-grid">
+      <article class="card" id="resultCard">
+        <h2>Analysis Result</h2>
+        <div class="meta-row"><span>Risk Level</span><strong id="riskLevel" class="risk-level">-</strong></div>
+        <div class="meta-row"><span>Stability Score</span><strong id="stabilityScore">-</strong></div>
+        <div class="progress-wrap">
+          <div class="progress-label"><span>Stability Progress</span><span id="progressText">0%</span></div>
+          <div class="progress-bar"><div id="stabilityProgress" class="progress-fill"></div></div>
+        </div>
+        <p id="analysisSummary" class="muted">Run the assessment to view your analysis summary.</p>
+      </article>
+
+      <article class="card" id="careerCard">
+        <h2>Career Direction</h2>
+        <p id="careerDirection" class="card-text">Complete the assessment to receive a recommended direction.</p>
+      </article>
+
+      <article class="card" id="coursesCard">
+        <h2>Course Recommendation</h2>
+        <div id="coursesGrid" class="course-grid">
+          <p class="muted">Courses will appear here after analysis.</p>
+        </div>
+      </article>
+
+      <article class="card" id="progressCard">
+        <h2>Progress Tracker</h2>
+        <div class="meta-row"><span>Completion</span><strong id="completionPercent">0%</strong></div>
+        <div class="meta-row"><span>Skill Growth</span><strong id="skillGrowth">Not started</strong></div>
+        <div class="meta-row"><span>Skill Score</span><strong id="skillScore">0</strong></div>
+        <p class="muted" id="progressHint">Track your consistency by repeating this assessment every few weeks.</p>
+      </article>
+    </section>
+  </main>
+
+  <footer class="app-footer">Mentorix AI – Academic Prototype</footer>
+
+  <script>
+    // Optional: set this in deployment to point to backend base URL
+    // window.MENTORIX_API_BASE_URL = "https://your-backend.onrender.com";
+  </script>
   <script src="script.js"></script>
 </body>
 </html>

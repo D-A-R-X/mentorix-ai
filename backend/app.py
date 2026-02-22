@@ -1,7 +1,7 @@
 import logging
 import os
 import time
-from typing import List
+from typing import List, Tuple
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,7 +22,6 @@ logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
-
 logger = logging.getLogger("mentorix-api")
 
 # Load trained ML model at startup
@@ -45,10 +44,29 @@ origins = [
     "http://127.0.0.1:3000"
 ]
 
+def get_cors_settings() -> Tuple[List[str], bool]:
+    """Read CORS origins from environment variable.
+
+    Use comma-separated values in CORS_ORIGINS, e.g.
+    https://your-frontend.vercel.app,https://mentorix.example.com
+    """
+    raw_origins = os.getenv("CORS_ORIGINS", "*")
+    parsed_origins = [origin.strip().strip('"').strip("'") for origin in raw_origins.split(",") if origin.strip()]
+
+    # If wildcard is present (alone or mixed), enforce true wildcard mode.
+    # Mixed values like "*,https://site" can break preflight in some deployments.
+    if "*" in parsed_origins or not parsed_origins:
+        return ["*"], False
+
+    return parsed_origins, True
+
+# CORS (for Vercel frontend later)
+cors_origins, cors_allow_credentials = get_cors_settings()
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    allow_credentials=cors_allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
