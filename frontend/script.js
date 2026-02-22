@@ -108,35 +108,6 @@ function getCoursesByRisk(riskLevel) {
     { title: "Leadership in Career Progression", provider: "edX", duration: "4 weeks", url: "https://example.com" }
   ];
 }
-    ];
-  }
-
-  if (riskLevel === "Medium") {
-    return [
-<<<<<<< HEAD
-      { title: "Career Roadmap Design", platform: "Coursera", difficulty: "Intermediate", link: "https://example.com" },
-      { title: "Applied Project Skills", platform: "Udemy", difficulty: "Intermediate", link: "https://example.com" },
-      { title: "Decision-Making Frameworks", platform: "edX", difficulty: "Intermediate", link: "https://example.com" }
-=======
-      { title: "Career Roadmap Design", provider: "Coursera", duration: "5 weeks", url: "https://example.com" },
-      { title: "Applied Project Skills", provider: "Udemy", duration: "6 weeks", url: "https://example.com" },
-      { title: "Decision-Making Frameworks", provider: "edX", duration: "4 weeks", url: "https://example.com" }
->>>>>>> origin/codex/analyze-repository-architecture-and-workflows-ria1s2
-    ];
-  }
-
-  return [
-<<<<<<< HEAD
-    { title: "Advanced Skill Growth Plan", platform: "Coursera", difficulty: "Advanced", link: "https://example.com" },
-    { title: "Portfolio Development", platform: "Udemy", difficulty: "Intermediate", link: "https://example.com" },
-    { title: "Leadership in Career Progression", platform: "edX", difficulty: "Intermediate", link: "https://example.com" }
-=======
-    { title: "Advanced Skill Growth Plan", provider: "Coursera", duration: "6 weeks", url: "https://example.com" },
-    { title: "Portfolio Development", provider: "Udemy", duration: "5 weeks", url: "https://example.com" },
-    { title: "Leadership in Career Progression", provider: "edX", duration: "4 weeks", url: "https://example.com" }
->>>>>>> origin/codex/analyze-repository-architecture-and-workflows-ria1s2
-  ];
-}
 
 function renderCourses(courses) {
   const coursesGrid = document.getElementById("coursesGrid");
@@ -151,13 +122,6 @@ function renderCourses(courses) {
       return `
         <div class="course-item">
           <h3>${course.title}</h3>
-<<<<<<< HEAD
-          <div class="course-meta">${course.platform} • ${course.difficulty}</div>
-          <a class="course-link" href="${course.link}" target="_blank" rel="noopener noreferrer">Start Learning</a>
-=======
-          <div class="course-meta">${course.provider} • ${course.duration}</div>
-          <a class="course-link" href="${course.url}" target="_blank" rel="noopener noreferrer">Start Learning</a>
->>>>>>> origin/codex/analyze-repository-architecture-and-workflows-ria1s2
           <div class="course-actions">
             <button class="course-action-btn" type="button" onclick="markCourseStatus('${courseId}', 'started')">Mark as Started</button>
             <button class="course-action-btn" type="button" onclick="markCourseStatus('${courseId}', 'completed')">Mark as Completed</button>
@@ -170,76 +134,6 @@ function renderCourses(courses) {
 
   updateProgressInsight();
 }
-
-<<<<<<< HEAD
-async function analyze() {
-    console.log("Analyze clicked");   // <-- this must print
-
-    const payload = {
-        cgpa: parseFloat(document.getElementById("cgpa").value),
-        backlogs: parseInt(document.getElementById("backlogs").value),
-        tech_interest: parseInt(document.getElementById("tech_interest").value),
-        core_interest: parseInt(document.getElementById("core_interest").value),
-        management_interest: parseInt(document.getElementById("management_interest").value),
-        confidence: parseInt(document.getElementById("confidence").value),
-        career_changes: parseInt(document.getElementById("career_changes").value),
-        decision_time: parseInt(document.getElementById("decision_time").value)
-    };
-
-    console.log("Sending payload:", payload);
-
-    const response = await fetch("https://mentorix-ai-backend.onrender.com/analyze-risk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-    });
-
-    const data = await response.json();
-    console.log("Response:", data);
-
-
-async function analyze() {
-    console.log("Analyze clicked");
-
-    const payload = {
-        cgpa: parseFloat(document.getElementById("cgpa").value),
-        backlogs: parseInt(document.getElementById("backlogs").value),
-        tech_interest: parseInt(document.getElementById("tech").value),
-        core_interest: parseInt(document.getElementById("core").value),
-        management_interest: parseInt(document.getElementById("mgmt").value),
-        confidence: parseInt(document.getElementById("confidence").value),
-        career_changes: parseInt(document.getElementById("changes").value),
-        decision_time: parseInt(document.getElementById("time").value)
-    };
-
-    try {
-        const response = await fetch(`${API_BASE}/analyze-risk`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-
-        const result = await response.json();
-        console.log(result);
-
-        document.getElementById("riskLevel").textContent = result.risk_level;
-        document.getElementById("stabilityScore").textContent = result.stability_score;
-        document.getElementById("analysisSummary").textContent = result.insight || "Assessment completed.";
-
-        renderCourses(getCoursesByRisk(result.risk_level));
-        updateProgressInsight();
-
-    } catch (error) {
-        console.error(error);
-        document.getElementById("analysisSummary").textContent =
-            "Unable to analyze right now. Please try again.";
-    }
-}
-
-document.addEventListener("DOMContentLoaded", function () {
-    document.getElementById("analyzeBtn").addEventListener("click", analyze);
-    updateProgressInsight();
-=======
 function parseFormData() {
   return {
     cgpa: parseFloat(document.getElementById("cgpa").value),
@@ -342,5 +236,4 @@ async function analyze() {
 document.addEventListener("DOMContentLoaded", () => {
   updateProgressInsight();
   checkBackendHealth();
->>>>>>> origin/codex/analyze-repository-architecture-and-workflows-ria1s2
 });
