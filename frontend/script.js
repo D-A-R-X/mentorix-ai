@@ -1,15 +1,16 @@
 const COURSE_PROGRESS_KEY = "mentorix_course_progress";
 const SKILL_WEIGHT = 20;
 
+const DEFAULT_BACKEND_URL = "https://mentorix-ai-backend.onrender.com";
 const runtimeApiBase =
   new URLSearchParams(window.location.search).get("api") ||
   localStorage.getItem("mentorix_api_base_url") ||
   window.MENTORIX_API_BASE_URL ||
-  "";
+  DEFAULT_BACKEND_URL;
 
 const API_BASE_URL = runtimeApiBase.trim().replace(/\/$/, "");
-const ANALYZE_ENDPOINT = API_BASE_URL ? `${API_BASE_URL}/analyze-risk` : "/analyze-risk";
-const HEALTH_ENDPOINT = API_BASE_URL ? `${API_BASE_URL}/health` : "/health";
+const ANALYZE_ENDPOINT = `${API_BASE_URL}/analyze-risk`;
+const HEALTH_ENDPOINT = `${API_BASE_URL}/health`;
 console.log("Mentorix JS loaded");
 function loadCourseProgress() {
   try {
