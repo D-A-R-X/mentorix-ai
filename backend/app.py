@@ -63,6 +63,25 @@ def get_cors_settings() -> Tuple[List[str], bool]:
 # CORS (for Vercel frontend later)
 cors_origins, cors_allow_credentials = get_cors_settings()
 
+def get_cors_settings() -> Tuple[List[str], bool]:
+    """Read CORS origins from environment variable.
+
+    Use comma-separated values in CORS_ORIGINS, e.g.
+    https://your-frontend.vercel.app,https://mentorix.example.com
+    """
+    raw_origins = os.getenv("CORS_ORIGINS", "*")
+    parsed_origins = [origin.strip().strip('"').strip("'") for origin in raw_origins.split(",") if origin.strip()]
+
+    # If wildcard is present (alone or mixed), enforce true wildcard mode.
+    # Mixed values like "*,https://site" can break preflight in some deployments.
+    if "*" in parsed_origins or not parsed_origins:
+        return ["*"], False
+
+    return parsed_origins, True
+
+# CORS (for Vercel frontend later)
+cors_origins, cors_allow_credentials = get_cors_settings()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,

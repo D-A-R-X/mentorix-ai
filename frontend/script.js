@@ -135,6 +135,7 @@ function renderCourses(courses) {
 
   updateProgressInsight();
 }
+
 function parseFormData() {
   return {
     cgpa: parseFloat(document.getElementById("cgpa").value),
