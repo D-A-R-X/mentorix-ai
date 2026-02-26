@@ -24,6 +24,45 @@ logging.basicConfig(
 )
 logger = logging.getLogger("mentorix-api")
 
+# Load trained ML model at startup
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "model", "risk_model.pkl")
+
+try:
+    with open(MODEL_PATH, "rb") as f:
+        model = pickle.load(f)
+    logger.info(f"Model loaded successfully from {MODEL_PATH}")
+except Exception as e:
+    logger.exception("Failed to load ML model")
+    raise RuntimeError("Model file missing or corrupted. Ensure risk_model.pkl exists.") from e
+
+
+
+# CORS origins for frontend access
+origins = [
+    "https://mentorix-ai.vercel.app",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000"
+]
+
+def get_cors_settings() -> Tuple[List[str], bool]:
+    """Read CORS origins from environment variable.
+
+    Use comma-separated values in CORS_ORIGINS, e.g.
+    https://your-frontend.vercel.app,https://mentorix.example.com
+    """
+    raw_origins = os.getenv("CORS_ORIGINS", "*")
+    parsed_origins = [origin.strip().strip('"').strip("'") for origin in raw_origins.split(",") if origin.strip()]
+
+
+    # If wildcard is present (alone or mixed), enforce true wildcard mode.
+    # Mixed values like "*,https://site" can break preflight in some deployments.
+    if "*" in parsed_origins or not parsed_origins:
+        return ["*"], False
+
+    return parsed_origins, True
+
+# CORS (for Vercel frontend later)
+cors_origins, cors_allow_credentials = get_cors_settings()
 
 def get_cors_settings() -> Tuple[List[str], bool]:
     """Read CORS origins from environment variable.
@@ -52,10 +91,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+class StudentInput(BaseModel):
+    cgpa: float = Field(..., ge=0, le=10, description="CGPA must be between 0 and 10")
+    backlogs: int = Field(..., ge=0, description="Backlogs must be 0 or greater")
+    tech_interest: int = Field(..., ge=1, le=5, description="Tech interest must be between 1 and 5")
+    core_interest: int = Field(..., ge=1, le=5, description="Core interest must be between 1 and 5")
+    management_interest: int = Field(..., ge=1, le=5, description="Management interest must be between 1 and 5")
+    confidence: int = Field(..., ge=1, le=5, description="Confidence level must be between 1 and 5")
+    career_changes: int = Field(..., ge=0, description="Career changes must be 0 or greater")
+    decision_time: int = Field(..., ge=0, description="Decision time must be 0 or greater")
 
-# Load model
-with open("model/risk_model.pkl", "rb") as f:
-    model = pickle.load(f)
 
 class StudentInput(BaseModel):
     cgpa: float = Field(..., ge=0, le=10, description="CGPA must be between 0 and 10")
@@ -162,6 +207,8 @@ def analyze_risk(data: StudentInput):
         "career_direction": career_direction,
         "insight": insight,
         "summary": insight,
+        "career_direction": career_direction,
+        "insight": insight,
     }
 
 if __name__ == "__main__":

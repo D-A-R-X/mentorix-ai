@@ -2,6 +2,7 @@ const COURSE_PROGRESS_KEY = "mentorix_course_progress";
 const SKILL_WEIGHT = 20;
 
 const DEFAULT_PROD_API_BASE_URL = "https://mentorix-ai-backend.onrender.com";
+const DEFAULT_BACKEND_URL = "https://mentorix-ai-backend.onrender.com";
 const runtimeApiBase =
   new URLSearchParams(window.location.search).get("api") ||
   localStorage.getItem("mentorix_api_base_url") ||
@@ -20,6 +21,12 @@ function setBackendStatus(message, statusClass = "warning") {
   el.className = `backend-status ${statusClass}`;
 }
 
+  DEFAULT_BACKEND_URL;
+
+const API_BASE_URL = runtimeApiBase.trim().replace(/\/$/, "");
+const ANALYZE_ENDPOINT = `${API_BASE_URL}/analyze-risk`;
+const HEALTH_ENDPOINT = `${API_BASE_URL}/health`;
+console.log("Mentorix JS loaded");
 function loadCourseProgress() {
   try {
     return JSON.parse(localStorage.getItem(COURSE_PROGRESS_KEY) || "{}");
@@ -79,6 +86,23 @@ function markCourseStatus(courseId, status) {
 }
 
 function getFallbackCoursesByRisk(riskLevel) {
+function getCareerDirection(result, data) {
+  if (result.risk_level === "High") {
+    return "Recommended Direction: Start with a focused foundation path and regular mentor check-ins before finalizing a specialization.";
+  }
+
+  if (data.tech_interest >= data.core_interest && data.tech_interest >= data.management_interest) {
+    return "Recommended Direction: Technology-focused pathway (software, data, or AI tracks) based on your stronger tech inclination.";
+  }
+
+  if (data.management_interest >= data.tech_interest && data.management_interest >= data.core_interest) {
+    return "Recommended Direction: Management-oriented pathway (product, operations, or leadership readiness).";
+  }
+
+  return "Recommended Direction: Core-domain specialization with gradual cross-skilling for flexibility.";
+}
+
+function getCoursesByRisk(riskLevel) {
   if (riskLevel === "High") {
     return [
       { title: "Career Planning Basics", provider: "Coursera", duration: "4 weeks", url: "https://example.com" },
@@ -147,11 +171,24 @@ function hasInvalidNumberValues(data) {
   return Object.values(data).some((value) => Number.isNaN(value));
 }
 
+
+function hasInvalidNumberValues(data) {
+  return Object.values(data).some((value) => Number.isNaN(value));
+}
+
 async function parseResponse(res) {
   const raw = await res.text();
   if (!raw) {
     return {};
   }
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return { detail: raw.slice(0, 180) };
+  }
+}
+
 
   try {
     return JSON.parse(raw);
@@ -174,6 +211,10 @@ async function checkBackendHealth() {
     setBackendStatus(`Backend unreachable: ${HEALTH_ENDPOINT}`, "error");
     document.getElementById("analysisSummary").textContent =
       `Backend is unreachable at ${HEALTH_ENDPOINT}. Set window.MENTORIX_API_BASE_URL in index.html or use ?api=https://your-backend-url.`;
+  } catch (error) {
+    button.disabled = false;
+    document.getElementById("analysisSummary").textContent =
+      "Backend is unreachable. Set window.MENTORIX_API_BASE_URL in index.html or use ?api=https://your-backend-url.";
   }
 }
 
@@ -212,6 +253,7 @@ async function analyze() {
     document.getElementById("riskLevel").className = `risk-level ${riskClass}`;
     document.getElementById("stabilityScore").textContent = result.stability_score;
     document.getElementById("analysisSummary").textContent = result.insight || result.summary || "Assessment completed.";
+    document.getElementById("analysisSummary").textContent = result.insight || "Assessment completed.";
     document.getElementById("progressText").textContent = `${scorePercent}%`;
     document.getElementById("stabilityProgress").style.width = `${scorePercent}%`;
 
@@ -223,6 +265,9 @@ async function analyze() {
 
     const reasons = Array.isArray(result?.reasons) && result.reasons.length ? result.reasons : ["No specific reasons returned."];
     document.getElementById("reasonList").innerHTML = reasons.map((reason) => `<li>${reason}</li>`).join("");
+
+    const recommendedCourses = result?.recommendation?.courses;
+    renderCourses(Array.isArray(recommendedCourses) && recommendedCourses.length ? recommendedCourses : getFallbackCoursesByRisk(riskLevel));
 
     resultCard.classList.remove("result-pop");
     void resultCard.offsetWidth;
