@@ -1,17 +1,17 @@
 const COURSE_PROGRESS_KEY = "mentorix_course_progress";
 const SKILL_WEIGHT = 20;
 
-const DEFAULT_PROD_API_BASE_URL = "https://mentorix-ai-backend.onrender.com";
+const DEFAULT_BACKEND_URL = "https://mentorix-ai-backend.onrender.com";
 const runtimeApiBase =
   new URLSearchParams(window.location.search).get("api") ||
   localStorage.getItem("mentorix_api_base_url") ||
   window.MENTORIX_API_BASE_URL ||
-  (window.location.hostname.includes("vercel.app") ? DEFAULT_PROD_API_BASE_URL : "");
+  DEFAULT_BACKEND_URL;
 
 const API_BASE_URL = runtimeApiBase.trim().replace(/\/$/, "");
-const ANALYZE_ENDPOINT = API_BASE_URL ? `${API_BASE_URL}/analyze-risk` : "/analyze-risk";
-const HEALTH_ENDPOINT = API_BASE_URL ? `${API_BASE_URL}/health` : "/health";
-
+const ANALYZE_ENDPOINT = `${API_BASE_URL}/analyze-risk`;
+const HEALTH_ENDPOINT = `${API_BASE_URL}/health`;
+console.log("Mentorix JS loaded");
 function loadCourseProgress() {
   try {
     return JSON.parse(localStorage.getItem(COURSE_PROGRESS_KEY) || "{}");
@@ -70,7 +70,23 @@ function markCourseStatus(courseId, status) {
   updateProgressInsight();
 }
 
-function getFallbackCoursesByRisk(riskLevel) {
+function getCareerDirection(result, data) {
+  if (result.risk_level === "High") {
+    return "Recommended Direction: Start with a focused foundation path and regular mentor check-ins before finalizing a specialization.";
+  }
+
+  if (data.tech_interest >= data.core_interest && data.tech_interest >= data.management_interest) {
+    return "Recommended Direction: Technology-focused pathway (software, data, or AI tracks) based on your stronger tech inclination.";
+  }
+
+  if (data.management_interest >= data.tech_interest && data.management_interest >= data.core_interest) {
+    return "Recommended Direction: Management-oriented pathway (product, operations, or leadership readiness).";
+  }
+
+  return "Recommended Direction: Core-domain specialization with gradual cross-skilling for flexibility.";
+}
+
+function getCoursesByRisk(riskLevel) {
   if (riskLevel === "High") {
     return [
       { title: "Career Planning Basics", provider: "Coursera", duration: "4 weeks", url: "https://example.com" },
@@ -107,8 +123,6 @@ function renderCourses(courses) {
       return `
         <div class="course-item">
           <h3>${course.title}</h3>
-          <div class="course-meta">${course.provider} • ${course.duration}</div>
-          <a class="course-link" href="${course.url}" target="_blank" rel="noopener noreferrer">Start Learning</a>
           <div class="course-actions">
             <button class="course-action-btn" type="button" onclick="markCourseStatus('${courseId}', 'started')">Mark as Started</button>
             <button class="course-action-btn" type="button" onclick="markCourseStatus('${courseId}', 'completed')">Mark as Completed</button>
@@ -163,7 +177,7 @@ async function checkBackendHealth() {
   } catch (error) {
     button.disabled = false;
     document.getElementById("analysisSummary").textContent =
-      `Backend is unreachable at ${HEALTH_ENDPOINT}. Set window.MENTORIX_API_BASE_URL in index.html or use ?api=https://your-backend-url.`;
+      "Backend is unreachable. Set window.MENTORIX_API_BASE_URL in index.html or use ?api=https://your-backend-url.";
   }
 }
 
