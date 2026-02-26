@@ -53,6 +53,7 @@ def get_cors_settings() -> Tuple[List[str], bool]:
     raw_origins = os.getenv("CORS_ORIGINS", "*")
     parsed_origins = [origin.strip().strip('"').strip("'") for origin in raw_origins.split(",") if origin.strip()]
 
+
     # If wildcard is present (alone or mixed), enforce true wildcard mode.
     # Mixed values like "*,https://site" can break preflight in some deployments.
     if "*" in parsed_origins or not parsed_origins:
@@ -89,6 +90,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+class StudentInput(BaseModel):
+    cgpa: float = Field(..., ge=0, le=10, description="CGPA must be between 0 and 10")
+    backlogs: int = Field(..., ge=0, description="Backlogs must be 0 or greater")
+    tech_interest: int = Field(..., ge=1, le=5, description="Tech interest must be between 1 and 5")
+    core_interest: int = Field(..., ge=1, le=5, description="Core interest must be between 1 and 5")
+    management_interest: int = Field(..., ge=1, le=5, description="Management interest must be between 1 and 5")
+    confidence: int = Field(..., ge=1, le=5, description="Confidence level must be between 1 and 5")
+    career_changes: int = Field(..., ge=0, description="Career changes must be 0 or greater")
+    decision_time: int = Field(..., ge=0, description="Decision time must be 0 or greater")
+
 
 class StudentInput(BaseModel):
     cgpa: float = Field(..., ge=0, le=10, description="CGPA must be between 0 and 10")
@@ -191,6 +203,10 @@ def analyze_risk(data: StudentInput):
         "stability_score": score,
         "reasons": reasons,
         "recommendation": recommendation,
+        "recommendations": recommendation,
+        "career_direction": career_direction,
+        "insight": insight,
+        "summary": insight,
         "career_direction": career_direction,
         "insight": insight,
     }

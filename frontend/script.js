@@ -1,11 +1,26 @@
 const COURSE_PROGRESS_KEY = "mentorix_course_progress";
 const SKILL_WEIGHT = 20;
 
+const DEFAULT_PROD_API_BASE_URL = "https://mentorix-ai-backend.onrender.com";
 const DEFAULT_BACKEND_URL = "https://mentorix-ai-backend.onrender.com";
 const runtimeApiBase =
   new URLSearchParams(window.location.search).get("api") ||
   localStorage.getItem("mentorix_api_base_url") ||
   window.MENTORIX_API_BASE_URL ||
+  (window.location.hostname.includes("vercel.app") ? DEFAULT_PROD_API_BASE_URL : "");
+
+const API_BASE_URL = runtimeApiBase.trim().replace(/\/$/, "");
+const ANALYZE_ENDPOINT = API_BASE_URL ? `${API_BASE_URL}/analyze-risk` : "/analyze-risk";
+const HEALTH_ENDPOINT = API_BASE_URL ? `${API_BASE_URL}/health` : "/health";
+
+
+function setBackendStatus(message, statusClass = "warning") {
+  const el = document.getElementById("backendStatus");
+  if (!el) return;
+  el.textContent = message;
+  el.className = `backend-status ${statusClass}`;
+}
+
   DEFAULT_BACKEND_URL;
 
 const API_BASE_URL = runtimeApiBase.trim().replace(/\/$/, "");
@@ -70,6 +85,7 @@ function markCourseStatus(courseId, status) {
   updateProgressInsight();
 }
 
+function getFallbackCoursesByRisk(riskLevel) {
 function getCareerDirection(result, data) {
   if (result.risk_level === "High") {
     return "Recommended Direction: Start with a focused foundation path and regular mentor check-ins before finalizing a specialization.";
@@ -123,6 +139,8 @@ function renderCourses(courses) {
       return `
         <div class="course-item">
           <h3>${course.title}</h3>
+          <div class="course-meta">${course.provider} • ${course.duration}</div>
+          <a class="course-link" href="${course.url}" target="_blank" rel="noopener noreferrer">Start Learning</a>
           <div class="course-actions">
             <button class="course-action-btn" type="button" onclick="markCourseStatus('${courseId}', 'started')">Mark as Started</button>
             <button class="course-action-btn" type="button" onclick="markCourseStatus('${courseId}', 'completed')">Mark as Completed</button>
@@ -153,11 +171,24 @@ function hasInvalidNumberValues(data) {
   return Object.values(data).some((value) => Number.isNaN(value));
 }
 
+
+function hasInvalidNumberValues(data) {
+  return Object.values(data).some((value) => Number.isNaN(value));
+}
+
 async function parseResponse(res) {
   const raw = await res.text();
   if (!raw) {
     return {};
   }
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return { detail: raw.slice(0, 180) };
+  }
+}
+
 
   try {
     return JSON.parse(raw);
@@ -174,6 +205,12 @@ async function checkBackendHealth() {
     if (!res.ok) {
       throw new Error(`Backend health check failed (${res.status})`);
     }
+    setBackendStatus(`Backend connected: ${HEALTH_ENDPOINT}`, "ok");
+  } catch (error) {
+    button.disabled = false;
+    setBackendStatus(`Backend unreachable: ${HEALTH_ENDPOINT}`, "error");
+    document.getElementById("analysisSummary").textContent =
+      `Backend is unreachable at ${HEALTH_ENDPOINT}. Set window.MENTORIX_API_BASE_URL in index.html or use ?api=https://your-backend-url.`;
   } catch (error) {
     button.disabled = false;
     document.getElementById("analysisSummary").textContent =
@@ -215,11 +252,19 @@ async function analyze() {
     document.getElementById("riskLevel").textContent = riskLevel;
     document.getElementById("riskLevel").className = `risk-level ${riskClass}`;
     document.getElementById("stabilityScore").textContent = result.stability_score;
+    document.getElementById("analysisSummary").textContent = result.insight || result.summary || "Assessment completed.";
     document.getElementById("analysisSummary").textContent = result.insight || "Assessment completed.";
     document.getElementById("progressText").textContent = `${scorePercent}%`;
     document.getElementById("stabilityProgress").style.width = `${scorePercent}%`;
 
     document.getElementById("careerDirection").textContent = result.career_direction || "Career direction unavailable.";
+
+    const recommendedBundle = result?.recommendation || result?.recommendations || {};
+    const recommendedCourses = recommendedBundle?.courses;
+    renderCourses(Array.isArray(recommendedCourses) && recommendedCourses.length ? recommendedCourses : getFallbackCoursesByRisk(riskLevel));
+
+    const reasons = Array.isArray(result?.reasons) && result.reasons.length ? result.reasons : ["No specific reasons returned."];
+    document.getElementById("reasonList").innerHTML = reasons.map((reason) => `<li>${reason}</li>`).join("");
 
     const recommendedCourses = result?.recommendation?.courses;
     renderCourses(Array.isArray(recommendedCourses) && recommendedCourses.length ? recommendedCourses : getFallbackCoursesByRisk(riskLevel));
@@ -228,6 +273,7 @@ async function analyze() {
     void resultCard.offsetWidth;
     resultCard.classList.add("result-pop");
   } catch (error) {
+    setBackendStatus(`Request failed at ${ANALYZE_ENDPOINT}`, "error");
     document.getElementById("analysisSummary").textContent = error.message || "Unable to analyze right now. Please try again.";
   } finally {
     button.disabled = false;
