@@ -2,17 +2,49 @@ let csiChartInstance = null;
 const COURSE_PROGRESS_KEY = "mentorix_course_progress";
 const SKILL_WEIGHT = 20;
 
-const DEFAULT_BACKEND_URL = "https://mentorix-ai-backend.onrender.com";
+const DEFAULT_PROD_API_BASE_URL = "https://mentorix-ai-backend.onrender.com";
+const queryApiBase = new URLSearchParams(window.location.search).get("api");
+const storedApiBase = localStorage.getItem("mentorix_api_base_url");
 const runtimeApiBase =
-  new URLSearchParams(window.location.search).get("api") ||
-  localStorage.getItem("mentorix_api_base_url") ||
+  queryApiBase ||
+  storedApiBase ||
   window.MENTORIX_API_BASE_URL ||
-  DEFAULT_BACKEND_URL;
+  (window.location.hostname.includes("vercel.app") ? DEFAULT_PROD_API_BASE_URL : "");
 
 const API_BASE_URL = runtimeApiBase.trim().replace(/\/$/, "");
-const ANALYZE_ENDPOINT = `${API_BASE_URL}/analyze-risk`;
-const HEALTH_ENDPOINT = `${API_BASE_URL}/health`;
-console.log("Mentorix JS loaded");
+const ANALYZE_ENDPOINT = API_BASE_URL ? `${API_BASE_URL}/analyze-risk` : "/analyze-risk";
+const HEALTH_ENDPOINT = API_BASE_URL ? `${API_BASE_URL}/health` : "/health";
+
+
+function setBackendStatus(message, statusClass = "warning") {
+  const el = document.getElementById("backendStatus");
+  if (!el) return;
+  el.textContent = message;
+  el.className = `backend-status ${statusClass}`;
+}
+
+function initializeApiConfig() {
+  const input = document.getElementById("apiBaseInput");
+  const info = document.getElementById("apiEndpointInfo");
+  if (!input || !info) return;
+
+  input.value = API_BASE_URL;
+  info.textContent = `Using API endpoint: ${ANALYZE_ENDPOINT}`;
+}
+
+function saveApiBaseUrl() {
+  const input = document.getElementById("apiBaseInput");
+  if (!input) return;
+
+  const value = input.value.trim().replace(/\/$/, "");
+  if (value) {
+    localStorage.setItem("mentorix_api_base_url", value);
+  } else {
+    localStorage.removeItem("mentorix_api_base_url");
+  }
+  window.location.reload();
+}
+
 function loadCourseProgress() {
   try {
     return JSON.parse(localStorage.getItem(COURSE_PROGRESS_KEY) || "{}");
@@ -71,23 +103,7 @@ function markCourseStatus(courseId, status) {
   updateProgressInsight();
 }
 
-function getCareerDirection(result, data) {
-  if (result.risk_level === "High") {
-    return "Recommended Direction: Start with a focused foundation path and regular mentor check-ins before finalizing a specialization.";
-  }
-
-  if (data.tech_interest >= data.core_interest && data.tech_interest >= data.management_interest) {
-    return "Recommended Direction: Technology-focused pathway (software, data, or AI tracks) based on your stronger tech inclination.";
-  }
-
-  if (data.management_interest >= data.tech_interest && data.management_interest >= data.core_interest) {
-    return "Recommended Direction: Management-oriented pathway (product, operations, or leadership readiness).";
-  }
-
-  return "Recommended Direction: Core-domain specialization with gradual cross-skilling for flexibility.";
-}
-
-function getCoursesByRisk(riskLevel) {
+function getFallbackCoursesByRisk(riskLevel) {
   if (riskLevel === "High") {
     return [
       { title: "Career Planning Basics", provider: "Coursera", duration: "4 weeks", url: "https://example.com" },
@@ -124,6 +140,8 @@ function renderCourses(courses) {
       return `
         <div class="course-item">
           <h3>${course.title}</h3>
+          <div class="course-meta">${course.provider} • ${course.duration}</div>
+          <a class="course-link" href="${course.url}" target="_blank" rel="noopener noreferrer">Start Learning</a>
           <div class="course-actions">
             <button class="course-action-btn" type="button" onclick="markCourseStatus('${courseId}', 'started')">Mark as Started</button>
             <button class="course-action-btn" type="button" onclick="markCourseStatus('${courseId}', 'completed')">Mark as Completed</button>
@@ -136,6 +154,7 @@ function renderCourses(courses) {
 
   updateProgressInsight();
 }
+
 function parseFormData() {
   const status = document.getElementById("status").value;
 
@@ -183,10 +202,12 @@ async function checkBackendHealth() {
     if (!res.ok) {
       throw new Error(`Backend health check failed (${res.status})`);
     }
+    setBackendStatus(`Backend connected: ${HEALTH_ENDPOINT}`, "ok");
   } catch (error) {
     button.disabled = false;
+    setBackendStatus(`Backend unreachable: ${HEALTH_ENDPOINT}`, "error");
     document.getElementById("analysisSummary").textContent =
-      "Backend is unreachable. Set window.MENTORIX_API_BASE_URL in index.html or use ?api=https://your-backend-url.";
+      `Backend is unreachable at ${HEALTH_ENDPOINT}. Set window.MENTORIX_API_BASE_URL in index.html or use ?api=https://your-backend-url.`;
   }
 }
 
@@ -229,19 +250,24 @@ if (Array.isArray(result.history)) {
     document.getElementById("riskLevel").textContent = riskLevel;
     document.getElementById("riskLevel").className = `risk-level ${riskClass}`;
     document.getElementById("stabilityScore").textContent = result.stability_score;
-    document.getElementById("analysisSummary").textContent = result.insight || "Assessment completed.";
+    document.getElementById("analysisSummary").textContent = result.insight || result.summary || "Assessment completed.";
     document.getElementById("progressText").textContent = `${scorePercent}%`;
     document.getElementById("stabilityProgress").style.width = `${scorePercent}%`;
 
     document.getElementById("careerDirection").textContent = result.career_direction || "Career direction unavailable.";
 
-    const recommendedCourses = result?.recommendation?.courses;
+    const recommendedBundle = result?.recommendation || result?.recommendations || {};
+    const recommendedCourses = recommendedBundle?.courses;
     renderCourses(Array.isArray(recommendedCourses) && recommendedCourses.length ? recommendedCourses : getFallbackCoursesByRisk(riskLevel));
+
+    const reasons = Array.isArray(result?.reasons) && result.reasons.length ? result.reasons : ["No specific reasons returned."];
+    document.getElementById("reasonList").innerHTML = reasons.map((reason) => `<li>${reason}</li>`).join("");
 
     resultCard.classList.remove("result-pop");
     void resultCard.offsetWidth;
     resultCard.classList.add("result-pop");
   } catch (error) {
+    setBackendStatus(`Request failed at ${ANALYZE_ENDPOINT}`, "error");
     document.getElementById("analysisSummary").textContent = error.message || "Unable to analyze right now. Please try again.";
   } finally {
     button.disabled = false;
@@ -250,6 +276,12 @@ if (Array.isArray(result.history)) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  initializeApiConfig();
+  const saveBtn = document.getElementById("saveApiBaseBtn");
+  if (saveBtn) {
+    saveBtn.addEventListener("click", saveApiBaseUrl);
+  }
+
   updateProgressInsight();
   checkBackendHealth();
 
