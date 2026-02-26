@@ -39,24 +39,84 @@
       "url": "https://example.com/core-3"
     }
   ],
-  "foundation_track": [
+"foundation_track": [
+  {
+    "title": "Learning How to Learn",
+    "provider": "Coursera",
+    "duration": "4 weeks",
+    "url": "https://example.com/foundation-1"
+  },
+  {
+    "title": "Career Planning Basics",
+    "provider": "FutureLearn",
+    "duration": "3 weeks",
+    "url": "https://example.com/foundation-2"
+  },
+  {
+    "title": "Confidence and Communication Essentials",
+    "provider": "Udemy",
+    "duration": "4 weeks",
+    "url": "https://example.com/foundation-3"
+  }
+],
+"career_acceleration_track": [
     {
-      "title": "Learning How to Learn",
+      "title": "Strategic Career Growth",
+      "provider": "Coursera",
+      "duration": "5 weeks",
+      "url": "https://example.com/accel-1"
+    },
+    {
+      "title": "Leadership in Tech Teams",
+      "provider": "edX",
+      "duration": "6 weeks",
+      "url": "https://example.com/accel-2"
+    },
+    {
+      "title": "Advanced Industry Specialization",
+      "provider": "Udemy",
+      "duration": "8 weeks",
+      "url": "https://example.com/accel-3"
+    }
+  ],
+  "skill_upgrade_track": [
+    {
+      "title": "Modern Tools Mastery",
       "provider": "Coursera",
       "duration": "4 weeks",
-      "url": "https://example.com/foundation-1"
+      "url": "https://example.com/upgrade-1"
     },
     {
-      "title": "Career Planning Basics",
-      "provider": "FutureLearn",
-      "duration": "3 weeks",
-      "url": "https://example.com/foundation-2"
-    },
-    {
-      "title": "Confidence and Communication Essentials",
+      "title": "Professional Certification Prep",
       "provider": "Udemy",
-      "duration": "4 weeks",
-      "url": "https://example.com/foundation-3"
+      "duration": "6 weeks",
+      "url": "https://example.com/upgrade-2"
+    },
+    {
+      "title": "Industry Best Practices",
+      "provider": "edX",
+      "duration": "5 weeks",
+      "url": "https://example.com/upgrade-3"
     }
-  ]
-}
+  ],
+    "transition_track": [
+      {
+        "title": "Career Switching Roadmap",
+        "provider": "Coursera",
+        "duration": "5 weeks",
+        "url": "https://example.com/transition-1"
+      },
+      {
+        "title": "Building Portfolio for New Domain",
+        "provider": "Udemy",
+        "duration": "6 weeks",
+        "url": "https://example.com/transition-2"
+      },
+      {
+        "title": "Bridging Skill Gaps",
+        "provider": "edX",
+        "duration": "4 weeks",
+        "url": "https://example.com/transition-3"
+      }
+    ]
+  }

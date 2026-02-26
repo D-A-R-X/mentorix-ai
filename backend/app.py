@@ -2,7 +2,8 @@ import logging
 import os
 import time
 from typing import List, Tuple
-
+from typing import Optional
+from pydantic import BaseModel, Field
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -14,7 +15,9 @@ import numpy as np
 from risk_explanation import build_risk_explanation
 from recommender import generate_recommendations
 from career_mapper import infer_career_direction
+from database import init_db, save_assessment, get_user_history
 
+init_db()
 app = FastAPI(title="Mentorix AI")
 
 # Structured logging
@@ -72,15 +75,22 @@ app.add_middleware(
 )
 
 class StudentInput(BaseModel):
-    cgpa: float = Field(..., ge=0, le=10, description="CGPA must be between 0 and 10")
-    backlogs: int = Field(..., ge=0, description="Backlogs must be 0 or greater")
-    tech_interest: int = Field(..., ge=1, le=5, description="Tech interest must be between 1 and 5")
-    core_interest: int = Field(..., ge=1, le=5, description="Core interest must be between 1 and 5")
-    management_interest: int = Field(..., ge=1, le=5, description="Management interest must be between 1 and 5")
-    confidence: int = Field(..., ge=1, le=5, description="Confidence level must be between 1 and 5")
-    career_changes: int = Field(..., ge=0, description="Career changes must be 0 or greater")
-    decision_time: int = Field(..., ge=0, description="Decision time must be 0 or greater")
+    # Core metrics (still required)
+    cgpa: float = Field(..., ge=0, le=10)
+    backlogs: int = Field(..., ge=0)
+    tech_interest: int = Field(..., ge=1, le=5)
+    core_interest: int = Field(..., ge=1, le=5)
+    management_interest: int = Field(..., ge=1, le=5)
+    confidence: int = Field(..., ge=1, le=5)
+    career_changes: int = Field(..., ge=0)
+    decision_time: int = Field(..., ge=0)
 
+    # Persona Layer
+    current_status: str = Field(..., description="student / working_professional / career_switcher")
+    current_course: Optional[str] = None
+    current_job_role: Optional[str] = None
+    industry: Optional[str] = None
+    years_experience: Optional[int] = 0
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -129,8 +139,34 @@ def health():
     return {"status": "ok"}
 
 def normalize_input(data: StudentInput) -> np.ndarray:
-    normalized_backlogs = min(float(np.log1p(data.backlogs)), 3.0)
-    normalized_cgpa = data.cgpa / 10
+    """
+    Persona-aware feature mapping.
+    Keeps original 8-feature structure intact.
+    """
+
+    # ---- Persona Feature Mapping ----
+    if data.current_status == "student":
+        cgpa_value = data.cgpa
+        backlog_value = data.backlogs
+
+    elif data.current_status == "working_professional":
+        # Use experience + confidence as academic stability proxy
+        experience_factor = min((data.years_experience or 0) / 10, 1)
+        cgpa_value = 6 + (experience_factor * 4)  # Map to 6–10 scale
+        backlog_value = 0  # Backlogs irrelevant for professionals
+
+    elif data.current_status == "career_switcher":
+        # Moderate neutral baseline
+        cgpa_value = 7
+        backlog_value = data.career_changes
+
+    else:
+        cgpa_value = data.cgpa
+        backlog_value = data.backlogs
+
+    # ---- Normalization (unchanged feature order) ----
+    normalized_backlogs = min(float(np.log1p(backlog_value)), 3.0)
+    normalized_cgpa = cgpa_value / 10
     normalized_tech_interest = data.tech_interest / 5
     normalized_core_interest = data.core_interest / 5
     normalized_management_interest = data.management_interest / 5
@@ -152,21 +188,33 @@ def normalize_input(data: StudentInput) -> np.ndarray:
 @app.post("/analyze-risk")
 def analyze_risk(data: StudentInput):
     features = normalize_input(data)
-
-    try:
-        risk = model.predict(features)[0]
-    except Exception as exc:
-        logger.exception("prediction_failed")
-        raise HTTPException(status_code=500, detail="Prediction failed. Please try again later.") from exc
-
+    if data.current_status == "working_professional" and data.years_experience >= 5:
+        risk = "Low"
+    else:
+        try:
+            risk = model.predict(features)[0]
+        except Exception as exc:
+            logger.exception("prediction_failed")
+            raise HTTPException(status_code=500, detail="Prediction failed. Please try again later.") from exc
+    
+    # Persona-based calibration
+    if data.current_status == "working_professional" and (data.years_experience or 0) >= 5:
+        if risk == "High":
+            risk = "Medium"
+        elif risk == "Medium":
+            risk = "Low"
+    
     explanation = build_risk_explanation(data, risk)
     input_dict = data.model_dump()
     risk_level = risk
     recommendation = generate_recommendations(input_dict, risk_level)
     career_direction, insight = infer_career_direction(data)
-    score = round(1.0 - (0.33 if risk == "High" else 0.15 if risk == "Medium" else 0.05), 2)
+    base_score = 1.0 - (0.33 if risk == "High" else 0.15 if risk == "Medium" else 0.05)
+    csi_score = round(base_score * 100, 2)
     reasons = explanation["reasons"]
-
+    user_id = "demo_user"  # temporary until auth added
+    save_assessment(user_id, data.current_status, csi_score, risk)
+    history = get_user_history(user_id)
     return {
         "risk_level": risk,
         "stability_score": score,
@@ -174,6 +222,8 @@ def analyze_risk(data: StudentInput):
         "recommendation": recommendation,
         "career_direction": career_direction,
         "insight": insight,
+        "career_stability_index": csi_score,
+        "history": history,
     }
 
 if __name__ == "__main__":

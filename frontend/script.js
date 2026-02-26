@@ -1,3 +1,4 @@
+let csiChartInstance = null;
 const COURSE_PROGRESS_KEY = "mentorix_course_progress";
 const SKILL_WEIGHT = 20;
 
@@ -136,6 +137,8 @@ function renderCourses(courses) {
   updateProgressInsight();
 }
 function parseFormData() {
+  const status = document.getElementById("status").value;
+
   return {
     cgpa: parseFloat(document.getElementById("cgpa").value),
     backlogs: parseInt(document.getElementById("backlogs").value, 10),
@@ -144,7 +147,14 @@ function parseFormData() {
     management_interest: parseInt(document.getElementById("mgmt").value, 10),
     confidence: parseInt(document.getElementById("confidence").value, 10),
     career_changes: parseInt(document.getElementById("changes").value, 10),
-    decision_time: parseInt(document.getElementById("time").value, 10)
+    decision_time: parseInt(document.getElementById("time").value, 10),
+
+    // NEW Persona Fields
+    current_status: status,
+    current_course: document.getElementById("currentCourse")?.value || null,
+    current_job_role: document.getElementById("jobRole")?.value || null,
+    industry: document.getElementById("industry")?.value || null,
+    years_experience: parseInt(document.getElementById("experience")?.value || "0", 10)
   };
 }
 
@@ -185,7 +195,12 @@ async function analyze() {
   const resultCard = document.getElementById("resultCard");
   const originalLabel = button.textContent;
   const data = parseFormData();
+  const csi = result.career_stability_index;
+  document.getElementById("stabilityScore").textContent = csi;
 
+if (Array.isArray(result.history)) {
+  renderCSIChart(result.history);
+}
   if (hasInvalidNumberValues(data)) {
     document.getElementById("analysisSummary").textContent = "Please fill all fields with valid numbers before analyzing.";
     return;
@@ -237,4 +252,71 @@ async function analyze() {
 document.addEventListener("DOMContentLoaded", () => {
   updateProgressInsight();
   checkBackendHealth();
+
+  const statusSelect = document.getElementById("status");
+  const studentFields = document.getElementById("studentFields");
+  const professionalFields = document.getElementById("professionalFields");
+
+ function togglePersonaFields() {
+  const status = statusSelect.value;
+
+  const academicFields = document.getElementById("academicFields");
+
+  if (status === "working_professional") {
+    studentFields.style.display = "none";
+    professionalFields.style.display = "block";
+    academicFields.style.display = "none";
+  } 
+  else if (status === "career_switcher") {
+    studentFields.style.display = "none";
+    professionalFields.style.display = "none";
+    academicFields.style.display = "block"; 
+  } 
+  else {
+    studentFields.style.display = "block";
+    professionalFields.style.display = "none";
+    academicFields.style.display = "block";
+  }
+}
+
+  statusSelect.addEventListener("change", togglePersonaFields);
+  togglePersonaFields(); // run once on load
 });
+function renderCSIChart(history) {
+  const ctx = document.getElementById("csiChart").getContext("2d");
+
+  const labels = history.map(entry => {
+    const date = new Date(entry[1]);
+    return date.toLocaleDateString();
+  });
+
+  const scores = history.map(entry => entry[0]);
+
+  if (csiChartInstance) {
+    csiChartInstance.destroy();
+  }
+
+  csiChartInstance = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Career Stability Index",
+        data: scores,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: true }
+      },
+      scales: {
+        y: {
+          min: 0,
+          max: 100
+        }
+      }
+    }
+  });
+}
