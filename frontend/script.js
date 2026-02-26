@@ -276,12 +276,6 @@ if (Array.isArray(result.history)) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  initializeApiConfig();
-  const saveBtn = document.getElementById("saveApiBaseBtn");
-  if (saveBtn) {
-    saveBtn.addEventListener("click", saveApiBaseUrl);
-  }
-
   updateProgressInsight();
   checkBackendHealth();
 
@@ -289,30 +283,26 @@ document.addEventListener("DOMContentLoaded", () => {
   const studentFields = document.getElementById("studentFields");
   const professionalFields = document.getElementById("professionalFields");
 
- function togglePersonaFields() {
-  const status = statusSelect.value;
+  function togglePersonaFields() {
+    const status = statusSelect.value;
+    const academicFields = document.getElementById("academicFields");
 
-  const academicFields = document.getElementById("academicFields");
-
-  if (status === "working_professional") {
-    studentFields.style.display = "none";
-    professionalFields.style.display = "block";
-    academicFields.style.display = "none";
-  } 
-  else if (status === "career_switcher") {
-    studentFields.style.display = "none";
-    professionalFields.style.display = "none";
-    academicFields.style.display = "block"; 
-  } 
-  else {
-    studentFields.style.display = "block";
-    professionalFields.style.display = "none";
-    academicFields.style.display = "block";
+    if (status === "working_professional") {
+      studentFields.style.display = "none";
+      professionalFields.style.display = "block";
+      academicFields.style.display = "none";
+    } else {
+      studentFields.style.display = "block";
+      professionalFields.style.display = "none";
+      academicFields.style.display = "block";
+    }
   }
-}
 
   statusSelect.addEventListener("change", togglePersonaFields);
-  togglePersonaFields(); // run once on load
+  togglePersonaFields();
+
+  // 🔥 THIS WAS MISSING
+  document.getElementById("analyzeBtn").addEventListener("click", analyze);
 });
 function renderCSIChart(history) {
   const ctx = document.getElementById("csiChart").getContext("2d");
