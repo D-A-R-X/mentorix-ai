@@ -144,7 +144,31 @@ label span {
   font-size: 0.86rem;
 }
 
-input {
+.course-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.course-action-btn {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.course-action-btn:hover {
+  background: #dbeafe;
+}
+
+}
+
+.analyze-btn {
+  margin-top: 16px;
   width: 100%;
   border: 1px solid #cbd5e1;
   border-radius: 10px;
