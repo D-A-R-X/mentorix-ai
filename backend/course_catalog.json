@@ -1,0 +1,62 @@
+{
+  "software_track": [
+    {
+      "title": "Python for Everybody",
+      "provider": "Coursera",
+      "duration": "6 weeks",
+      "url": "https://example.com/software-1"
+    },
+    {
+      "title": "Web Development Fundamentals",
+      "provider": "freeCodeCamp",
+      "duration": "8 weeks",
+      "url": "https://example.com/software-2"
+    },
+    {
+      "title": "Data Structures for Interviews",
+      "provider": "Udemy",
+      "duration": "5 weeks",
+      "url": "https://example.com/software-3"
+    }
+  ],
+  "core_track": [
+    {
+      "title": "Engineering Mathematics Refresh",
+      "provider": "NPTEL",
+      "duration": "8 weeks",
+      "url": "https://example.com/core-1"
+    },
+    {
+      "title": "Core Mechanical/Electrical Concepts",
+      "provider": "Coursera",
+      "duration": "6 weeks",
+      "url": "https://example.com/core-2"
+    },
+    {
+      "title": "Applied Problem Solving for Engineers",
+      "provider": "edX",
+      "duration": "4 weeks",
+      "url": "https://example.com/core-3"
+    }
+  ],
+  "foundation_track": [
+    {
+      "title": "Learning How to Learn",
+      "provider": "Coursera",
+      "duration": "4 weeks",
+      "url": "https://example.com/foundation-1"
+    },
+    {
+      "title": "Career Planning Basics",
+      "provider": "FutureLearn",
+      "duration": "3 weeks",
+      "url": "https://example.com/foundation-2"
+    },
+    {
+      "title": "Confidence and Communication Essentials",
+      "provider": "Udemy",
+      "duration": "4 weeks",
+      "url": "https://example.com/foundation-3"
+    }
+  ]
+}
