@@ -2,6 +2,7 @@ import logging
 import os
 import time
 from typing import List, Tuple
+from .database import init_db, save_assessment, get_user_history
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,9 +12,9 @@ from pydantic import BaseModel, Field
 import pickle
 import numpy as np
 
-from risk_explanation import build_risk_explanation
-from recommender import generate_recommendations
-from career_mapper import infer_career_direction
+from .risk_explanation import build_risk_explanation
+from .recommender import generate_recommendations
+from .career_mapper import infer_career_direction
 
 app = FastAPI(title="Mentorix AI")
 
@@ -23,7 +24,7 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
 logger = logging.getLogger("mentorix-api")
-
+init_db()
 # Load trained ML model at startup
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "model", "risk_model.pkl")
 
@@ -36,14 +37,6 @@ except Exception as e:
     raise RuntimeError("Model file missing or corrupted. Ensure risk_model.pkl exists.") from e
 
 
-
-# CORS origins for frontend access
-origins = [
-    "https://mentorix-ai.vercel.app",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000"
-]
-
 def get_cors_settings() -> Tuple[List[str], bool]:
     """Read CORS origins from environment variable.
 
@@ -53,24 +46,14 @@ def get_cors_settings() -> Tuple[List[str], bool]:
     raw_origins = os.getenv("CORS_ORIGINS", "*")
     parsed_origins = [origin.strip().strip('"').strip("'") for origin in raw_origins.split(",") if origin.strip()]
 
-    # If wildcard is present (alone or mixed), enforce true wildcard mode.
-    # Mixed values like "*,https://site" can break preflight in some deployments.
-    if "*" in parsed_origins or not parsed_origins:
-        return ["*"], False
-
-    return parsed_origins, True
-
-# CORS (for Vercel frontend later)
-cors_origins, cors_allow_credentials = get_cors_settings()
-
-def get_cors_settings() -> Tuple[List[str], bool]:
-    """Read CORS origins from environment variable.
-
-    Use comma-separated values in CORS_ORIGINS, e.g.
-    https://your-frontend.vercel.app,https://mentorix.example.com
-    """
-    raw_origins = os.getenv("CORS_ORIGINS", "*")
-    parsed_origins = [origin.strip().strip('"').strip("'") for origin in raw_origins.split(",") if origin.strip()]
+    # Always include these deployment URLs
+    static_origins = [
+        "https://mentorix-ai-backend.onrender.com",
+        "https://mentorix-ld6g2yrer-darxs-projects-7e3e4cb5.vercel.app"
+    ]
+    for url in static_origins:
+        if url not in parsed_origins:
+            parsed_origins.append(url)
 
     # If wildcard is present (alone or mixed), enforce true wildcard mode.
     # Mixed values like "*,https://site" can break preflight in some deployments.
@@ -167,7 +150,29 @@ def normalize_input(data: StudentInput) -> np.ndarray:
         normalized_decision_time,
     ]])
 
+def compute_stability_index(data: StudentInput) -> float:
+    cgpa_factor = data.cgpa / 10
+    confidence_factor = data.confidence / 5
+    interest_alignment = max(
+        data.tech_interest,
+        data.core_interest,
+        data.management_interest
+    ) / 5
 
+    backlog_penalty = min(data.backlogs / 10, 1)
+    switch_penalty = min(data.career_changes / 5, 1)
+    decision_clarity = min(data.decision_time / 24, 1)
+
+    score = (
+        cgpa_factor * 0.25 +
+        confidence_factor * 0.20 +
+        interest_alignment * 0.20 +
+        (1 - backlog_penalty) * 0.15 +
+        (1 - switch_penalty) * 0.10 +
+        decision_clarity * 0.10
+    )
+
+    return round(score, 2)
 @app.post("/analyze-risk")
 def analyze_risk(data: StudentInput):
     features = normalize_input(data)
@@ -184,16 +189,23 @@ def analyze_risk(data: StudentInput):
     recommendation = generate_recommendations(input_dict, risk_level)
     career_direction, insight = infer_career_direction(data)
     score = round(1.0 - (0.33 if risk == "High" else 0.15 if risk == "Medium" else 0.05), 2)
+    stability_index = compute_stability_index(data)
     reasons = explanation["reasons"]
 
+    user_id = "demo_user"  # temporary until auth system
+    save_assessment(user_id, risk, score)
+    history = get_user_history(user_id)
+
     return {
-        "risk_level": risk,
-        "stability_score": score,
-        "reasons": reasons,
-        "recommendation": recommendation,
-        "career_direction": career_direction,
-        "insight": insight,
-    }
+    "risk_level": risk,
+    "stability_score": score,
+    "stability_index": stability_index,
+    "reasons": reasons,
+    "recommendation": recommendation,
+    "career_direction": career_direction,
+    "insight": insight,
+    "history": history,
+}
 
 if __name__ == "__main__":
     import uvicorn

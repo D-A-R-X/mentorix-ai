@@ -203,10 +203,32 @@ async function analyze() {
     });
 
     const result = await parseResponse(res);
+    renderHistory(result.history || []);
     if (!res.ok) {
       const errorText = result?.detail || result?.errors?.join("; ") || `Request failed with status ${res.status}`;
       throw new Error(errorText);
     }
+// Render assessment history
+function renderHistory(history) {
+  const historyContainer = document.getElementById("historySection");
+
+  if (!historyContainer) return;
+
+  if (!history.length) {
+    historyContainer.innerHTML = "<p>No previous assessments yet.</p>";
+    return;
+  }
+
+  historyContainer.innerHTML = history
+    .map(item => `
+      <div class="history-item">
+        <strong>${item.risk_level}</strong>
+        <span>Score: ${item.stability_score}</span>
+        <small>${new Date(item.created_at).toLocaleString()}</small>
+      </div>
+    `)
+    .join("");
+}
 
     const riskLevel = String(result.risk_level || "");
     const riskClass = riskLevel.toLowerCase() === "low" ? "low" : riskLevel.toLowerCase() === "medium" ? "medium" : "high";
