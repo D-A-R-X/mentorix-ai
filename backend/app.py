@@ -2,30 +2,32 @@ import logging
 import os
 import time
 from typing import List, Tuple
-from .database import init_db, save_assessment, get_user_history
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 import pickle
 import numpy as np
 
-from .risk_explanation import build_risk_explanation
-from .recommender import generate_recommendations
-from .career_mapper import infer_career_direction
+from database import init_db, save_assessment, get_user_history
+from risk_explanation import build_risk_explanation
+from recommender import generate_recommendations
+from career_mapper import infer_career_direction
 
 app = FastAPI(title="Mentorix AI")
 
-# Structured logging
+# Logging
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
 logger = logging.getLogger("mentorix-api")
+
 init_db()
-# Load trained ML model at startup
+
+# Load ML model once
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "model", "risk_model.pkl")
 
 try:
@@ -34,72 +36,60 @@ try:
     logger.info(f"Model loaded successfully from {MODEL_PATH}")
 except Exception as e:
     logger.exception("Failed to load ML model")
-    raise RuntimeError("Model file missing or corrupted. Ensure risk_model.pkl exists.") from e
+    raise RuntimeError("Model file missing or corrupted.") from e
 
 
-def get_cors_settings() -> Tuple[List[str], bool]:
-    """Read CORS origins from environment variable.
-
-    Use comma-separated values in CORS_ORIGINS, e.g.
-    https://your-frontend.vercel.app,https://mentorix.example.com
-    """
-    raw_origins = os.getenv("CORS_ORIGINS", "*")
-    parsed_origins = [origin.strip().strip('"').strip("'") for origin in raw_origins.split(",") if origin.strip()]
-
-    # Always include these deployment URLs
-    static_origins = [
-        "https://mentorix-ai-backend.onrender.com",
-        "https://mentorix-ld6g2yrer-darxs-projects-7e3e4cb5.vercel.app"
-    ]
-    for url in static_origins:
-        if url not in parsed_origins:
-            parsed_origins.append(url)
-
-    # If wildcard is present (alone or mixed), enforce true wildcard mode.
-    # Mixed values like "*,https://site" can break preflight in some deployments.
-    if "*" in parsed_origins or not parsed_origins:
-        return ["*"], False
-
-    return parsed_origins, True
-
-# CORS (for Vercel frontend later)
-cors_origins, cors_allow_credentials = get_cors_settings()
+# -------------------- CORS --------------------
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
-    allow_credentials=cors_allow_credentials,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-class StudentInput(BaseModel):
-    cgpa: float = Field(..., ge=0, le=10, description="CGPA must be between 0 and 10")
-    backlogs: int = Field(..., ge=0, description="Backlogs must be 0 or greater")
-    tech_interest: int = Field(..., ge=1, le=5, description="Tech interest must be between 1 and 5")
-    core_interest: int = Field(..., ge=1, le=5, description="Core interest must be between 1 and 5")
-    management_interest: int = Field(..., ge=1, le=5, description="Management interest must be between 1 and 5")
-    confidence: int = Field(..., ge=1, le=5, description="Confidence level must be between 1 and 5")
-    career_changes: int = Field(..., ge=0, description="Career changes must be 0 or greater")
-    decision_time: int = Field(..., ge=0, description="Decision time must be 0 or greater")
+# -------------------- Models --------------------
 
+class StudentInput(BaseModel):
+    email: EmailStr          # ✅ Fixed: removed duplicate email field
+    cgpa: float = Field(..., ge=0, le=10)
+    backlogs: int = Field(..., ge=0)
+    tech_interest: int = Field(..., ge=1, le=5)
+    core_interest: int = Field(..., ge=1, le=5)
+    management_interest: int = Field(..., ge=1, le=5)
+    confidence: int = Field(..., ge=1, le=5)
+    career_changes: int = Field(..., ge=0)
+    decision_time: int = Field(..., ge=0)
+
+# -------------------- Middleware --------------------
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start = time.time()
+
+    # ✅ Handle preflight OPTIONS requests explicitly
+    if request.method == "OPTIONS":
+        from fastapi.responses import Response
+        response = Response()
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        return response
+
     response = await call_next(request)
     duration_ms = round((time.time() - start) * 1000, 2)
 
+    # ✅ Inject CORS headers into every response as a safety net
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+
     logger.info(
-        "request_completed",
-        extra={
-            "method": request.method,
-            "path": request.url.path,
-            "status_code": response.status_code,
-            "duration_ms": duration_ms,
-            "client": request.client.host if request.client else None,
-        },
+        f"{request.method} {request.url.path} "
+        f"status={response.status_code} duration={duration_ms}ms"
     )
+
     return response
 
 
@@ -108,8 +98,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     messages = []
     for err in exc.errors():
         field = ".".join(str(loc) for loc in err.get("loc", []) if loc != "body")
-        if not field:
-            field = "request"
         messages.append(f"{field}: {err.get('msg', 'Invalid input')}")
 
     return JSONResponse(
@@ -117,9 +105,10 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={
             "detail": "Input validation failed",
             "errors": messages,
-            "path": request.url.path,
         },
     )
+
+# -------------------- Routes --------------------
 
 @app.get("/")
 def root():
@@ -129,6 +118,9 @@ def root():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+# -------------------- Core Logic --------------------
 
 def normalize_input(data: StudentInput) -> np.ndarray:
     normalized_backlogs = min(float(np.log1p(data.backlogs)), 3.0)
@@ -149,6 +141,7 @@ def normalize_input(data: StudentInput) -> np.ndarray:
         data.career_changes,
         normalized_decision_time,
     ]])
+
 
 def compute_stability_index(data: StudentInput) -> float:
     cgpa_factor = data.cgpa / 10
@@ -173,46 +166,114 @@ def compute_stability_index(data: StudentInput) -> float:
     )
 
     return round(score, 2)
+
+
+def compute_trend(history):
+    if len(history) < 2:
+        return "insufficient_data"
+
+    latest = history[0]["stability_score"]
+    previous = history[1]["stability_score"]
+
+    if latest > previous:
+        return "improving"
+    elif latest < previous:
+        return "declining"
+    else:
+        return "stable"
+
+def compute_volatility(history) -> float:
+    if len(history) < 3:
+        return 0.0
+    scores = [item["stability_score"] for item in history[:5]]
+    mean = sum(scores) / len(scores)
+    variance = sum((s - mean) ** 2 for s in scores) / len(scores)
+    return round(variance, 3)
+
+
+def compute_track_instability(history) -> int:
+    if len(history) < 3:
+        return 0
+    tracks = [item.get("track") for item in history[:5]]
+    flips = sum(1 for i in range(1, len(tracks)) if tracks[i] != tracks[i - 1])
+    return flips
+# -------------------- Main Endpoint --------------------
+
 @app.post("/analyze-risk")
 def analyze_risk(data: StudentInput):
+
     features = normalize_input(data)
 
     try:
         risk = model.predict(features)[0]
-    except Exception as exc:
-        logger.exception("prediction_failed")
-        raise HTTPException(status_code=500, detail="Prediction failed. Please try again later.") from exc
+    except Exception:
+        logger.exception("Prediction failed")
+        raise HTTPException(status_code=500, detail="Prediction failed")
 
-    explanation = build_risk_explanation(data, risk)
-    input_dict = data.model_dump()
-    risk_level = risk
-    recommendation = generate_recommendations(input_dict, risk_level)
-    career_direction, insight = infer_career_direction(data)
-    score = round(1.0 - (0.33 if risk == "High" else 0.15 if risk == "Medium" else 0.05), 2)
     stability_index = compute_stability_index(data)
-    reasons = explanation["reasons"]
 
-    user_id = "demo_user"  # temporary until auth system
-    save_assessment(user_id, risk, score)
+    user_id = data.email
+
+    # ✅ Get history FIRST before anything else
     history = get_user_history(user_id)
 
+    # ✅ Then compute all signals from history
+    trend = compute_trend(history)
+    volatility = compute_volatility(history)
+    track_flips = compute_track_instability(history)
+
+    logger.info(f"volatility={volatility} track_flips={track_flips} history_len={len(history)}")
+
+    explanation = build_risk_explanation(data, risk)
+
+    # ✅ Then generate recommendations with all signals
+    recommendation = generate_recommendations(
+        data.model_dump(),
+        risk,
+        stability_index,
+        trend,
+        volatility,
+        track_flips
+    )
+
+    # ✅ Save AFTER recommendation so track is captured
+    save_assessment(user_id, risk, stability_index, recommendation["track"])
+
+    career_direction, insight = infer_career_direction(data)
+
     return {
-    "risk_level": risk,
-    "stability_score": score,
-    "stability_index": stability_index,
-    "reasons": reasons,
-    "recommendation": recommendation,
-    "career_direction": career_direction,
-    "insight": insight,
-    "history": history,
-}
+        "risk_level":       risk,
+        "stability_score":  round(stability_index, 2),
+        "stability_index":  stability_index,
+        "trend":            trend,
+        "volatility":       volatility,
+        "track_flips":      track_flips,
+        "reasons":          explanation["reasons"],
+        "summary":          explanation["summary"],
+        "recommendation":   recommendation,
+        "career_direction": career_direction,
+        "insight":          insight,
+        "decision_scores":  recommendation["decision_scores"],
+        "history":          history,
+    }
+
+
+# -------------------- Run Server --------------------
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(
-        "app:app",
-        host="0.0.0.0",
-        port=int(os.getenv("PORT", "8000")),
-        reload=False,
-    )
+    is_render = os.getenv("RENDER") is not None
+    is_vercel = os.getenv("VERCEL") is not None
+
+    if is_render or is_vercel:
+        host = "0.0.0.0"
+        port = int(os.getenv("PORT", "10000"))
+        reload = False
+    else:
+        host = "127.0.0.1"
+        port = 8000
+        reload = True
+
+    logger.info(f"Starting server on {host}:{port}")
+    uvicorn.run("app:app", host=host, port=port, reload=reload)

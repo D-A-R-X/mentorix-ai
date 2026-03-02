@@ -2,7 +2,6 @@ from typing import Dict, List
 
 
 def _reasons_for_risk(data, prediction: str) -> List[str]:
-    """Return non-technical reasons while preserving existing risk signals."""
     reasons: List[str] = []
 
     if data.confidence <= 2:
@@ -11,6 +10,8 @@ def _reasons_for_risk(data, prediction: str) -> List[str]:
         reasons.append("You have changed career preferences several times, which suggests instability.")
     if data.cgpa < 6.5:
         reasons.append("Your recent academic performance may not yet strongly support your chosen direction.")
+    if data.backlogs >= 3:  # ✅ New: backlogs are a real risk signal
+        reasons.append("You have multiple active backlogs, which may delay career progression.")
     if prediction == "High" and not reasons:
         reasons.append("Several medium-level factors together increase overall risk.")
 
@@ -18,12 +19,11 @@ def _reasons_for_risk(data, prediction: str) -> List[str]:
 
 
 def _summary_for_risk(risk_level: str, reasons: List[str]) -> str:
-    """Build a 3-sentence plain-language summary for end users."""
     intro = f"Your profile is currently classified as {risk_level} risk for career decision instability."
 
     if reasons:
         short_reasons = [reason.rstrip(".") for reason in reasons[:2]]
-        detail = f"This result is mainly driven by {', '.join(short_reasons)}."
+        detail = f"This result is mainly driven by: {', '.join(short_reasons)}."
     else:
         detail = "Your inputs look reasonably stable right now, with no major warning pattern detected."
 
@@ -40,4 +40,10 @@ def _summary_for_risk(risk_level: str, reasons: List[str]) -> str:
 def build_risk_explanation(data, prediction: str) -> Dict[str, object]:
     reasons = _reasons_for_risk(data, prediction)
     summary = _summary_for_risk(prediction, reasons)
-    return {"reasons": reasons, "summary": summary}
+
+    return {
+        "reasons": reasons,
+        "summary": summary,
+        "risk_level": prediction,       # ✅ Pass through for frontend
+        "reason_count": len(reasons),   # ✅ Useful for frontend to show badges
+    }

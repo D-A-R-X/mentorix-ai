@@ -13,3 +13,42 @@ Equivalent Render start command:
 ```bash
 uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000}
 ```
+
+```
+mentorix-ai
+├─ .dockerignore
+├─ AGENTS.md
+├─ README.md
+├─ backend
+│  ├─ __pycache__
+│  │  ├─ app.cpython-312.pyc
+│  │  ├─ career_mapper.cpython-312.pyc
+│  │  ├─ database.cpython-312.pyc
+│  │  ├─ recommender.cpython-312.pyc
+│  │  └─ risk_explanation.cpython-312.pyc
+│  ├─ app.py
+│  ├─ app.py.bak
+│  ├─ career_mapper.py
+│  ├─ course_catalog.json
+│  ├─ data
+│  │  └─ student_data.csv
+│  ├─ database.py
+│  ├─ mentorix.db
+│  ├─ model
+│  │  └─ risk_model.pkl
+│  ├─ recommendation_engine.py
+│  ├─ recommender.py
+│  ├─ requirements.txt
+│  ├─ risk_explanation.py
+│  └─ training
+│     └─ train_model.py
+├─ frontend
+│  ├─ index.html
+│  ├─ script.js
+│  └─ style.css
+├─ graphite-demo
+│  └─ server.js
+├─ mentorix.db
+└─ render.yaml
+
+```
