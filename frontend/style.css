@@ -28,10 +28,11 @@ body {
 }
 
 .card {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(6px);
   border-radius: 16px;
-  box-shadow: 0 12px 32px rgba(0,0,0,0.08);
-  border: 1px solid var(--border);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(229, 231, 235, 0.8);
   padding: 20px;
   transition: all 0.25s ease;
 }
@@ -73,6 +74,63 @@ body {
   color: #3730a3;
 }
 
+.backend-status {
+  margin-top: 14px;
+  margin-bottom: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+}
+
+.backend-status.ok {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.backend-status.error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.backend-config {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+#apiBaseInput {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 9px 10px;
+  background: #fff;
+}
+
+.secondary-btn {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondary-btn:hover {
+  background: #dbeafe;
+}
+
+.endpoint-info {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
 .input-grid {
   margin-top: 16px;
   display: grid;
@@ -86,12 +144,36 @@ label span {
   font-size: 0.86rem;
 }
 
-input {
+.course-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.course-action-btn {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.course-action-btn:hover {
+  background: #dbeafe;
+}
+
+
+.analyze-btn {
+  margin-top: 16px;
   width: 100%;
   border: 1px solid #cbd5e1;
   border-radius: 10px;
   padding: 10px 12px;
   background: #fff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 input:focus {
@@ -109,17 +191,18 @@ input:focus {
   font-size: 0.98rem;
   font-weight: 600;
   color: #fff;
-  background: linear-gradient(135deg,#4f7cff,#6aa8ff);
+  background: linear-gradient(135deg, #4f7cff, #6aa8ff);
   cursor: pointer;
-  transition: background 0.2s ease, opacity 0.2s ease;
+  transition: transform 0.18s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
 .analyze-btn:hover {
-  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(79, 124, 255, 0.3);
 }
 
 .analyze-btn:disabled {
-  opacity: 0.8;
+  opacity: 0.75;
   cursor: not-allowed;
 }
 
@@ -166,6 +249,17 @@ input:focus {
   border-radius: inherit;
   background: linear-gradient(90deg, #60a5fa, #2563eb);
   transition: width 0.45s ease;
+}
+
+.reason-list {
+  margin: 12px 0;
+  padding-left: 18px;
+  color: #334155;
+  font-size: 0.88rem;
+}
+
+.reason-list li {
+  margin-bottom: 6px;
 }
 
 .course-grid {

@@ -1,7 +1,7 @@
 import logging
 import os
 import time
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,6 +15,12 @@ from database import init_db, save_assessment, get_user_history
 from risk_explanation import build_risk_explanation
 from recommender import generate_recommendations
 from career_mapper import infer_career_direction
+from database import init_db, save_assessment, get_user_history
+
+
+# -----------------------
+# App Initialization
+# -----------------------
 
 app = FastAPI(title="Mentorix AI")
 
@@ -23,12 +29,15 @@ logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
+
 logger = logging.getLogger("mentorix-api")
 
 init_db()
 
 # Load ML model once
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "model", "risk_model.pkl")
+
+model = None  # Prevent Pylance undefined warning
 
 try:
     with open(MODEL_PATH, "rb") as f:
@@ -90,6 +99,7 @@ async def log_requests(request: Request, call_next):
         f"status={response.status_code} duration={duration_ms}ms"
     )
 
+
     return response
 
 
@@ -123,8 +133,26 @@ def health():
 # -------------------- Core Logic --------------------
 
 def normalize_input(data: StudentInput) -> np.ndarray:
-    normalized_backlogs = min(float(np.log1p(data.backlogs)), 3.0)
-    normalized_cgpa = data.cgpa / 10
+
+    if data.current_status == "student":
+        cgpa_value = data.cgpa
+        backlog_value = data.backlogs
+
+    elif data.current_status == "working_professional":
+        experience_factor = min((data.years_experience or 0) / 10, 1)
+        cgpa_value = 6 + (experience_factor * 4)
+        backlog_value = 0
+
+    elif data.current_status == "career_switcher":
+        cgpa_value = 7
+        backlog_value = data.career_changes
+
+    else:
+        cgpa_value = data.cgpa
+        backlog_value = data.backlogs
+
+    normalized_backlogs = min(float(np.log1p(backlog_value)), 3.0)
+    normalized_cgpa = cgpa_value / 10
     normalized_tech_interest = data.tech_interest / 5
     normalized_core_interest = data.core_interest / 5
     normalized_management_interest = data.management_interest / 5

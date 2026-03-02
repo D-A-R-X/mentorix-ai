@@ -1,3 +1,4 @@
+let csiChartInstance = null;
 const COURSE_PROGRESS_KEY = "mentorix_course_progress";
 const SKILL_WEIGHT = 20;
 
@@ -137,6 +138,8 @@ function renderCourses(courses) {
       return `
         <div class="course-item">
           <h3>${course.title}</h3>
+          <div class="course-meta">${course.provider} • ${course.duration}</div>
+          <a class="course-link" href="${course.url}" target="_blank" rel="noopener noreferrer">Start Learning</a>
           <div class="course-actions">
             <button onclick="markCourseStatus('${courseId}', 'started')">
               Mark as Started
@@ -185,6 +188,8 @@ function renderHistory(history) {
 ================================ */
 
 function parseFormData() {
+  const status = document.getElementById("status").value;
+
   return {
     email: document.getElementById("email")?.value || "",
     cgpa: parseFloat(document.getElementById("cgpa")?.value),
@@ -238,7 +243,12 @@ async function analyze() {
   const button = document.getElementById("analyzeBtn");
   const originalText = button?.textContent;
   const data = parseFormData();
+  const csi = result.career_stability_index;
+  document.getElementById("stabilityScore").textContent = csi;
 
+if (Array.isArray(result.history)) {
+  renderCSIChart(result.history);
+}
   if (hasInvalidNumberValues(data)) {
     document.getElementById("analysisSummary").textContent =
       "Please fill all fields correctly.";

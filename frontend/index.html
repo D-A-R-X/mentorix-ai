@@ -8,10 +8,11 @@
 </head>
 <body>
   <main class="page">
+
     <section class="card assessment-card">
       <header class="card-header">
         <h1>Mentorix AI</h1>
-        <p>Academic Career Decision Dashboard</p>
+        <p>Adaptive Career Decision Dashboard</p>
       </header>
 
       <div class="input-grid">
@@ -58,12 +59,17 @@
           <span>Decision Time (months)</span>
           <input type="number" id="time" min="0" required>
         </label>
+
       </div>
 
-      <button id="analyzeBtn">Analyze Decision</button>
+      <button id="analyzeBtn" class="analyze-btn">Analyze Decision</button>
+
+
     </section>
 
+    <!-- Dashboard -->
     <section class="dashboard-grid">
+
 
       <article class="card" id="resultCard">
         <h2>Analysis Result</h2>
@@ -71,7 +77,10 @@
         <div class="meta-row"><span>Stability Score</span><strong id="stabilityScore">-</strong></div>
         <p id="analysisSummary">Run assessment to view summary.</p>
       </article>
-
+      <div class="card">
+        <h2>Career Stability Trend</h2>
+        <canvas id="csiChart" height="120"></canvas>
+      </div>
       <article class="card" id="careerCard">
         <h2>Career Direction</h2>
         <p id="careerDirection">Complete assessment to receive direction.</p>
@@ -95,12 +104,16 @@
         <div id="historySection">
           <p>No previous assessments yet.</p>
         </div>
+        <p class="muted" id="progressHint">
+          Track your consistency by repeating this assessment every few weeks.
+        </p>
       </article>
 
     </section>
+
   </main>
 
-  <footer class="app-footer">Mentorix AI – Academic Prototype</footer>
+  <footer class="app-footer">Mentorix AI – Adaptive Prototype</footer>
 
   <script src="script.js"></script>
 </body>
