@@ -61,7 +61,7 @@ app.add_middleware(
 # -------------------- Models --------------------
 
 class StudentInput(BaseModel):
-    email: EmailStr          # ✅ Fixed: removed duplicate email field
+    email: EmailStr
     cgpa: float = Field(..., ge=0, le=10)
     backlogs: int = Field(..., ge=0)
     tech_interest: int = Field(..., ge=1, le=5)
@@ -70,6 +70,11 @@ class StudentInput(BaseModel):
     confidence: int = Field(..., ge=1, le=5)
     career_changes: int = Field(..., ge=0)
     decision_time: int = Field(..., ge=0)
+    current_status: str = "student"
+    current_course: Optional[str] = None
+    current_job_role: Optional[str] = None
+    industry: Optional[str] = None
+    years_experience: Optional[int] = 0
 
 # -------------------- Middleware --------------------
 
