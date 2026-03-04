@@ -2,7 +2,11 @@ import logging
 import os
 import time
 from typing import List, Tuple, Optional
-
+from validator import (
+    compute_baseline_rule,
+    compute_consistency_score,
+    compute_alignment_score
+)
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -311,3 +315,43 @@ if __name__ == "__main__":
 
     logger.info(f"Starting server on {host}:{port}")
     uvicorn.run("app:app", host=host, port=port, reload=reload)
+
+@app.post("/validate")
+def validate_engine(data: StudentInput):
+
+    # Get engine result using existing endpoint logic
+    history = get_user_history(data.email)
+    recommendation = generate_recommendations(
+        data.model_dump(),
+        "Low",
+        compute_stability_index(data),
+        "stable",
+        0.0,
+        0,
+        history        # ← Layer D needs this
+    )
+
+    engine_track = recommendation["track"]
+
+    # Baseline rule system
+    baseline_track = compute_baseline_rule(data.model_dump())
+
+    # History from database
+    history = get_user_history(data.email)
+
+    consistency_score = compute_consistency_score(history)
+
+    alignment_score = compute_alignment_score(
+        engine_track,
+        data.model_dump()
+    )
+
+    behavioral_advantage = engine_track != baseline_track
+
+    return {
+        "baseline_track": baseline_track,
+        "engine_track": engine_track,
+        "consistency_score": consistency_score,
+        "alignment_score": alignment_score,
+        "behavioral_advantage": behavioral_advantage
+    }
