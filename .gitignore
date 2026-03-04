@@ -1,3 +1,10 @@
 __pycache__/
 *.pyc
 *.csv
+# Database files
+backend/mentorix.db
+*.sqlite3
+
+# Generated Visualizations
+backend/data/*.png
+backend/trajectories.png
