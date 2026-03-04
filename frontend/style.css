@@ -1,6 +1,9 @@
 /* ── Reset ────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ── Reset ────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
 :root {
   --bg:          #f8f7ff;
   --surface:     #ffffff;
@@ -23,8 +26,10 @@
 }
 
 html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; }
 
 body {
+  background: var(--bg);
   background: var(--bg);
   color: var(--text);
   font-family: 'DM Sans', sans-serif;
@@ -268,6 +273,7 @@ body {
 }
 
 /* ── Analyze Button ───────────────────────────────────────── */
+/* ── Analyze Button ───────────────────────────────────────── */
 .analyze-btn {
   margin-top: 24px;
   width: 100%;
@@ -281,16 +287,33 @@ body {
   display: flex; align-items: center; justify-content: center; gap: 10px;
   transition: transform 0.18s, box-shadow 0.2s, opacity 0.2s, background 0.2s;
   box-shadow: 0 6px 20px rgba(108,59,206,0.3);
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  transition: transform 0.18s, box-shadow 0.2s, opacity 0.2s, background 0.2s;
+  box-shadow: 0 6px 20px rgba(108,59,206,0.3);
 }
 
 .analyze-btn:hover {
   background: var(--purple-dark);
   transform: translateY(-2px);
   box-shadow: 0 10px 28px rgba(108,59,206,0.4);
+  background: var(--purple-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(108,59,206,0.4);
 }
 
 .analyze-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.analyze-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
+.btn-icon { font-size: 18px; transition: transform 0.2s; }
+.analyze-btn:hover .btn-icon { transform: translateX(4px); }
+
+.input-note {
+  text-align: center; font-size: 11px;
+  color: var(--muted); margin-top: 10px; opacity: 0.7;
+}
+
+/* ── Results Grid ─────────────────────────────────────────── */
+.results-grid {
 .btn-icon { font-size: 18px; transition: transform 0.2s; }
 .analyze-btn:hover .btn-icon { transform: translateX(4px); }
 
@@ -343,7 +366,16 @@ body {
 .risk-badge.High   { color: var(--red);    border-color: var(--red);    background: #fef2f2; }
 
 .risk-meta { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.risk-badge.Low    { color: var(--green);  border-color: var(--green);  background: #ecfdf5; }
+.risk-badge.Medium { color: var(--yellow); border-color: var(--yellow); background: #fffbeb; }
+.risk-badge.High   { color: var(--red);    border-color: var(--red);    background: #fef2f2; }
 
+.risk-meta { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+
+.risk-score-row {
+  display: flex; justify-content: space-between;
+  font-size: 13px; color: var(--muted);
+  padding: 4px 0; border-bottom: 1px solid var(--border);
 .risk-score-row {
   display: flex; justify-content: space-between;
   font-size: 13px; color: var(--muted);
@@ -356,8 +388,16 @@ body {
   font-size: 13px; color: var(--muted);
   line-height: 1.6; margin-bottom: 12px;
   font-style: italic; font-weight: 300;
+.risk-score-row:last-child { border-bottom: none; }
+.risk-score-row strong { color: var(--text); font-weight: 600; }
+
+.risk-summary {
+  font-size: 13px; color: var(--muted);
+  line-height: 1.6; margin-bottom: 12px;
+  font-style: italic; font-weight: 300;
 }
 
+.reason-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .reason-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
 
 .reason-list li {
@@ -452,6 +492,8 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
 }
 
 .course-item {
@@ -489,7 +531,9 @@ body {
 }
 
 .course-link:hover { background: var(--purple); color: #fff; }
+.course-link:hover { background: var(--purple); color: #fff; }
 
+.course-actions { display: flex; gap: 6px; }
 .course-actions { display: flex; gap: 6px; }
 
 .course-action-btn {
@@ -501,6 +545,8 @@ body {
 }
 
 .course-action-btn:hover {
+  border-color: var(--purple); color: var(--purple);
+  background: var(--purple-light);
   border-color: var(--purple); color: var(--purple);
   background: var(--purple-light);
 }

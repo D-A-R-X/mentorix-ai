@@ -6,9 +6,27 @@
   <title>Mentorix AI — Career Intelligence</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <title>Mentorix AI — Career Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div class="bg-dots"></div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-mark">M</span>
+        <span class="logo-text">Mentorix <em>AI</em></span>
+      </div>
+      <div class="header-status">
+        <span class="status-dot" id="statusDot"></span>
+        <span class="status-label" id="statusLabel">Connecting...</span>
+      </div>
+    </div>
+  </header>
+
   <div class="bg-dots"></div>
 
   <header class="site-header">
@@ -174,7 +192,21 @@
 
     <!-- RESULTS -->
     <section class="results-grid" id="resultsGrid" style="display:none">
+    <!-- RESULTS -->
+    <section class="results-grid" id="resultsGrid" style="display:none">
 
+      <article class="card risk-card" id="riskCard">
+        <div class="card-label">Risk Assessment</div>
+        <div class="risk-display">
+          <div class="risk-badge" id="riskBadge">–</div>
+          <div class="risk-meta">
+            <div class="risk-score-row"><span>Stability Index</span><strong id="stabilityScore">–</strong></div>
+            <div class="risk-score-row"><span>Trend</span><strong id="trendLabel">–</strong></div>
+            <div class="risk-score-row"><span>Volatility</span><strong id="volatilityLabel">–</strong></div>
+          </div>
+        </div>
+        <p class="risk-summary" id="analysisSummary">–</p>
+        <ul class="reason-list" id="reasonList"></ul>
       <article class="card risk-card" id="riskCard">
         <div class="card-label">Risk Assessment</div>
         <div class="risk-display">
@@ -199,8 +231,25 @@
           </div>
         </div>
         <div class="track-badge" id="trackBadge">–</div>
+
+      <article class="card direction-card">
+        <div class="card-label">Career Direction</div>
+        <div class="direction-display">
+          <div class="direction-icon" id="directionIcon">🎯</div>
+          <div class="direction-text">
+            <h3 id="careerDirection">–</h3>
+            <p id="careerInsight">–</p>
+          </div>
+        </div>
+        <div class="track-badge" id="trackBadge">–</div>
       </article>
 
+      <article class="card engine-card">
+        <div class="card-label">Decision Engine Scores</div>
+        <div class="score-bars" id="scoreBars"></div>
+        <div class="engine-meta">
+          <span>Momentum <strong id="momentumVal">–</strong></span>
+          <span>Volatility Penalty <strong id="penaltyVal">–</strong></span>
       <article class="card engine-card">
         <div class="card-label">Decision Engine Scores</div>
         <div class="score-bars" id="scoreBars"></div>
@@ -210,6 +259,15 @@
         </div>
       </article>
 
+      <article class="card chart-card">
+        <div class="card-label">Stability Trend</div>
+        <canvas id="trendChart" height="140"></canvas>
+        <p class="chart-hint" id="chartHint">Complete more sessions to see your trend.</p>
+      </article>
+
+      <article class="card courses-card">
+        <div class="card-label">Recommended Courses</div>
+        <div class="courses-list" id="coursesGrid"><p class="empty-state">Courses will appear after analysis.</p></div>
       <article class="card chart-card">
         <div class="card-label">Stability Trend</div>
         <canvas id="trendChart" height="140"></canvas>
@@ -235,7 +293,27 @@
         </div>
         <div class="progress-bar-wrap">
           <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <article class="card progress-card">
+        <div class="card-label">Learning Progress</div>
+        <div class="progress-stats">
+          <div class="stat-block">
+            <span class="stat-num" id="completionPercent">0%</span>
+            <span class="stat-label">Completed</span>
+          </div>
+          <div class="stat-block">
+            <span class="stat-num" id="skillGrowth">0</span>
+            <span class="stat-label">Skill Points</span>
+          </div>
         </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        </div>
+        <p class="progress-hint" id="progressHint">Start a course to track your growth.</p>
+      </article>
+
+      <article class="card history-card">
+        <div class="card-label">Assessment History</div>
+        <div class="history-list" id="historySection"><p class="empty-state">No previous assessments yet.</p></div>
         <p class="progress-hint" id="progressHint">Start a course to track your growth.</p>
       </article>
 
@@ -247,6 +325,13 @@
     </section>
   </main>
 
+  <footer class="site-footer">
+    <span>Mentorix AI</span><span class="footer-sep">·</span>
+    <span>Behavioral Career Intelligence</span><span class="footer-sep">·</span>
+    <span id="footerEnv">–</span>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <footer class="site-footer">
     <span>Mentorix AI</span><span class="footer-sep">·</span>
     <span>Behavioral Career Intelligence</span><span class="footer-sep">·</span>
