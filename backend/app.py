@@ -2,7 +2,7 @@ import logging
 import os
 import time
 from typing import List, Tuple, Optional
-
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -52,12 +52,16 @@ except Exception as e:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://mentorix-ai.vercel.app",
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
+        "*"
+    ],
     allow_credentials=False,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
-
 # -------------------- Models --------------------
 
 class StudentInput(BaseModel):
