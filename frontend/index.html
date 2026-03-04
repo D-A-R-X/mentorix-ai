@@ -3,118 +3,257 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mentorix AI Dashboard</title>
+  <title>Mentorix AI — Career Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div class="bg-dots"></div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-mark">M</span>
+        <span class="logo-text">Mentorix <em>AI</em></span>
+      </div>
+      <div class="header-status">
+        <span class="status-dot" id="statusDot"></span>
+        <span class="status-label" id="statusLabel">Connecting...</span>
+      </div>
+    </div>
+  </header>
+
   <main class="page">
 
-    <section class="card assessment-card">
-      <header class="card-header">
-        <h1>Mentorix AI</h1>
-        <p>Adaptive Career Decision Dashboard</p>
-      </header>
+    <section class="hero">
+      <div class="hero-tag">Behavioral Career Intelligence Engine</div>
+      <h1 class="hero-title">Know your career<br><span class="hero-accent">risk & direction</span></h1>
+      <p class="hero-sub">Adaptive AI that learns your trajectory — not just your current state.</p>
+    </section>
 
+    <!-- INPUT CARD -->
+    <section class="card input-card">
+      <div class="card-label">Start Assessment</div>
+
+      <!-- Persona Selector -->
+      <div class="persona-row">
+        <button class="persona-btn active" data-status="student">🎓 Student</button>
+        <button class="persona-btn" data-status="working_professional">💼 Professional</button>
+        <button class="persona-btn" data-status="career_switcher">🔄 Career Switcher</button>
+      </div>
+      <input type="hidden" id="status" value="student">
+
+      <!-- Shared Fields -->
+      <div class="section-label">Basic Info</div>
       <div class="input-grid">
-        <label>
-          <span>Email</span>
-          <input type="email" id="email" required />
-        </label>
-        <label>
-          <span>CGPA (0–10)</span>
-          <input type="number" id="cgpa" min="0" max="10" step="0.1" required>
-        </label>
-
-        <label>
-          <span>Backlogs</span>
-          <input type="number" id="backlogs" min="0" required>
-        </label>
-
-        <label>
-          <span>Tech Interest (1–5)</span>
-          <input type="number" id="tech" min="1" max="5" required>
-        </label>
-
-        <label>
-          <span>Core Interest (1–5)</span>
-          <input type="number" id="core" min="1" max="5" required>
-        </label>
-
-        <label>
-          <span>Management Interest (1–5)</span>
-          <input type="number" id="mgmt" min="1" max="5" required>
-        </label>
-
-        <label>
-          <span>Confidence (1–5)</span>
-          <input type="number" id="confidence" min="1" max="5" required>
-        </label>
-
-        <label>
-          <span>Career Changes</span>
-          <input type="number" id="changes" min="0" required>
-        </label>
-
-        <label>
-          <span>Decision Time (months)</span>
-          <input type="number" id="time" min="0" required>
-        </label>
-
+        <div class="field span2">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" placeholder="you@example.com" required />
+        </div>
+        <div class="field">
+          <label for="confidence">Confidence <span class="field-hint">1–5</span></label>
+          <input type="number" id="confidence" min="1" max="5" placeholder="3" required>
+        </div>
+        <div class="field">
+          <label for="changes">Career Changes</label>
+          <input type="number" id="changes" min="0" placeholder="1" required>
+        </div>
+        <div class="field">
+          <label for="time">Decision Time <span class="field-hint">months</span></label>
+          <input type="number" id="time" min="0" placeholder="12" required>
+        </div>
       </div>
 
-      <button id="analyzeBtn" class="analyze-btn">Analyze Decision</button>
+      <!-- ── STUDENT FIELDS ── -->
+      <div id="studentFields">
+        <div class="section-label">Academic Profile</div>
+        <div class="input-grid">
+          <div class="field">
+            <label for="cgpa">CGPA <span class="field-hint">0–10</span></label>
+            <input type="number" id="cgpa" min="0" max="10" step="0.1" placeholder="8.5">
+          </div>
+          <div class="field">
+            <label for="backlogs">Active Backlogs</label>
+            <input type="number" id="backlogs" min="0" placeholder="0">
+          </div>
+        </div>
+        <div class="section-label">Career Interests</div>
+        <div class="input-grid">
+          <div class="field">
+            <label for="tech">Tech Interest <span class="field-hint">1–5</span></label>
+            <input type="number" id="tech" min="1" max="5" placeholder="4">
+          </div>
+          <div class="field">
+            <label for="core">Core Engineering <span class="field-hint">1–5</span></label>
+            <input type="number" id="core" min="1" max="5" placeholder="3">
+          </div>
+          <div class="field">
+            <label for="mgmt">Management <span class="field-hint">1–5</span></label>
+            <input type="number" id="mgmt" min="1" max="5" placeholder="2">
+          </div>
+        </div>
+      </div>
 
+      <!-- ── PROFESSIONAL FIELDS ── -->
+      <div id="professionalFields" style="display:none">
+        <div class="section-label">Professional Profile</div>
+        <div class="input-grid">
+          <div class="field">
+            <label for="experience">Years of Experience</label>
+            <input type="number" id="experience" min="0" placeholder="5">
+          </div>
+          <div class="field">
+            <label for="jobRole">Current Job Role</label>
+            <input type="text" id="jobRole" placeholder="e.g. Software Engineer">
+          </div>
+          <div class="field">
+            <label for="industry">Industry</label>
+            <input type="text" id="industry" placeholder="e.g. FinTech">
+          </div>
+        </div>
+        <div class="section-label">Skill Assessment</div>
+        <div class="input-grid">
+          <div class="field">
+            <label for="proTech">Tech Depth <span class="field-hint">1–5</span></label>
+            <input type="number" id="proTech" min="1" max="5" placeholder="4">
+          </div>
+          <div class="field">
+            <label for="proMgmt">Leadership Interest <span class="field-hint">1–5</span></label>
+            <input type="number" id="proMgmt" min="1" max="5" placeholder="3">
+          </div>
+          <div class="field">
+            <label for="proCore">Domain Expertise <span class="field-hint">1–5</span></label>
+            <input type="number" id="proCore" min="1" max="5" placeholder="4">
+          </div>
+        </div>
+        <div class="info-banner">💡 CGPA is estimated from your experience. Backlogs default to 0 for professionals.</div>
+      </div>
 
+      <!-- ── CAREER SWITCHER FIELDS ── -->
+      <div id="switcherFields" style="display:none">
+        <div class="section-label">Transition Profile</div>
+        <div class="input-grid">
+          <div class="field">
+            <label for="prevField">Previous Field</label>
+            <input type="text" id="prevField" placeholder="e.g. Mechanical Engineering">
+          </div>
+          <div class="field">
+            <label for="targetField">Target Field</label>
+            <input type="text" id="targetField" placeholder="e.g. Data Science">
+          </div>
+          <div class="field">
+            <label for="switchExp">Years in Previous Role</label>
+            <input type="number" id="switchExp" min="0" placeholder="2">
+          </div>
+        </div>
+        <div class="section-label">Interest Alignment</div>
+        <div class="input-grid">
+          <div class="field">
+            <label for="switchTech">Tech Interest <span class="field-hint">1–5</span></label>
+            <input type="number" id="switchTech" min="1" max="5" placeholder="3">
+          </div>
+          <div class="field">
+            <label for="switchMgmt">Management Interest <span class="field-hint">1–5</span></label>
+            <input type="number" id="switchMgmt" min="1" max="5" placeholder="3">
+          </div>
+          <div class="field">
+            <label for="switchCore">Core Interest <span class="field-hint">1–5</span></label>
+            <input type="number" id="switchCore" min="1" max="5" placeholder="3">
+          </div>
+        </div>
+        <div class="info-banner">💡 Career changes are inferred from your transition history automatically.</div>
+      </div>
+
+      <button class="analyze-btn" id="analyzeBtn">
+        <span class="btn-text">Run Analysis</span>
+        <span class="btn-icon">→</span>
+      </button>
+      <p class="input-note">Used only for this session's personalised analysis.</p>
     </section>
 
-    <!-- Dashboard -->
-    <section class="dashboard-grid">
+    <!-- RESULTS -->
+    <section class="results-grid" id="resultsGrid" style="display:none">
 
-
-      <article class="card" id="resultCard">
-        <h2>Analysis Result</h2>
-        <div class="meta-row"><span>Risk Level</span><strong id="riskLevel">-</strong></div>
-        <div class="meta-row"><span>Stability Score</span><strong id="stabilityScore">-</strong></div>
-        <p id="analysisSummary">Run assessment to view summary.</p>
-      </article>
-      <div class="card">
-        <h2>Career Stability Trend</h2>
-        <canvas id="csiChart" height="120"></canvas>
-      </div>
-      <article class="card" id="careerCard">
-        <h2>Career Direction</h2>
-        <p id="careerDirection">Complete assessment to receive direction.</p>
+      <article class="card risk-card" id="riskCard">
+        <div class="card-label">Risk Assessment</div>
+        <div class="risk-display">
+          <div class="risk-badge" id="riskBadge">–</div>
+          <div class="risk-meta">
+            <div class="risk-score-row"><span>Stability Index</span><strong id="stabilityScore">–</strong></div>
+            <div class="risk-score-row"><span>Trend</span><strong id="trendLabel">–</strong></div>
+            <div class="risk-score-row"><span>Volatility</span><strong id="volatilityLabel">–</strong></div>
+          </div>
+        </div>
+        <p class="risk-summary" id="analysisSummary">–</p>
+        <ul class="reason-list" id="reasonList"></ul>
       </article>
 
-      <article class="card" id="coursesCard">
-        <h2>Course Recommendation</h2>
-        <div id="coursesGrid">
-          <p>Courses will appear here.</p>
+      <article class="card direction-card">
+        <div class="card-label">Career Direction</div>
+        <div class="direction-display">
+          <div class="direction-icon" id="directionIcon">🎯</div>
+          <div class="direction-text">
+            <h3 id="careerDirection">–</h3>
+            <p id="careerInsight">–</p>
+          </div>
+        </div>
+        <div class="track-badge" id="trackBadge">–</div>
+      </article>
+
+      <article class="card engine-card">
+        <div class="card-label">Decision Engine Scores</div>
+        <div class="score-bars" id="scoreBars"></div>
+        <div class="engine-meta">
+          <span>Momentum <strong id="momentumVal">–</strong></span>
+          <span>Volatility Penalty <strong id="penaltyVal">–</strong></span>
         </div>
       </article>
 
-      <article class="card" id="progressCard">
-        <h2>Progress Tracker</h2>
-        <div class="meta-row"><span>Completion</span><strong id="completionPercent">0%</strong></div>
-        <div class="meta-row"><span>Skill Growth</span><strong id="skillGrowth">Not started</strong></div>
+      <article class="card chart-card">
+        <div class="card-label">Stability Trend</div>
+        <canvas id="trendChart" height="140"></canvas>
+        <p class="chart-hint" id="chartHint">Complete more sessions to see your trend.</p>
       </article>
 
-      <article class="card">
-        <h2>Recent Assessments</h2>
-        <div id="historySection">
-          <p>No previous assessments yet.</p>
+      <article class="card courses-card">
+        <div class="card-label">Recommended Courses</div>
+        <div class="courses-list" id="coursesGrid"><p class="empty-state">Courses will appear after analysis.</p></div>
+      </article>
+
+      <article class="card progress-card">
+        <div class="card-label">Learning Progress</div>
+        <div class="progress-stats">
+          <div class="stat-block">
+            <span class="stat-num" id="completionPercent">0%</span>
+            <span class="stat-label">Completed</span>
+          </div>
+          <div class="stat-block">
+            <span class="stat-num" id="skillGrowth">0</span>
+            <span class="stat-label">Skill Points</span>
+          </div>
         </div>
-        <p class="muted" id="progressHint">
-          Track your consistency by repeating this assessment every few weeks.
-        </p>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        </div>
+        <p class="progress-hint" id="progressHint">Start a course to track your growth.</p>
+      </article>
+
+      <article class="card history-card">
+        <div class="card-label">Assessment History</div>
+        <div class="history-list" id="historySection"><p class="empty-state">No previous assessments yet.</p></div>
       </article>
 
     </section>
-
   </main>
 
-  <footer class="app-footer">Mentorix AI – Adaptive Prototype</footer>
+  <footer class="site-footer">
+    <span>Mentorix AI</span><span class="footer-sep">·</span>
+    <span>Behavioral Career Intelligence</span><span class="footer-sep">·</span>
+    <span id="footerEnv">–</span>
+  </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
