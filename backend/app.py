@@ -261,7 +261,8 @@ def analyze_risk(data: StudentInput):
         stability_index,
         trend,
         volatility,
-        track_flips
+        track_flips,
+        history
     )
 
     # ✅ Save AFTER recommendation so track is captured
