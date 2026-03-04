@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, EmailStr
 import pickle
 import numpy as np
-
+from validator import compute_baseline_rule, compute_consistency_score, compute_alignment_score
 from database import init_db, save_assessment, get_user_history
 from risk_explanation import build_risk_explanation
 from recommender import generate_recommendations
