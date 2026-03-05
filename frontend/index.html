@@ -302,13 +302,14 @@
             <div class="card-label">Career Journey</div>
             ${renderTimeline(history)}
           </div>
-          // <!-- AI Explanation Card -->
+          <!-- AI Explanation Card -->
  <div class="card c8" style="animation-delay:0.08s">
    <div class="card-label">Mentorix Insight</div>
    <div id="aiExplanationText" style="
      font-size:14px;line-height:1.85;color:#c4bedd;
      font-style:italic;white-space:pre-wrap;
-   ">${result.ai_explanation || insight_fallback}</div>
+   ">${result.ai_explanation || result.insight || "Complete your Career Intelligence Scan to unlock your personalized AI explanation."} 
+   </div>
    ${result.latency_analysis && result.latency_analysis.decisiveness ? `
    <div style="margin-top:16px;padding:10px 14px;background:rgba(0,229,180,0.05);
      border:1px solid rgba(0,229,180,0.15);border-radius:8px;
