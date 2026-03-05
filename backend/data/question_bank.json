@@ -1,0 +1,309 @@
+{
+  "domains": {
+    "tech": {
+      "label": "Technical Inclination",
+      "weight_output": "tech_interest",
+      "questions": [
+        {
+          "id": "tech_001",
+          "question": "When facing a repetitive task, what solution appeals to you most?",
+          "options": [
+            "Writing a script or software to automate it",
+            "Designing a physical tool or device to handle it",
+            "Creating a process for people to follow efficiently",
+            "Assigning roles so a team can complete it faster"
+          ],
+          "scores": [4, 2, 1, 1]
+        },
+        {
+          "id": "tech_002",
+          "question": "You encounter a complex problem with multiple variables. What do you instinctively do first?",
+          "options": [
+            "Break it down logically and test solutions step by step",
+            "Sketch diagrams or models of the physical system",
+            "Think about the practical outcomes and impact",
+            "Discuss with others to gather different viewpoints"
+          ],
+          "scores": [4, 2, 1, 1]
+        },
+        {
+          "id": "tech_003",
+          "question": "Which activity feels most satisfying after completion?",
+          "options": [
+            "Building a program or digital system that works perfectly",
+            "Constructing a mechanical design that functions smoothly",
+            "Launching a strategy that improves results",
+            "Leading a group to achieve a shared goal"
+          ],
+          "scores": [4, 2, 1, 1]
+        },
+        {
+          "id": "tech_004",
+          "question": "When learning something new, what draws your attention most?",
+          "options": [
+            "Understanding how systems and algorithms work internally",
+            "Seeing how machines or structures operate physically",
+            "Learning how decisions influence outcomes",
+            "Observing how people collaborate effectively"
+          ],
+          "scores": [4, 2, 1, 1]
+        },
+        {
+          "id": "tech_005",
+          "question": "If given a weekend project, which would you most likely choose?",
+          "options": [
+            "Building a small software tool or app",
+            "Assembling or modifying a device or machine",
+            "Planning a small venture or initiative",
+            "Organizing a group activity or event"
+          ],
+          "scores": [4, 2, 1, 1]
+        }
+      ]
+    },
+    "core": {
+      "label": "Core Engineering Inclination",
+      "weight_output": "core_interest",
+      "questions": [
+        {
+          "id": "core_001",
+          "question": "When you see a machine or device, what are you most curious about?",
+          "options": [
+            "How software controls or optimizes its behavior",
+            "How the mechanical parts interact and move",
+            "How the product could succeed in the market",
+            "How teams collaborate to build it"
+          ],
+          "scores": [2, 4, 1, 1]
+        },
+        {
+          "id": "core_002",
+          "question": "Which task would you enjoy most during a project?",
+          "options": [
+            "Programming system logic",
+            "Designing the structure or mechanism",
+            "Creating the strategy for launching it",
+            "Coordinating people working on it"
+          ],
+          "scores": [2, 4, 1, 1]
+        },
+        {
+          "id": "core_003",
+          "question": "When solving practical problems, what approach do you prefer?",
+          "options": [
+            "Writing algorithms to optimize performance",
+            "Testing materials and mechanical configurations",
+            "Evaluating cost and business feasibility",
+            "Discussing with others to find consensus"
+          ],
+          "scores": [2, 4, 1, 1]
+        },
+        {
+          "id": "core_004",
+          "question": "Which type of challenge energizes you most?",
+          "options": [
+            "Improving a digital system's efficiency",
+            "Fixing or redesigning a physical mechanism",
+            "Improving an organization's strategy",
+            "Managing a group during a complex task"
+          ],
+          "scores": [2, 4, 1, 1]
+        },
+        {
+          "id": "core_005",
+          "question": "If something stops working, what interests you the most about fixing it?",
+          "options": [
+            "Debugging the code or digital logic",
+            "Understanding the mechanical cause of failure",
+            "Evaluating the operational impact",
+            "Organizing efforts to repair it quickly"
+          ],
+          "scores": [2, 4, 1, 1]
+        }
+      ]
+    },
+    "management": {
+      "label": "Management Inclination",
+      "weight_output": "management_interest",
+      "questions": [
+        {
+          "id": "mgmt_001",
+          "question": "During a group project, what role do you naturally take?",
+          "options": [
+            "Developing the technical solution",
+            "Handling structural or technical implementation",
+            "Planning the strategy and overall direction",
+            "Motivating and coordinating the team"
+          ],
+          "scores": [1, 1, 4, 3]
+        },
+        {
+          "id": "mgmt_002",
+          "question": "What aspect of projects interests you the most?",
+          "options": [
+            "Building the software or system",
+            "Designing the hardware or structure",
+            "Deciding how the project should succeed",
+            "Ensuring everyone works together smoothly"
+          ],
+          "scores": [1, 1, 4, 3]
+        },
+        {
+          "id": "mgmt_003",
+          "question": "When faced with a challenge, what motivates you most?",
+          "options": [
+            "Solving the technical puzzle",
+            "Fixing the mechanical design",
+            "Creating a plan that drives results",
+            "Leading people toward a shared solution"
+          ],
+          "scores": [1, 1, 4, 3]
+        },
+        {
+          "id": "mgmt_004",
+          "question": "Which achievement would feel most rewarding?",
+          "options": [
+            "Building a reliable software system",
+            "Engineering a well-functioning mechanism",
+            "Launching a successful strategy or product",
+            "Guiding a team to accomplish something meaningful"
+          ],
+          "scores": [1, 1, 4, 3]
+        },
+        {
+          "id": "mgmt_005",
+          "question": "If you could influence a project outcome, what would you focus on?",
+          "options": [
+            "Technical performance",
+            "Engineering reliability",
+            "Strategic direction and impact",
+            "Team alignment and motivation"
+          ],
+          "scores": [1, 1, 4, 3]
+        }
+      ]
+    },
+    "confidence": {
+      "label": "Self Confidence",
+      "weight_output": "confidence",
+      "questions": [
+        {
+          "id": "conf_001",
+          "question": "When you face a difficult challenge you cannot solve immediately, what do you usually do?",
+          "options": [
+            "Move on quickly to something easier",
+            "Try briefly but give up if it feels too hard",
+            "Research solutions and keep experimenting",
+            "Persist until you eventually figure it out"
+          ],
+          "scores": [1, 2, 3, 4]
+        },
+        {
+          "id": "conf_002",
+          "question": "When learning a new complex skill, how do you typically react?",
+          "options": [
+            "I feel overwhelmed and avoid it",
+            "I try but doubt my ability",
+            "I believe I can improve with practice",
+            "I confidently dive in and experiment"
+          ],
+          "scores": [1, 2, 3, 4]
+        },
+        {
+          "id": "conf_003",
+          "question": "When someone challenges your idea, how do you respond?",
+          "options": [
+            "I usually withdraw or stay quiet",
+            "I hesitate but explain briefly",
+            "I calmly defend my reasoning",
+            "I confidently discuss and refine the idea"
+          ],
+          "scores": [1, 2, 3, 4]
+        },
+        {
+          "id": "conf_004",
+          "question": "When working on a long project, how do you maintain motivation?",
+          "options": [
+            "I often lose interest quickly",
+            "I continue but feel unsure",
+            "I stay motivated with steady effort",
+            "I feel energized by the challenge"
+          ],
+          "scores": [1, 2, 3, 4]
+        },
+        {
+          "id": "conf_005",
+          "question": "How comfortable are you making decisions under uncertainty?",
+          "options": [
+            "I avoid making the decision",
+            "I prefer someone else to decide",
+            "I make a decision cautiously",
+            "I decide confidently and adjust if needed"
+          ],
+          "scores": [1, 2, 3, 4]
+        }
+      ]
+    },
+    "decision_style": {
+      "label": "Decision Style",
+      "weight_output": "decision_time",
+      "questions": [
+        {
+          "id": "dec_001",
+          "question": "When making an important decision, what is your usual approach?",
+          "options": [
+            "I decide quickly without much thought",
+            "I decide after brief consideration",
+            "I analyze options carefully",
+            "I deeply evaluate all possibilities before deciding"
+          ],
+          "scores": [1, 2, 3, 4]
+        },
+        {
+          "id": "dec_002",
+          "question": "When multiple options are available, how do you choose?",
+          "options": [
+            "I pick the first reasonable option",
+            "I compare a couple of choices quickly",
+            "I weigh pros and cons systematically",
+            "I research extensively before deciding"
+          ],
+          "scores": [1, 2, 3, 4]
+        },
+        {
+          "id": "dec_003",
+          "question": "When facing a complex life decision, what do you rely on most?",
+          "options": [
+            "Immediate instinct",
+            "Quick reasoning",
+            "Careful reflection",
+            "Detailed analysis and planning"
+          ],
+          "scores": [1, 2, 3, 4]
+        },
+        {
+          "id": "dec_004",
+          "question": "If a decision could impact your future significantly, what do you usually do?",
+          "options": [
+            "Make a quick call and move forward",
+            "Take some time but avoid overthinking",
+            "Evaluate multiple possibilities carefully",
+            "Conduct deep research before deciding"
+          ],
+          "scores": [1, 2, 3, 4]
+        },
+        {
+          "id": "dec_005",
+          "question": "When someone asks for your opinion on a complex issue, how do you respond?",
+          "options": [
+            "Give an immediate answer",
+            "Think briefly before responding",
+            "Consider several perspectives first",
+            "Analyze deeply before giving a conclusion"
+          ],
+          "scores": [1, 2, 3, 4]
+        }
+      ]
+    }
+  }
+}
