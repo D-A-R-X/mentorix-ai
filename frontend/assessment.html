@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mentorix AI — Career Assessment</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #f8f7ff;
+      --surface:      #ffffff;
+      --border:       #e8e3f5;
+      --border-dark:  #c4b8e8;
+      --purple:       #6c3bce;
+      --purple-dark:  #4c1d95;
+      --purple-light: #ede9fe;
+      --black:        #0f0a1e;
+      --text:         #1a1030;
+      --muted:        #6b7280;
+      --green:        #059669;
+      --red:          #dc2626;
+      --yellow:       #d97706;
+    }
+
+    body {
+      background: var(--bg);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      color: var(--text);
+    }
+
+    .bg-dots {
+      position: fixed; inset: 0; z-index: 0;
+      background-image: radial-gradient(circle, #c4b8e8 1px, transparent 1px);
+      background-size: 32px 32px;
+      opacity: 0.3; pointer-events: none;
+    }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    .site-header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(248,247,255,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-inner {
+      max-width: 860px; margin: 0 auto;
+      padding: 14px 28px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .logo-mark {
+      width: 32px; height: 32px; background: var(--purple); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif; font-weight: 800; font-size: 16px; color: #fff;
+    }
+    .logo-text { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 17px; color: var(--black); }
+    .logo-text em { font-style: normal; color: var(--purple); }
+
+    .header-right {
+      display: flex; align-items: center; gap: 14px;
+      font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted);
+    }
+
+    /* ── Progress Bar ───────────────────────────────────────── */
+    .progress-wrap {
+      max-width: 860px; margin: 0 auto; padding: 16px 28px 0;
+      position: relative; z-index: 1;
+    }
+
+    .progress-meta {
+      display: flex; justify-content: space-between;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; color: var(--muted); margin-bottom: 8px;
+    }
+
+    .progress-bar {
+      height: 5px; background: var(--border); border-radius: 999px; overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%; background: linear-gradient(90deg, var(--purple), #8b5cf6);
+      border-radius: inherit; transition: width 0.4s ease;
+    }
+
+    /* ── Main ───────────────────────────────────────────────── */
+    .page {
+      max-width: 860px; margin: 0 auto;
+      padding: 40px 28px 80px;
+      position: relative; z-index: 1;
+    }
+
+    /* ── Profile Step ───────────────────────────────────────── */
+    .step { display: none; animation: fadeUp 0.35s ease both; }
+    .step.active { display: block; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .step-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+      color: var(--purple); margin-bottom: 10px;
+    }
+
+    .step-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 28px; font-weight: 800; color: var(--black);
+      margin-bottom: 8px; line-height: 1.15;
+    }
+
+    .step-sub {
+      font-size: 14px; color: var(--muted); margin-bottom: 32px;
+      font-weight: 300; line-height: 1.6;
+    }
+
+    /* Profile inputs */
+    .profile-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px;
+    }
+
+    @media (max-width: 600px) { .profile-grid { grid-template-columns: 1fr; } }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field.span2 { grid-column: span 2; }
+
+    .field label {
+      font-size: 11px; font-weight: 600; color: var(--black);
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    .field input, .field select {
+      padding: 10px 14px; background: #faf9ff;
+      border: 1.5px solid var(--border); border-radius: 10px;
+      font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text);
+      transition: border-color 0.18s, box-shadow 0.18s;
+    }
+
+    .field input:focus, .field select:focus {
+      outline: none; border-color: var(--purple);
+      box-shadow: 0 0 0 3px rgba(108,59,206,0.12);
+    }
+
+    /* ── Domain Intro ───────────────────────────────────────── */
+    .domain-intro {
+      display: flex; align-items: center; gap: 16px;
+      background: var(--purple-light);
+      border: 1.5px solid var(--border-dark);
+      border-radius: 14px; padding: 20px 24px; margin-bottom: 32px;
+    }
+
+    .domain-icon { font-size: 36px; line-height: 1; }
+
+    .domain-intro h3 {
+      font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700;
+      color: var(--black); margin-bottom: 3px;
+    }
+
+    .domain-intro p { font-size: 13px; color: var(--muted); font-weight: 300; }
+
+    /* ── Question Card ──────────────────────────────────────── */
+    .question-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border); border-radius: 16px;
+      padding: 28px; margin-bottom: 16px;
+      box-shadow: 0 2px 12px rgba(108,59,206,0.05);
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .q-number {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; color: var(--purple);
+      text-transform: uppercase; letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+
+    .q-text {
+      font-family: 'Syne', sans-serif;
+      font-size: 17px; font-weight: 600; color: var(--black);
+      line-height: 1.45; margin-bottom: 20px;
+    }
+
+    /* Options */
+    .options { display: flex; flex-direction: column; gap: 10px; }
+
+    .option-btn {
+      display: flex; align-items: center; gap: 14px;
+      padding: 13px 18px; border-radius: 10px;
+      border: 1.5px solid var(--border); background: #faf9ff;
+      cursor: pointer; text-align: left; width: 100%;
+      font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text);
+      transition: all 0.18s;
+    }
+
+    .option-btn:hover {
+      border-color: var(--purple); background: var(--purple-light); color: var(--purple);
+    }
+
+    .option-btn.selected {
+      border-color: var(--purple); background: var(--purple);
+      color: #fff; box-shadow: 0 4px 14px rgba(108,59,206,0.3);
+    }
+
+    .option-letter {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; font-weight: 500;
+      min-width: 22px; height: 22px;
+      border-radius: 6px; background: var(--border);
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.18s, color 0.18s;
+    }
+
+    .option-btn.selected .option-letter { background: rgba(255,255,255,0.25); color: #fff; }
+
+    /* ── Navigation ─────────────────────────────────────────── */
+    .nav-row {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 28px; gap: 12px;
+    }
+
+    .nav-btn {
+      padding: 12px 28px; border-radius: 10px;
+      font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700;
+      cursor: pointer; transition: all 0.18s; border: none;
+    }
+
+    .nav-btn.secondary {
+      background: transparent; color: var(--muted);
+      border: 1.5px solid var(--border);
+    }
+
+    .nav-btn.secondary:hover { border-color: var(--purple); color: var(--purple); }
+
+    .nav-btn.primary {
+      background: var(--purple); color: #fff;
+      box-shadow: 0 5px 16px rgba(108,59,206,0.3); flex: 1;
+    }
+
+    .nav-btn.primary:hover { background: var(--purple-dark); transform: translateY(-1px); }
+    .nav-btn.primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ── Results ─────────────────────────────────────────────── */
+    .results-wrap { animation: fadeUp 0.4s ease both; }
+
+    .results-hero {
+      text-align: center; padding: 48px 0 40px;
+    }
+
+    .results-hero h1 {
+      font-family: 'Syne', sans-serif; font-size: 36px; font-weight: 800;
+      color: var(--black); margin-bottom: 8px;
+    }
+
+    .results-hero p { font-size: 15px; color: var(--muted); font-weight: 300; }
+
+    .results-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 600px) { .results-grid { grid-template-columns: 1fr; } }
+
+    .result-card {
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: 14px; padding: 22px;
+      box-shadow: 0 2px 12px rgba(108,59,206,0.04);
+    }
+
+    .result-card.full { grid-column: span 2; }
+    @media (max-width: 600px) { .result-card.full { grid-column: span 1; } }
+
+    .rc-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+      color: var(--purple); margin-bottom: 14px;
+    }
+
+    /* Risk badge */
+    .risk-badge {
+      font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800;
+      padding: 8px 20px; border-radius: 10px; display: inline-block;
+      margin-bottom: 10px;
+    }
+    .risk-badge.Low    { color: var(--green);  border: 2px solid var(--green);  background: #ecfdf5; }
+    .risk-badge.Medium { color: var(--yellow); border: 2px solid var(--yellow); background: #fffbeb; }
+    .risk-badge.High   { color: var(--red);    border: 2px solid var(--red);    background: #fef2f2; }
+
+    /* Domain score bars */
+    .score-row {
+      display: grid; grid-template-columns: 120px 1fr 28px;
+      align-items: center; gap: 10px; margin-bottom: 10px;
+    }
+
+    .score-name { font-size: 12px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+    .score-track { height: 7px; background: var(--border); border-radius: 999px; overflow: hidden; }
+
+    .score-fill {
+      height: 100%; background: linear-gradient(90deg, var(--purple), #8b5cf6);
+      border-radius: inherit; transition: width 0.6s ease;
+    }
+
+    .score-val { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--purple); font-weight: 600; }
+
+    /* Track badge */
+    .track-badge {
+      display: inline-block; padding: 6px 14px; border-radius: 6px;
+      background: var(--purple-light); border: 1px solid var(--border-dark);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; color: var(--purple); text-transform: uppercase;
+      letter-spacing: 1px; margin-top: 8px;
+    }
+
+    /* Courses */
+    .courses-list { display: flex; flex-direction: column; gap: 12px; }
+
+    .course-item {
+      padding: 14px 16px; border: 1.5px solid var(--border);
+      border-radius: 10px; background: #faf9ff;
+      transition: border-color 0.2s;
+    }
+
+    .course-item:hover { border-color: var(--purple); }
+
+    .course-item h4 {
+      font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
+      color: var(--black); margin-bottom: 3px;
+    }
+
+    .course-meta { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-bottom: 8px; }
+
+    .course-link {
+      display: inline-block; font-size: 12px; font-weight: 600;
+      color: var(--purple); text-decoration: none;
+      padding: 4px 10px; border: 1.5px solid var(--border-dark);
+      border-radius: 6px; transition: all 0.18s;
+    }
+
+    .course-link:hover { background: var(--purple); color: #fff; }
+
+    /* CTA */
+    .cta-row {
+      display: flex; gap: 12px; margin-top: 28px; flex-wrap: wrap;
+    }
+
+    .cta-btn {
+      flex: 1; min-width: 160px; padding: 13px 20px;
+      border-radius: 10px; font-family: 'Syne', sans-serif;
+      font-size: 14px; font-weight: 700; cursor: pointer;
+      border: none; text-align: center; text-decoration: none;
+      transition: all 0.18s;
+    }
+
+    .cta-btn.primary {
+      background: var(--purple); color: #fff;
+      box-shadow: 0 5px 16px rgba(108,59,206,0.3);
+    }
+
+    .cta-btn.primary:hover { background: var(--purple-dark); transform: translateY(-1px); }
+
+    .cta-btn.secondary {
+      background: transparent; color: var(--purple);
+      border: 1.5px solid var(--border-dark);
+    }
+
+    .cta-btn.secondary:hover { background: var(--purple-light); }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block; width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .feedback {
+      padding: 12px 16px; border-radius: 10px; font-size: 13px;
+      margin-top: 14px; display: none;
+    }
+    .feedback.error   { background: #fef2f2; border: 1px solid #fca5a5; color: var(--red); display: block; }
+    .feedback.success { background: #ecfdf5; border: 1px solid #6ee7b7; color: var(--green); display: block; }
+  </style>
+</head>
+<body>
+  <div class="bg-dots"></div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="logo" href="index.html">
+        <div class="logo-mark">M</div>
+        <span class="logo-text">Mentorix <em>AI</em></span>
+      </a>
+      <div class="header-right">
+        <span id="userLabel">–</span>
+        <button onclick="logout()" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6b7280;background:transparent;border:1px solid #e8e3f5;padding:5px 12px;border-radius:6px;cursor:pointer;">Sign Out</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="progress-wrap">
+    <div class="progress-meta">
+      <span id="progressLabel">Profile Setup</span>
+      <span id="progressCount">0 / 25</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  </div>
+
+  <main class="page">
+
+    <!-- ── STEP 0: Profile ────────────────────────────────────── -->
+    <div class="step active" id="step-profile">
+      <div class="step-label">Step 1 of 3 — Profile</div>
+      <h1 class="step-title">Tell us about yourself</h1>
+      <p class="step-sub">Basic profile info helps calibrate your results. Takes 30 seconds.</p>
+
+      <div class="profile-grid">
+        <div class="field">
+          <label>Current Status</label>
+          <select id="profileStatus">
+            <option value="student">Student</option>
+            <option value="working_professional">Working Professional</option>
+            <option value="career_switcher">Career Switcher</option>
+          </select>
+        </div>
+        <div class="field" id="cgpaField">
+          <label>CGPA <span style="color:var(--muted);font-weight:400;text-transform:none">(0–10)</span></label>
+          <input type="number" id="profileCgpa" min="0" max="10" step="0.1" placeholder="8.5">
+        </div>
+        <div class="field" id="backlogsField">
+          <label>Active Backlogs</label>
+          <input type="number" id="profileBacklogs" min="0" placeholder="0">
+        </div>
+        <div class="field" id="expField" style="display:none">
+          <label>Years of Experience</label>
+          <input type="number" id="profileExp" min="0" placeholder="3">
+        </div>
+        <div class="field span2" id="roleField" style="display:none">
+          <label>Current Role / Industry</label>
+          <input type="text" id="profileRole" placeholder="e.g. Software Engineer at FinTech">
+        </div>
+      </div>
+
+      <div class="nav-row">
+        <button class="nav-btn primary" onclick="startAssessment()">Begin Assessment →</button>
+      </div>
+      <div class="feedback" id="profileFeedback"></div>
+    </div>
+
+    <!-- ── STEP 1–5: Questions ────────────────────────────────── -->
+    <div class="step" id="step-questions">
+      <div class="step-label" id="domainLabel">Domain 1 of 5</div>
+      <h1 class="step-title" id="domainTitle">–</h1>
+      <p class="step-sub" id="domainSub">Answer honestly — there are no right or wrong answers.</p>
+
+      <div class="domain-intro" id="domainIntro">
+        <div class="domain-icon" id="domainIcon">🎯</div>
+        <div>
+          <h3 id="domainIntroTitle">–</h3>
+          <p id="domainIntroDesc">–</p>
+        </div>
+      </div>
+
+      <div id="questionsContainer"></div>
+
+      <div class="nav-row">
+        <button class="nav-btn secondary" id="backBtn" onclick="prevDomain()">← Back</button>
+        <button class="nav-btn primary" id="nextBtn" onclick="nextDomain()">Next Domain →</button>
+      </div>
+      <div class="feedback" id="questionFeedback"></div>
+    </div>
+
+    <!-- ── STEP 2: Submitting ─────────────────────────────────── -->
+    <div class="step" id="step-loading">
+      <div style="text-align:center;padding:80px 0;">
+        <div style="font-size:48px;margin-bottom:20px;">🧠</div>
+        <h2 style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--black);margin-bottom:10px;">Analyzing your profile...</h2>
+        <p style="color:var(--muted);font-size:14px;">Running behavioral engine · Layers A → D</p>
+      </div>
+    </div>
+
+    <!-- ── STEP 3: Results ────────────────────────────────────── -->
+    <div class="step" id="step-results">
+      <div class="results-hero">
+        <div style="font-size:48px;margin-bottom:16px;">✅</div>
+        <h1>Your Career Intelligence Report</h1>
+        <p>Based on your behavioral assessment — personalized to your profile.</p>
+      </div>
+
+      <div class="results-grid">
+        <div class="result-card">
+          <div class="rc-label">Risk Level</div>
+          <div class="risk-badge" id="rRiskBadge">–</div>
+          <p style="font-size:13px;color:var(--muted);margin-top:8px;line-height:1.6" id="rSummary">–</p>
+        </div>
+
+        <div class="result-card">
+          <div class="rc-label">Career Direction</div>
+          <div style="font-size:32px;margin-bottom:10px" id="rDirIcon">🎯</div>
+          <h3 style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--black);margin-bottom:6px" id="rDirection">–</h3>
+          <p style="font-size:13px;color:var(--muted);line-height:1.6" id="rInsight">–</p>
+          <div class="track-badge" id="rTrack">–</div>
+        </div>
+
+        <div class="result-card">
+          <div class="rc-label">Assessment Scores</div>
+          <div id="rScoreBars"></div>
+        </div>
+
+        <div class="result-card">
+          <div class="rc-label">Stability Profile</div>
+          <div style="display:flex;flex-direction:column;gap:10px" id="rStabilityMeta"></div>
+        </div>
+
+        <div class="result-card full">
+          <div class="rc-label">Recommended Courses</div>
+          <div class="courses-list" id="rCourses"></div>
+        </div>
+      </div>
+
+      <div class="cta-row">
+        <a class="cta-btn primary" href="index.html">Go to Dashboard →</a>
+        <button class="cta-btn secondary" onclick="retakeAssessment()">Retake Assessment</button>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // ── Config ─────────────────────────────────────────────────
+    function getApiBaseUrl() {
+      const h = window.location.hostname;
+      if (h.includes("github.dev") || h.includes("app.github.dev")) {
+        const swapped = h.replace(/-5500\./, "-8000.").replace(/-5500-/, "-8000-");
+        if (swapped !== h) return `https://${swapped}`;
+      }
+      if (h === "localhost" || h === "127.0.0.1") return "http://127.0.0.1:8000";
+      return "https://mentorix-ai-backend.onrender.com";
+    }
+
+    const API = getApiBaseUrl();
+
+    function getToken() { return localStorage.getItem("mentorix_token"); }
+    function getUserName() { return localStorage.getItem("mentorix_name") || "User"; }
+
+    function logout() {
+      localStorage.removeItem("mentorix_token");
+      localStorage.removeItem("mentorix_email");
+      localStorage.removeItem("mentorix_name");
+      window.location.href = "login.html";
+    }
+
+    function authHeaders() {
+      return { "Content-Type": "application/json", "Authorization": `Bearer ${getToken()}` };
+    }
+
+    // ── State ───────────────────────────────────────────────────
+    let allQuestions  = [];
+    let domains       = [];
+    let currentDomain = 0;
+    let answers       = {};    // { q_id: option_index }
+
+    const DOMAIN_META = {
+      tech:           { icon: "💻", title: "Technical Inclination",        desc: "How you approach systems, logic, and building things." },
+      core:           { icon: "⚙️", title: "Engineering Thinking",         desc: "Your relationship with physical systems and mechanics." },
+      management:     { icon: "📊", title: "Leadership & Strategy",        desc: "How you approach planning, people, and direction." },
+      confidence:     { icon: "🧠", title: "Self-Confidence & Persistence", desc: "How you handle challenges and uncertainty." },
+      decision_style: { icon: "⏱️", title: "Decision Making Style",        desc: "How you approach choices and commitments." },
+    };
+
+    // ── Auth guard ──────────────────────────────────────────────
+    if (!getToken()) { window.location.href = "login.html"; }
+    document.getElementById("userLabel").textContent = getUserName();
+
+    // ── Profile step: show/hide fields by status ────────────────
+    document.getElementById("profileStatus").addEventListener("change", function() {
+      const isPro = this.value === "working_professional";
+      const isStu = this.value === "student";
+      document.getElementById("cgpaField").style.display    = isStu  ? "flex" : "none";
+      document.getElementById("backlogsField").style.display = isStu  ? "flex" : "none";
+      document.getElementById("expField").style.display      = isPro  ? "flex" : "none";
+      document.getElementById("roleField").style.display     = isPro  ? "flex" : "none";
+    });
+
+    // ── Load questions from backend ─────────────────────────────
+    async function loadQuestions() {
+      try {
+        const res = await fetch(`${API}/assessment/questions`, { headers: authHeaders() });
+        if (res.status === 401) { logout(); return; }
+        const data = await res.json();
+        allQuestions = data.questions;
+
+        // Group by domain preserving order
+        const domainMap = {};
+        for (const q of allQuestions) {
+          if (!domainMap[q.domain]) {
+            domainMap[q.domain] = { key: q.domain, label: q.domain_label, questions: [] };
+          }
+          domainMap[q.domain].questions.push(q);
+        }
+        domains = Object.values(domainMap);
+      } catch (e) {
+        console.error("Failed to load questions", e);
+      }
+    }
+
+    // ── Start assessment ────────────────────────────────────────
+    async function startAssessment() {
+      const status = document.getElementById("profileStatus").value;
+
+      if (status === "student") {
+        const cgpa = parseFloat(document.getElementById("profileCgpa").value);
+        if (!cgpa || isNaN(cgpa)) {
+          showFeedback("profileFeedback", "Please enter your CGPA.", "error");
+          return;
+        }
+      }
+
+      if (!allQuestions.length) await loadQuestions();
+
+      showStep("step-questions");
+      renderDomain(0);
+      updateProgress();
+    }
+
+    // ── Render a domain's questions ─────────────────────────────
+    function renderDomain(index) {
+      currentDomain = index;
+      const domain = domains[index];
+      const meta   = DOMAIN_META[domain.key] || { icon: "🎯", title: domain.label, desc: "Answer honestly." };
+
+      document.getElementById("domainLabel").textContent     = `Domain ${index + 1} of ${domains.length}`;
+      document.getElementById("domainTitle").textContent     = meta.title;
+      document.getElementById("domainIcon").textContent      = meta.icon;
+      document.getElementById("domainIntroTitle").textContent = meta.title;
+      document.getElementById("domainIntroDesc").textContent  = meta.desc;
+
+      const container = document.getElementById("questionsContainer");
+      container.innerHTML = "";
+
+      domain.questions.forEach((q, qi) => {
+        const card = document.createElement("div");
+        card.className = "question-card";
+        card.innerHTML = `
+          <div class="q-number">Question ${qi + 1} of ${domain.questions.length}</div>
+          <div class="q-text">${q.question}</div>
+          <div class="options" id="opts-${q.id}">
+            ${q.options.map((opt, oi) => `
+              <button class="option-btn ${answers[q.id] === oi ? 'selected' : ''}"
+                      onclick="selectOption('${q.id}', ${oi}, this)">
+                <span class="option-letter">${['A','B','C','D'][oi]}</span>
+                <span>${opt}</span>
+              </button>
+            `).join("")}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      // Update nav buttons
+      document.getElementById("backBtn").style.visibility = index === 0 ? "hidden" : "visible";
+      document.getElementById("nextBtn").textContent =
+        index === domains.length - 1 ? "Submit Assessment →" : "Next Domain →";
+
+      clearFeedback("questionFeedback");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function selectOption(qId, optionIndex, btn) {
+      answers[qId] = optionIndex;
+      const opts = document.querySelectorAll(`#opts-${qId} .option-btn`);
+      opts.forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      updateProgress();
+    }
+
+    function nextDomain() {
+      // Check all questions in current domain are answered
+      const domain = domains[currentDomain];
+      const unanswered = domain.questions.filter(q => answers[q.id] === undefined);
+      if (unanswered.length > 0) {
+        showFeedback("questionFeedback", `Please answer all ${unanswered.length} remaining question${unanswered.length > 1 ? 's' : ''} before continuing.`, "error");
+        return;
+      }
+
+      if (currentDomain === domains.length - 1) {
+        submitAssessment();
+      } else {
+        renderDomain(currentDomain + 1);
+        updateProgress();
+      }
+    }
+
+    function prevDomain() {
+      if (currentDomain > 0) renderDomain(currentDomain - 1);
+    }
+
+    // ── Submit ───────────────────────────────────────────────────
+    async function submitAssessment() {
+      showStep("step-loading");
+
+      const status   = document.getElementById("profileStatus").value;
+      const cgpa     = parseFloat(document.getElementById("profileCgpa").value) || 0;
+      const backlogs = parseInt(document.getElementById("profileBacklogs").value) || 0;
+      const exp      = parseInt(document.getElementById("profileExp").value) || 0;
+      const role     = document.getElementById("profileRole").value?.trim() || "";
+
+      const payload = {
+        answers,
+        cgpa,
+        backlogs,
+        current_status:   status,
+        years_experience: exp,
+        current_job_role: role,
+      };
+
+      try {
+        const res = await fetch(`${API}/assessment/submit`, {
+          method:  "POST",
+          headers: authHeaders(),
+          body:    JSON.stringify(payload),
+        });
+
+        if (res.status === 401) { logout(); return; }
+
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.detail || "Submission failed");
+
+        // Store result for dashboard
+        localStorage.setItem("mentorix_last_result", JSON.stringify(result));
+
+        renderResults(result);
+        showStep("step-results");
+
+      } catch (err) {
+        showStep("step-questions");
+        renderDomain(currentDomain);
+        showFeedback("questionFeedback", "Submission failed: " + err.message, "error");
+      }
+    }
+
+    // ── Render results ───────────────────────────────────────────
+    function renderResults(result) {
+      const rec  = result.recommendation || {};
+      const risk = result.risk_level || "–";
+
+      // Risk
+      const badge = document.getElementById("rRiskBadge");
+      badge.textContent = risk + " Risk"; badge.className = `risk-badge ${risk}`;
+      document.getElementById("rSummary").textContent = result.summary || "–";
+
+      // Direction
+      document.getElementById("rDirection").textContent = result.career_direction || "–";
+      document.getElementById("rInsight").textContent   = result.insight || "–";
+      document.getElementById("rDirIcon").textContent   = getDirectionIcon(result.career_direction);
+      document.getElementById("rTrack").textContent     = (rec.track || "–").replace(/_/g, " ");
+
+      // Score bars from assessment_scores
+      const scoreBars = document.getElementById("rScoreBars");
+      const scores    = result.assessment_scores || {};
+      const labels    = { tech: "Tech", core: "Core Eng", management: "Management", confidence: "Confidence", decision_style: "Decision" };
+      scoreBars.innerHTML = Object.entries(scores).map(([k, s]) => {
+        const pct = Math.round((s.normalized / 5) * 100);
+        return `<div class="score-row">
+          <span class="score-name">${labels[k] || k}</span>
+          <div class="score-track"><div class="score-fill" style="width:${pct}%"></div></div>
+          <span class="score-val">${s.normalized}</span>
+        </div>`;
+      }).join("");
+
+      // Stability meta
+      const meta = document.getElementById("rStabilityMeta");
+      meta.innerHTML = `
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding:6px 0;border-bottom:1px solid var(--border)">
+          <span>Stability Index</span><strong style="color:var(--text)">${result.stability_index ? (result.stability_index * 100).toFixed(1) + "%" : "–"}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding:6px 0;border-bottom:1px solid var(--border)">
+          <span>Trend</span><strong style="color:var(--text)">${result.trend || "–"}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding:6px 0">
+          <span>Volatility</span><strong style="color:var(--text)">${result.volatility > 0.0002 ? "⚠️ Detected" : "✅ Stable"}</strong>
+        </div>
+      `;
+
+      // Courses
+      const courses = rec.courses || [];
+      document.getElementById("rCourses").innerHTML = courses.length
+        ? courses.map(c => `
+            <div class="course-item">
+              <h4>${c.title}</h4>
+              <div class="course-meta">${c.provider} · ${c.duration}</div>
+              <a class="course-link" href="${c.url}" target="_blank">Start Learning →</a>
+            </div>`).join("")
+        : "<p style='font-size:13px;color:var(--muted)'>No courses found for this track.</p>";
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────
+    function showStep(id) {
+      document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+      document.getElementById(id).classList.add("active");
+    }
+
+    function updateProgress() {
+      const total    = allQuestions.length;
+      const answered = Object.keys(answers).length;
+      const pct      = total ? Math.round((answered / total) * 100) : 0;
+      document.getElementById("progressFill").style.width  = pct + "%";
+      document.getElementById("progressCount").textContent = `${answered} / ${total}`;
+
+      if (answered === total && total > 0) {
+        document.getElementById("progressLabel").textContent = "✅ All questions answered";
+      } else {
+        const domainIndex = currentDomain + 1;
+        document.getElementById("progressLabel").textContent = `Domain ${domainIndex} of ${domains.length}`;
+      }
+    }
+
+    function showFeedback(id, msg, type) {
+      const el = document.getElementById(id);
+      el.textContent = msg; el.className = `feedback ${type}`;
+    }
+
+    function clearFeedback(id) {
+      const el = document.getElementById(id);
+      el.textContent = ""; el.className = "feedback";
+    }
+
+    function getDirectionIcon(d) {
+      if (!d) return "🎯"; const l = d.toLowerCase();
+      if (l.includes("software") || l.includes("data")) return "💻";
+      if (l.includes("management") || l.includes("product")) return "📊";
+      if (l.includes("core")) return "⚙️";
+      if (l.includes("transition")) return "🔄";
+      return "🔭";
+    }
+
+    function retakeAssessment() {
+      answers = {}; currentDomain = 0;
+      showStep("step-profile");
+      updateProgress();
+    }
+
+    // ── Init ─────────────────────────────────────────────────────
+    loadQuestions();
+  </script>
+</body>
+</html>
