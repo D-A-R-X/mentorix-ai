@@ -1,12 +1,12 @@
 import os
-import json
 import logging
 from typing import Dict, Any, Optional
 
 logger = logging.getLogger("mentorix-api")
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_URL     = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_URL     = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODEL   = "llama-3.1-8b-instant"
 
 
 def build_explanation_prompt(data: Dict[str, Any]) -> str:
@@ -20,9 +20,11 @@ def build_explanation_prompt(data: Dict[str, Any]) -> str:
     history_count = len(data.get("history", []))
     latency       = data.get("latency_analysis", {})
 
-    labels = {"tech": "Technical", "core": "Core Engineering",
-              "management": "Management", "confidence": "Confidence",
-              "decision_style": "Decision Style"}
+    labels = {
+        "tech": "Technical", "core": "Core Engineering",
+        "management": "Management", "confidence": "Confidence",
+        "decision_style": "Decision Style"
+    }
 
     score_lines = []
     for k, s in scores.items():
@@ -66,13 +68,13 @@ Domain Scores:
 
 {f"Behavioral timing: {latency_text}" if latency_text else ""}
 
-Write the 3 paragraphs now."""
+Write the 3 paragraphs now. Be specific to this data."""
 
 
 async def generate_explanation(data: Dict[str, Any]) -> Optional[str]:
-    """Call Gemini Flash to generate personalized explanation. Returns text or None."""
-    if not GEMINI_API_KEY:
-        logger.warning("GEMINI_API_KEY not set — skipping explanation")
+    """Call Groq to generate personalized explanation. Returns text or None."""
+    if not GROQ_API_KEY:
+        logger.warning("GROQ_API_KEY not set — skipping explanation")
         return None
 
     try:
@@ -82,32 +84,41 @@ async def generate_explanation(data: Dict[str, Any]) -> Optional[str]:
 
         async with httpx.AsyncClient(timeout=20.0) as client:
             res = await client.post(
-                f"{GEMINI_URL}?key={GEMINI_API_KEY}",
-                headers={"Content-Type": "application/json"},
+                GROQ_URL,
+                headers={
+                    "Authorization": f"Bearer {GROQ_API_KEY}",
+                    "Content-Type":  "application/json",
+                },
                 json={
-                    "contents": [{
-                        "parts": [{"text": prompt}]
-                    }],
-                    "generationConfig": {
-                        "maxOutputTokens": 400,
-                        "temperature":     0.7,
-                    }
+                    "model":       GROQ_MODEL,
+                    "max_tokens":  400,
+                    "temperature": 0.7,
+                    "messages": [
+                        {
+                            "role":    "system",
+                            "content": "You are Mentorix AI's explanation engine. You translate structured behavioral data into clear, warm, specific 3-paragraph explanations. No markdown. No headers. Plain text only."
+                        },
+                        {
+                            "role":    "user",
+                            "content": prompt
+                        }
+                    ]
                 }
             )
 
         if res.status_code != 200:
-            logger.error(f"Gemini API error: {res.status_code} {res.text[:200]}")
+            logger.error(f"Groq API error: {res.status_code} {res.text[:200]}")
             return None
 
         body = res.json()
         text = (
             body
-            .get("candidates", [{}])[0]
-            .get("content", {})
-            .get("parts", [{}])[0]
-            .get("text", "")
+            .get("choices", [{}])[0]
+            .get("message", {})
+            .get("content", "")
             .strip()
         )
+        logger.info(f"Groq explanation generated: {len(text)} chars")
         return text if text else None
 
     except Exception as e:
