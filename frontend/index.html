@@ -23,6 +23,8 @@
     .orb1{width:600px;height:600px;background:var(--purple);top:-200px;left:-100px}
     .orb2{width:400px;height:400px;background:var(--accent);bottom:-100px;right:-100px}
     .orb3{width:300px;height:300px;background:#c026d3;top:50%;left:50%;transform:translate(-50%,-50%)}
+
+    /* ── Header ── */
     .site-header{position:sticky;top:0;z-index:100;background:rgba(11,9,20,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
     .header-inner{max-width:1100px;margin:0 auto;padding:14px 32px;display:flex;align-items:center;justify-content:space-between;gap:20px}
     .logo{display:flex;align-items:center;gap:10px;text-decoration:none}
@@ -37,29 +39,44 @@
     .user-chip{display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)}
     .user-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse-dot 2s ease infinite}
     @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.4}}
+
+    /* ── Page ── */
     .page{max-width:1100px;margin:0 auto;padding:40px 32px 100px;position:relative;z-index:1}
+
+    /* ── Hero Banner ── */
     .hero-banner{display:grid;grid-template-columns:1fr auto;align-items:center;gap:24px;background:linear-gradient(135deg,var(--surface) 0%,#1a1040 100%);border:1px solid var(--border);border-radius:20px;padding:32px 36px;margin-bottom:28px;position:relative;overflow:hidden;animation:fadeUp 0.5s ease both}
     .hero-banner::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 80% 50%,rgba(124,77,255,0.12) 0%,transparent 70%);pointer-events:none}
     .hero-greeting{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px}
     .hero-name{font-family:'Syne',sans-serif;font-size:32px;font-weight:800;color:var(--white);line-height:1.15;margin-bottom:10px}
-    .hero-sub{font-size:14px;color:var(--muted);font-weight:300;line-height:1.6;max-width:480px}
-    .hero-stats{display:flex;gap:28px;flex-wrap:wrap}
-    .hero-stat{text-align:center;min-width:80px}
-    .hero-stat-val{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--white);line-height:1;margin-bottom:4px}
+    .hero-sub{font-size:14px;color:var(--muted);font-weight:300;line-height:1.7;max-width:540px}
+    .hero-stats{display:flex;gap:28px;flex-wrap:wrap;flex-shrink:0}
+    .hero-stat{text-align:center;min-width:72px}
+    .hero-stat-val{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--white);line-height:1;margin-bottom:4px}
     .hero-stat-val.Low{color:var(--low);text-shadow:0 0 20px rgba(0,229,180,0.4)}
     .hero-stat-val.Medium{color:var(--medium);text-shadow:0 0 20px rgba(255,179,71,0.4)}
     .hero-stat-val.High{color:var(--high);text-shadow:0 0 20px rgba(255,95,109,0.4)}
     .hero-stat-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+
+    /* ── Grid ── */
     .dash-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:18px}
     .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;position:relative;overflow:hidden;transition:border-color 0.25s,box-shadow 0.25s;animation:fadeUp 0.5s ease both}
     .card:hover{border-color:rgba(124,77,255,0.35);box-shadow:0 8px 32px rgba(124,77,255,0.08)}
     .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--purple),transparent);opacity:0;transition:opacity 0.25s}
     .card:hover::before{opacity:1}
-    .c4{grid-column:span 4}.c5{grid-column:span 5}.c6{grid-column:span 6}.c7{grid-column:span 7}.c8{grid-column:span 8}.c12{grid-column:span 12}
-    @media(max-width:900px){.c4,.c5,.c6,.c7,.c8,.c12{grid-column:span 12}}
-    @media(max-width:600px){.page{padding:24px 16px 80px}}
+    .col4{grid-column:span 4}
+    .col5{grid-column:span 5}
+    .col6{grid-column:span 6}
+    .col7{grid-column:span 7}
+    .col8{grid-column:span 8}
+    .col12{grid-column:span 12}
+    @media(max-width:900px){.col4,.col5,.col6,.col7,.col8,.col12{grid-column:span 12}}
+    @media(max-width:600px){.page{padding:24px 16px 80px}.hero-banner{grid-template-columns:1fr}.hero-stats{justify-content:center}}
+
+    /* ── Card label ── */
     .card-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--purple);margin-bottom:16px;display:flex;align-items:center;gap:8px}
     .card-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent)}
+
+    /* ── Career Snapshot ── */
     .track-name{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--white);margin-bottom:4px}
     .track-sub{font-size:13px;color:var(--muted);font-weight:300;line-height:1.6}
     .risk-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:999px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;margin-top:12px}
@@ -74,24 +91,38 @@
     .meter-track{height:6px;background:rgba(255,255,255,0.07);border-radius:999px;overflow:hidden}
     .meter-fill{height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--purple),var(--accent));transition:width 1s cubic-bezier(0.4,0,0.2,1)}
     .insight-box{margin-top:16px;padding:12px 16px;background:var(--purple-glow);border:1px solid var(--border);border-radius:10px;font-size:13px;color:var(--text);font-style:italic;font-weight:300;line-height:1.6}
+
+    /* ── AI Explanation ── */
+    .ai-explanation{font-size:14px;line-height:1.85;color:var(--text);white-space:pre-wrap;font-weight:300}
+    .latency-chip{margin-top:16px;padding:8px 14px;background:rgba(0,229,180,0.05);border:1px solid rgba(0,229,180,0.15);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)}
+
+    /* ── Behavioral Profile ── */
     .view-toggle{display:flex;gap:4px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:3px;margin-bottom:20px;width:fit-content}
     .toggle-btn{padding:5px 14px;border-radius:6px;border:none;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;color:var(--muted);background:transparent;transition:all 0.18s}
     .toggle-btn.active{background:var(--purple);color:#fff;box-shadow:0 2px 8px rgba(124,77,255,0.3)}
     .bars-view{display:block}.radar-view{display:none}
     .bars-view.hidden{display:none}.radar-view.active{display:block}
-    .profile-bar-row{display:grid;grid-template-columns:110px 1fr 30px;align-items:center;gap:12px;margin-bottom:12px}
+    .profile-bar-row{display:grid;grid-template-columns:110px 1fr 36px;align-items:center;gap:12px;margin-bottom:12px}
     .pb-label{font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace}
     .pb-track{height:7px;background:rgba(255,255,255,0.07);border-radius:999px;overflow:hidden}
     .pb-fill{height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--purple),#b08dff);transition:width 0.8s cubic-bezier(0.4,0,0.2,1)}
     .pb-val{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple);font-weight:500;text-align:right}
     .gap-callout{margin-top:16px;padding:12px 16px;background:rgba(255,179,71,0.07);border:1px solid rgba(255,179,71,0.25);border-radius:10px;font-size:12px;color:var(--medium);line-height:1.6;display:none}
     .gap-callout.show{display:block}
-    .stability-grid{display:flex;flex-direction:column;gap:14px}
-    .stat-row{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border-light)}
-    .stat-row-label{font-size:13px;color:var(--muted);font-weight:300}
-    .stat-row-val{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--white)}
 
-    /* Course tracking */
+    /* ── Stability Profile ── */
+    .stability-grid{display:flex;flex-direction:column;gap:12px}
+    .stat-row{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border-light)}
+    .stat-row-label{font-size:12px;color:var(--muted);font-weight:300}
+    .stat-row-val{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--white)}
+
+    /* ── Courses ── */
+    .progress-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+    .prog-stat{text-align:center;padding:12px;background:var(--surface2);border-radius:10px;border:1px solid var(--border-light)}
+    .prog-val{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--white);line-height:1;margin-bottom:3px}
+    .prog-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase}
+    .prog-bar-track{height:4px;background:rgba(255,255,255,0.07);border-radius:999px;overflow:hidden;margin-top:6px}
+    .prog-bar-fill{height:100%;background:linear-gradient(90deg,var(--purple),var(--accent));border-radius:inherit;transition:width 1s ease}
     .course-list{display:flex;flex-direction:column;gap:10px}
     .course-item{display:flex;align-items:center;gap:12px;padding:13px 15px;background:var(--surface2);border:1px solid var(--border-light);border-radius:12px;transition:all 0.2s}
     .course-item:hover{border-color:var(--purple)}
@@ -102,40 +133,31 @@
     .course-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
     .course-link{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);text-decoration:none;padding:4px 10px;border:1px solid var(--border);border-radius:5px;transition:all 0.18s;white-space:nowrap}
     .course-link:hover{background:var(--purple);color:#fff;border-color:var(--purple)}
-    .track-btn{font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 10px;border-radius:5px;border:1px solid var(--border);background:transparent;cursor:pointer;transition:all 0.18s;white-space:nowrap}
-    .track-btn.start{color:var(--muted)}.track-btn.start:hover{color:var(--accent);border-color:var(--accent)}
-    .track-btn.done{color:var(--muted)}.track-btn.done:hover{color:var(--low);border-color:var(--low)}
-    .track-btn.status-started{color:var(--accent);border-color:var(--accent);background:rgba(0,229,180,0.08)}
+    .track-btn{font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 10px;border-radius:5px;border:1px solid var(--border);background:transparent;cursor:pointer;transition:all 0.18s;white-space:nowrap;color:var(--muted)}
+    .track-btn:hover{color:var(--low);border-color:var(--low)}
     .track-btn.status-completed{color:var(--low);border-color:var(--low);background:rgba(0,229,180,0.08)}
 
-    /* Progress summary */
-    .progress-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
-    .prog-stat{text-align:center;padding:12px;background:var(--surface2);border-radius:10px;border:1px solid var(--border-light)}
-    .prog-val{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--white);margin-bottom:3px}
-    .prog-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase}
-    .prog-bar-wrap{margin-top:4px}
-    .prog-bar-track{height:4px;background:rgba(255,255,255,0.07);border-radius:999px;overflow:hidden}
-    .prog-bar-fill{height:100%;background:linear-gradient(90deg,var(--purple),var(--accent));border-radius:inherit;transition:width 1s ease}
-
-    /* Timeline */
+    /* ── Timeline ── */
     .timeline-empty{text-align:center;padding:32px 0;font-size:13px;color:var(--muted);font-weight:300;line-height:1.8}
     .timeline-empty span{font-size:28px;display:block;margin-bottom:10px}
     .timeline-list{display:flex;flex-direction:column}
-    .timeline-item{display:grid;grid-template-columns:80px 1fr 90px 90px;align-items:center;gap:16px;padding:12px 16px;border-bottom:1px solid var(--border-light);font-size:13px;transition:background 0.18s}
+    .timeline-item{display:grid;grid-template-columns:72px 1fr 80px 72px;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border-light);font-size:12px;transition:background 0.18s}
     .timeline-item:last-child{border-bottom:none}
     .timeline-item:hover{background:var(--surface2);border-radius:8px}
-    .tl-date{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)}
-    .tl-track{color:var(--white);font-weight:500}
-    .tl-risk{font-family:'JetBrains Mono',monospace;font-size:11px}
+    .tl-date{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)}
+    .tl-track{color:var(--white);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .tl-risk{font-family:'JetBrains Mono',monospace;font-size:10px}
     .tl-risk.Low{color:var(--low)}.tl-risk.Medium{color:var(--medium)}.tl-risk.High{color:var(--high)}
-    .tl-score{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);text-align:right}
+    .tl-score{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-align:right}
 
+    /* ── Empty state ── */
     .empty-state{text-align:center;padding:60px 20px;animation:fadeUp 0.5s ease both}
     .empty-icon{font-size:48px;margin-bottom:16px}
     .empty-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--white);margin-bottom:8px}
     .empty-sub{font-size:14px;color:var(--muted);font-weight:300;line-height:1.6;max-width:400px;margin:0 auto 24px}
     .empty-btn{display:inline-block;padding:13px 28px;background:var(--purple);color:#fff;border-radius:10px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;text-decoration:none;box-shadow:0 5px 20px rgba(124,77,255,0.35);transition:all 0.2s}
     .empty-btn:hover{background:var(--purple-dim);transform:translateY(-2px)}
+
     @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
   </style>
 </head>
@@ -143,6 +165,7 @@
   <div class="ambient">
     <div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div>
   </div>
+
   <header class="site-header">
     <div class="header-inner">
       <a class="logo" href="index.html">
@@ -151,15 +174,21 @@
       </a>
       <nav class="header-nav">
         <div class="user-chip"><div class="user-dot"></div><span id="userLabel">–</span></div>
-        <a class="nav-pill" href="assessment.html">Retake Assessment</a>
+        <a class="nav-pill" href="assessment.html">Retake Scan</a>
         <button class="nav-pill cta" onclick="logout()">Sign Out</button>
       </nav>
     </div>
   </header>
+
   <main class="page" id="mainPage"></main>
 
   <script>
-    function getApiBaseUrl(){const h=window.location.hostname;if(h.includes("github.dev")||h.includes("app.github.dev")){const s=h.replace(/-5500\./,"-8000.").replace(/-5500-/,"-8000-");if(s!==h)return`https://${s}`;}if(h==="localhost"||h==="127.0.0.1")return"http://127.0.0.1:8000";return"https://mentorix-ai-backend.onrender.com";}
+    function getApiBaseUrl(){
+      const h=window.location.hostname;
+      if(h.includes("github.dev")||h.includes("app.github.dev")){const s=h.replace(/-5500\./,"-8000.").replace(/-5500-/,"-8000-");if(s!==h)return`https://${s}`;}
+      if(h==="localhost"||h==="127.0.0.1")return"http://127.0.0.1:8000";
+      return"https://mentorix-ai-backend.onrender.com";
+    }
     const API=getApiBaseUrl();
     function getToken(){return localStorage.getItem("mentorix_token");}
     function getUserName(){return localStorage.getItem("mentorix_name")||"User";}
@@ -169,12 +198,12 @@
     document.getElementById("userLabel").textContent=getUserName();
 
     let radarChart=null;
-    let courseProgressData={};  // url → status
+    let courseProgressData={};
 
     async function loadCourseProgress(){
       try{
         const res=await fetch(`${API}/courses/progress`,{headers:authHeaders()});
-        if(!res.ok)return;
+        if(!res.ok)return{};
         const data=await res.json();
         courseProgressData={};
         (data.completions||[]).forEach(c=>{courseProgressData[c.course_url]=c.status;});
@@ -189,69 +218,71 @@
           body:JSON.stringify({course_title:courseTitle,course_url:courseUrl,provider,track,status})
         });
         courseProgressData[courseUrl]=status;
-        updateCourseButtons(courseUrl,status);
+        const encodedUrl=btoa(courseUrl).replace(/[^a-zA-Z0-9]/g,"").substring(0,12);
+        const doneBtn=document.getElementById(`done-${encodedUrl}`);
+        if(doneBtn){doneBtn.className="track-btn status-completed";doneBtn.textContent="✅ Done";}
         updateProgressDisplay();
       }catch(e){console.error("track failed",e);}
     }
 
-    function updateCourseButtons(courseUrl,status){
-      const encodedUrl=btoa(courseUrl).replace(/[^a-zA-Z0-9]/g,"").substring(0,12);
-      const startBtn=document.getElementById(`start-${encodedUrl}`);
-      const doneBtn=document.getElementById(`done-${encodedUrl}`);
-      if(startBtn){
-        startBtn.className=`track-btn ${status==="started"||status==="completed"?"status-started start":"start"}`;
-        startBtn.textContent=status==="started"?"▶ Started":status==="completed"?"✓ Done":"▶ Start";
-      }
-      if(doneBtn&&status==="completed"){
-        doneBtn.className="track-btn status-completed done";
-        doneBtn.textContent="✅ Done";
-      }
-    }
-
     function updateProgressDisplay(){
-      const completions=Object.values(courseProgressData);
-      const completed=completions.filter(s=>s==="completed").length;
-      const started=completions.filter(s=>s==="started").length;
-      const total=completions.length;
+      const vals=Object.values(courseProgressData);
+      const completed=vals.filter(s=>s==="completed").length;
+      const started=vals.filter(s=>s==="started").length;
+      const total=vals.length;
       const pct=total?Math.round((completed/total)*100):0;
-      const pctEl=document.getElementById("progPct");
-      const fillEl=document.getElementById("progFill");
-      const cntEl=document.getElementById("progCompleted");
-      const stEl=document.getElementById("progStarted");
-      if(pctEl)pctEl.textContent=pct+"%";
-      if(fillEl)fillEl.style.width=pct+"%";
-      if(cntEl)cntEl.textContent=completed;
-      if(stEl)stEl.textContent=started;
+      const el=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+      el("progCompleted",completed);el("progStarted",started);el("progPct",pct+"%");
+      const f=document.getElementById("progFill");if(f)f.style.width=pct+"%";
     }
 
     function renderDashboard(result,progressStats){
-      const rec=result.recommendation||{},risk=result.risk_level||"–",name=getUserName();
-      const scores=result.assessment_scores||{},inputs=result.engine_inputs||{};
-      const history=result.history||[],courses=rec.courses||[];
+      const rec=result.recommendation||{};
+      const risk=result.risk_level||"–";
+      const name=getUserName();
+      const scores=result.assessment_scores||{};
+      const inputs=result.engine_inputs||{};
+      const history=result.history||[];
+      const courses=rec.courses||[];
       const stabilityPct=result.stability_index?(result.stability_index*100).toFixed(1):"–";
       const trackLabel=(rec.track||"–").replace(/_/g," ").replace(/\b\w/g,l=>l.toUpperCase());
       const ps=progressStats||{};
+      const aiExplanation=result.ai_explanation||null;
+      const latency=result.latency_analysis||{};
+
+      // Hero sub — first paragraph of AI explanation or fallback
+      const heroSub=aiExplanation
+        ? aiExplanation.split("\n\n")[0]
+        : result.summary||"Your behavioral scan has been analyzed.";
 
       document.getElementById("mainPage").innerHTML=`
+        <!-- Hero -->
         <div class="hero-banner">
           <div>
             <div class="hero-greeting">Career Intelligence Report</div>
             <div class="hero-name">Hey, ${name} 👋</div>
-            <div class="hero-sub">
-   ${result.ai_explanation
-     ? result.ai_explanation.split('\n\n')[0]   // first paragraph only
-     : result.summary || "Your behavioral scan has been analyzed."}
- </div>
+            <div class="hero-sub">${heroSub}</div>
           </div>
           <div class="hero-stats">
-            <div class="hero-stat"><div class="hero-stat-val ${risk}">${risk}</div><div class="hero-stat-label">Risk Level</div></div>
-            <div class="hero-stat"><div class="hero-stat-val" style="color:var(--accent)">${stabilityPct}%</div><div class="hero-stat-label">Stability</div></div>
-            <div class="hero-stat"><div class="hero-stat-val" style="font-size:20px;color:var(--white)">${getTrendEmoji(result.trend)}</div><div class="hero-stat-label">Trend</div></div>
+            <div class="hero-stat">
+              <div class="hero-stat-val ${risk}">${risk}</div>
+              <div class="hero-stat-label">Risk</div>
+            </div>
+            <div class="hero-stat">
+              <div class="hero-stat-val" style="color:var(--accent)">${stabilityPct}%</div>
+              <div class="hero-stat-label">Stability</div>
+            </div>
+            <div class="hero-stat">
+              <div class="hero-stat-val" style="font-size:22px">${getTrendEmoji(result.trend)}</div>
+              <div class="hero-stat-label">Trend</div>
+            </div>
           </div>
         </div>
 
+        <!-- Row 1: Snapshot + AI Explanation -->
         <div class="dash-grid">
-          <div class="card c4" style="animation-delay:0.05s">
+
+          <div class="card col4" style="animation-delay:0.05s">
             <div class="card-label">Career Snapshot</div>
             <div class="track-name">${trackLabel}</div>
             <div class="track-sub">${result.career_direction||"–"}</div>
@@ -263,66 +294,73 @@
             <div class="insight-box">"${result.insight||"Keep following your plan and reassess periodically."}"</div>
           </div>
 
-          <div class="card c5" style="animation-delay:0.10s">
+          <div class="card col8" style="animation-delay:0.08s">
+            <div class="card-label">Mentorix Insight</div>
+            <div class="ai-explanation">${aiExplanation||result.summary||"Run a new Career Intelligence Scan to generate your personalized AI explanation."}</div>
+            ${latency.decisiveness?`
+            <div class="latency-chip">
+              ⏱ Decision speed: <strong>${latency.decisiveness}</strong>
+              &nbsp;·&nbsp; Avg ${(latency.avg_response_time_ms/1000).toFixed(1)}s per question
+              &nbsp;·&nbsp; Hesitation score: ${latency.hesitation_score}
+            </div>`:""}
+          </div>
+
+          <!-- Row 2: Behavioral Profile + Stability -->
+          <div class="card col6" style="animation-delay:0.12s">
             <div class="card-label">Behavioral Profile</div>
             <div class="view-toggle">
               <button class="toggle-btn active" id="barsBtn" onclick="switchView('bars')">Bars</button>
               <button class="toggle-btn" id="radarBtn" onclick="switchView('radar')">Radar</button>
             </div>
             <div class="bars-view" id="barsView">${renderProfileBars(scores)}</div>
-            <div class="radar-view" id="radarView"><canvas id="radarCanvas" height="200"></canvas></div>
+            <div class="radar-view" id="radarView"><canvas id="radarCanvas" height="210"></canvas></div>
             <div class="gap-callout" id="gapCallout"></div>
           </div>
 
-          <div class="card c3" style="animation-delay:0.15s">
+          <div class="card col6" style="animation-delay:0.15s">
             <div class="card-label">Stability Profile</div>
             <div class="stability-grid">
               <div class="stat-row"><span class="stat-row-label">Trend</span><span class="stat-row-val">${getTrendLabel(result.trend)}</span></div>
-              <div class="stat-row"><span class="stat-row-label">Consistency</span><span class="stat-row-val" style="color:${(result.volatility||0)>0.0002?"var(--medium)":"var(--low)"}">${(result.volatility||0)>0.0002?"⚠️ Unstable":"✅ Consistent"}</span></div>
+              <div class="stat-row"><span class="stat-row-label">Decision Consistency</span><span class="stat-row-val" style="color:${(result.volatility||0)>0.0002?"var(--medium)":"var(--low)"}">${(result.volatility||0)>0.0002?"⚠️ Unstable":"✅ Consistent"}</span></div>
               <div class="stat-row"><span class="stat-row-label">Track Switches</span><span class="stat-row-val">${result.track_flips??0}</span></div>
               <div class="stat-row"><span class="stat-row-label">Sessions</span><span class="stat-row-val">${history.length}</span></div>
+              ${latency.decisiveness?`<div class="stat-row"><span class="stat-row-label">Decision Speed</span><span class="stat-row-val" style="color:${latency.decisiveness==='high'?'var(--low)':latency.decisiveness==='moderate'?'var(--medium)':'var(--high)'}">${latency.decisiveness}</span></div>`:""}
             </div>
           </div>
 
-          <div class="card c8" style="animation-delay:0.20s">
+          <!-- Row 3: Courses + Journey -->
+          <div class="card col7" style="animation-delay:0.20s">
             <div class="card-label">Recommended Next Steps</div>
             <div class="progress-summary">
-              <div class="prog-stat"><div class="prog-val" id="progCompleted">${ps.completed||0}</div><div class="prog-label">Completed</div></div>
-              <div class="prog-stat"><div class="prog-val" id="progStarted">${ps.started||0}</div><div class="prog-label">In Progress</div></div>
+              <div class="prog-stat">
+                <div class="prog-val" id="progCompleted">${ps.completed||0}</div>
+                <div class="prog-label">Completed</div>
+              </div>
+              <div class="prog-stat">
+                <div class="prog-val" id="progStarted">${ps.started||0}</div>
+                <div class="prog-label">In Progress</div>
+              </div>
               <div class="prog-stat">
                 <div class="prog-val" id="progPct">${ps.pct||0}%</div>
                 <div class="prog-label">Progress</div>
-                <div class="prog-bar-wrap"><div class="prog-bar-track"><div class="prog-bar-fill" id="progFill" style="width:${ps.pct||0}%"></div></div></div>
+                <div class="prog-bar-track"><div class="prog-bar-fill" id="progFill" style="width:${ps.pct||0}%"></div></div>
               </div>
             </div>
             <div class="course-list">${renderCourses(courses,rec.track)}</div>
           </div>
 
-          <div class="card c4" style="animation-delay:0.25s">
+          <div class="card col5" style="animation-delay:0.25s">
             <div class="card-label">Career Journey</div>
             ${renderTimeline(history)}
           </div>
-          <!-- AI Explanation Card -->
- <div class="card c8" style="animation-delay:0.08s">
-   <div class="card-label">Mentorix Insight</div>
-   <div id="aiExplanationText" style="
-     font-size:14px;line-height:1.85;color:#c4bedd;
-     font-style:italic;white-space:pre-wrap;
-   ">${result.ai_explanation || result.insight || "Complete your Career Intelligence Scan to unlock your personalized AI explanation."} 
-   </div>
-   ${result.latency_analysis && result.latency_analysis.decisiveness ? `
-   <div style="margin-top:16px;padding:10px 14px;background:rgba(0,229,180,0.05);
-     border:1px solid rgba(0,229,180,0.15);border-radius:8px;
-     font-family:'JetBrains Mono',monospace;font-size:10px;color:#7a748e">
-     ⏱ Decision speed: ${result.latency_analysis.decisiveness}
-     · Avg ${(result.latency_analysis.avg_response_time_ms/1000).toFixed(1)}s per question
-     · Hesitation score: ${result.latency_analysis.hesitation_score}
-   </div>` : ''}
- </div>
+
         </div>
       `;
 
-      requestAnimationFrame(()=>{const f=document.getElementById("meterFill");if(f)f.style.width=(result.stability_index*100).toFixed(1)+"%";});
+      requestAnimationFrame(()=>{
+        const f=document.getElementById("meterFill");
+        if(f)f.style.width=(result.stability_index*100).toFixed(1)+"%";
+      });
       initRadar(scores);
       checkPerceptionGap(scores,inputs);
     }
@@ -330,7 +368,14 @@
     function renderProfileBars(scores){
       const labels={tech:"Tech",core:"Core Eng",management:"Management",confidence:"Confidence",decision_style:"Decision"};
       if(!scores||!Object.keys(scores).length)return'<p style="font-size:13px;color:var(--muted)">No data yet.</p>';
-      return Object.entries(scores).map(([k,s])=>{const val=s.normalized||0,pct=(val/5)*100;return`<div class="profile-bar-row"><span class="pb-label">${labels[k]||k}</span><div class="pb-track"><div class="pb-fill" style="width:${pct}%"></div></div><span class="pb-val">${val}/5</span></div>`;}).join("");
+      return Object.entries(scores).map(([k,s])=>{
+        const val=s.normalized||0,pct=(val/5)*100;
+        return`<div class="profile-bar-row">
+          <span class="pb-label">${labels[k]||k}</span>
+          <div class="pb-track"><div class="pb-fill" style="width:${pct}%"></div></div>
+          <span class="pb-val">${val}/5</span>
+        </div>`;
+      }).join("");
     }
 
     function renderCourses(courses,track){
@@ -338,7 +383,9 @@
       return courses.map((c,i)=>{
         const encodedUrl=btoa(c.url).replace(/[^a-zA-Z0-9]/g,"").substring(0,12);
         const status=courseProgressData[c.url]||"none";
-        const certBadge=c.certificate?'<span style="font-family:\'JetBrains Mono\',monospace;font-size:9px;color:var(--accent);border:1px solid rgba(0,229,180,0.3);padding:2px 6px;border-radius:4px;margin-left:6px">CERT</span>':"";
+        const certBadge=c.certificate?`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--accent);border:1px solid rgba(0,229,180,0.3);padding:2px 6px;border-radius:4px;margin-left:6px">CERT</span>`:"";
+        const safeTitle=c.title.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
+        const safeProvider=c.provider.replace(/'/g,"&#39;");
         return`<div class="course-item">
           <span class="course-num">0${i+1}</span>
           <div class="course-info">
@@ -346,8 +393,10 @@
             <div class="course-meta">${c.provider} · ${c.duration} · ${c.level}</div>
           </div>
           <div class="course-actions">
-            <a class="course-link" href="${c.url}" target="_blank" rel="noopener" onclick="trackCourse('${c.title.replace(/'/g,"\\'")}','${c.url}','${c.provider}','${track||"unknown"}','started')">Open →</a>
-            <button id="done-${encodedUrl}" class="track-btn done ${status==="completed"?"status-completed":""}" onclick="trackCourse('${c.title.replace(/'/g,"\\'")}','${c.url}','${c.provider}','${track||"unknown"}','completed')">
+            <a class="course-link" href="${c.url}" target="_blank" rel="noopener"
+               onclick="trackCourse('${safeTitle}','${c.url}','${safeProvider}','${track||"unknown"}','started')">Open →</a>
+            <button id="done-${encodedUrl}" class="track-btn ${status==='completed'?'status-completed':''}"
+              onclick="trackCourse('${safeTitle}','${c.url}','${safeProvider}','${track||"unknown"}','completed')">
               ${status==="completed"?"✅ Done":"Mark Done"}
             </button>
           </div>
@@ -361,35 +410,107 @@
       const keys=["tech","core","management","confidence","decision_style"];
       const data=keys.map(k=>scores[k]?.normalized||0);
       if(radarChart)radarChart.destroy();
-      radarChart=new Chart(canvas,{type:"radar",data:{labels:["Tech","Core","Mgmt","Confidence","Decision"],datasets:[{label:"Profile",data,backgroundColor:"rgba(124,77,255,0.15)",borderColor:"#7c4dff",pointBackgroundColor:"#7c4dff",pointRadius:4,borderWidth:2}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{r:{min:0,max:5,ticks:{stepSize:1,color:"rgba(255,255,255,0.3)",backdropColor:"transparent",font:{family:"JetBrains Mono",size:9}},grid:{color:"rgba(124,77,255,0.12)"},angleLines:{color:"rgba(124,77,255,0.12)"},pointLabels:{color:"#7a748e",font:{family:"JetBrains Mono",size:10}}}}}});
+      radarChart=new Chart(canvas,{
+        type:"radar",
+        data:{
+          labels:["Tech","Core","Mgmt","Confidence","Decision"],
+          datasets:[{
+            label:"Profile",data,
+            backgroundColor:"rgba(124,77,255,0.15)",
+            borderColor:"#7c4dff",
+            pointBackgroundColor:"#7c4dff",
+            pointRadius:4,borderWidth:2
+          }]
+        },
+        options:{
+          responsive:true,
+          plugins:{legend:{display:false}},
+          scales:{r:{
+            min:0,max:5,
+            ticks:{stepSize:1,color:"rgba(255,255,255,0.3)",backdropColor:"transparent",font:{family:"JetBrains Mono",size:9}},
+            grid:{color:"rgba(124,77,255,0.12)"},
+            angleLines:{color:"rgba(124,77,255,0.12)"},
+            pointLabels:{color:"#7a748e",font:{family:"JetBrains Mono",size:10}}
+          }}
+        }
+      });
     }
 
     function switchView(view){
       const bv=document.getElementById("barsView"),rv=document.getElementById("radarView");
       const bb=document.getElementById("barsBtn"),rb=document.getElementById("radarBtn");
-      if(view==="bars"){bv.classList.remove("hidden");rv.classList.remove("active");bb.classList.add("active");rb.classList.remove("active");}
-      else{bv.classList.add("hidden");rv.classList.add("active");bb.classList.remove("active");rb.classList.add("active");if(radarChart)radarChart.update();}
+      if(view==="bars"){
+        bv.classList.remove("hidden");rv.classList.remove("active");
+        bb.classList.add("active");rb.classList.remove("active");
+      }else{
+        bv.classList.add("hidden");rv.classList.add("active");
+        bb.classList.remove("active");rb.classList.add("active");
+        if(radarChart)radarChart.update();
+      }
     }
 
     function checkPerceptionGap(scores,inputs){
       const callout=document.getElementById("gapCallout");
       if(!callout||!scores||!inputs)return;
       const techScore=scores.tech?.normalized||0,techInput=inputs.tech_interest||0;
-      if(Math.abs(techScore-techInput)>=2){callout.textContent=`⚡ Identity signal: Assessed tech inclination (${techScore}/5) differs from behavioral pattern (${techInput}/5). Worth reflecting on.`;callout.classList.add("show");}
+      if(Math.abs(techScore-techInput)>=2){
+        callout.textContent=`⚡ Identity signal: Assessed tech inclination (${techScore}/5) differs from behavioral pattern (${techInput}/5). Worth reflecting on.`;
+        callout.classList.add("show");
+      }
     }
 
     function renderTimeline(history){
-      if(!history||history.length<2)return`<div class="timeline-empty"><span>📈</span>Complete more assessments to see your trajectory.<br><br><a href="assessment.html" style="color:var(--purple);font-family:'JetBrains Mono',monospace;font-size:12px;">Retake assessment →</a></div>`;
-      return`<div class="timeline-list">${[...history].reverse().map(item=>{const risk=item.risk_level||"–",score=typeof item.stability_score==="number"?(item.stability_score*100).toFixed(0)+"%":"–",track=(item.track||"–").replace(/_/g," ").replace(/\b\w/g,l=>l.toUpperCase()),date=item.created_at?new Date(item.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"2-digit"}):"–";return`<div class="timeline-item"><span class="tl-date">${date}</span><span class="tl-track">${track}</span><span class="tl-risk ${risk}">${risk} Risk</span><span class="tl-score">${score}</span></div>`;}).join("")}</div>`;
+      if(!history||history.length<2){
+        return`<div class="timeline-empty">
+          <span>📈</span>
+          Complete more scans to see your career trajectory.
+          <br><br>
+          <a href="assessment.html" style="color:var(--purple);font-family:'JetBrains Mono',monospace;font-size:12px;">Run another scan →</a>
+        </div>`;
+      }
+      return`<div class="timeline-list">
+        ${[...history].reverse().map(item=>{
+          const r=item.risk_level||"–";
+          const score=typeof item.stability_score==="number"?(item.stability_score*100).toFixed(0)+"%":"–";
+          const track=(item.track||"–").replace(/_/g," ").replace(/\b\w/g,l=>l.toUpperCase());
+          const date=item.created_at?new Date(item.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"2-digit"}):"–";
+          return`<div class="timeline-item">
+            <span class="tl-date">${date}</span>
+            <span class="tl-track">${track}</span>
+            <span class="tl-risk ${r}">${r}</span>
+            <span class="tl-score">${score}</span>
+          </div>`;
+        }).join("")}
+      </div>`;
     }
 
-    function getTrendEmoji(t){if(!t)return"–";if(t==="improving")return"📈";if(t==="declining")return"📉";if(t==="stable")return"➡️";return"🔭";}
-    function getTrendLabel(t){if(!t)return"–";if(t==="improving")return"📈 Improving";if(t==="declining")return"📉 Declining";if(t==="stable")return"➡️ Stable";if(t==="insufficient_data")return"🔭 First Session";return t;}
+    function getTrendEmoji(t){
+      if(!t)return"–";
+      if(t==="improving")return"📈";
+      if(t==="declining")return"📉";
+      if(t==="stable")return"➡️";
+      return"🔭";
+    }
+
+    function getTrendLabel(t){
+      if(!t)return"–";
+      if(t==="improving")return"📈 Improving";
+      if(t==="declining")return"📉 Declining";
+      if(t==="stable")return"➡️ Stable";
+      if(t==="insufficient_data")return"🔭 First Session";
+      return t;
+    }
 
     async function loadDashboard(){
       const stored=localStorage.getItem("mentorix_last_result");
       if(!stored){
-        document.getElementById("mainPage").innerHTML=`<div class="empty-state"><div class="empty-icon">🧠</div><div class="empty-title">No assessment yet</div><div class="empty-sub">Complete your behavioral assessment to unlock your personalized career intelligence dashboard.</div><a class="empty-btn" href="assessment.html">Start Assessment →</a></div>`;
+        document.getElementById("mainPage").innerHTML=`
+          <div class="empty-state">
+            <div class="empty-icon">🧠</div>
+            <div class="empty-title">No scan yet</div>
+            <div class="empty-sub">Complete your Career Intelligence Scan to unlock your personalized dashboard.</div>
+            <a class="empty-btn" href="assessment.html">Start Scan →</a>
+          </div>`;
         return;
       }
       try{
@@ -397,7 +518,14 @@
         const progressStats=await loadCourseProgress();
         renderDashboard(result,progressStats);
       }catch(e){
-        document.getElementById("mainPage").innerHTML=`<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Something went wrong</div><div class="empty-sub">Could not load your dashboard.</div><a class="empty-btn" href="assessment.html">Start Assessment →</a></div>`;
+        console.error("dashboard error:",e);
+        document.getElementById("mainPage").innerHTML=`
+          <div class="empty-state">
+            <div class="empty-icon">⚠️</div>
+            <div class="empty-title">Something went wrong</div>
+            <div class="empty-sub">Could not load your dashboard. Try running a new scan.</div>
+            <a class="empty-btn" href="assessment.html">Start Scan →</a>
+          </div>`;
       }
     }
 
