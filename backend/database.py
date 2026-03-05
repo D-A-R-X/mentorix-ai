@@ -231,3 +231,20 @@ def get_completion_stats(email: str) -> Dict[str, Any]:
         "pct":       round((completed / total * 100) if total else 0, 1),
         "by_track":  by_track,
     }
+
+def migrate_db():
+    """Add columns that didn't exist in earlier schema versions."""
+    conn = get_connection()
+    migrations = [
+        "ALTER TABLE users ADD COLUMN picture TEXT",
+        "ALTER TABLE users ADD COLUMN auth_provider TEXT NOT NULL DEFAULT 'email'",
+        "ALTER TABLE course_completions ADD COLUMN provider TEXT",
+        "ALTER TABLE course_completions ADD COLUMN track TEXT",
+    ]
+    for sql in migrations:
+        try:
+            conn.execute(sql)
+            conn.commit()
+        except Exception:
+            pass  # column already exists — safe to ignore
+    conn.close()
