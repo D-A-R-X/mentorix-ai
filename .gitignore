@@ -4,7 +4,7 @@ __pycache__/
 # Database files
 backend/mentorix.db
 *.sqlite3
-
+*.db
 # Generated Visualizations
 backend/data/*.png
 backend/trajectories.png
