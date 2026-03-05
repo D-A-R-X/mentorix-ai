@@ -18,7 +18,13 @@ from recommender import generate_recommendations
 from career_mapper import infer_career_direction
 from auth import hash_password, verify_password, create_token, extract_email_from_token
 from validator import compute_baseline_rule, compute_consistency_score, compute_alignment_score
-
+from auth import (hash_password, verify_password, create_token,
+                  extract_email_from_token, get_google_login_url,
+                  exchange_google_code, FRONTEND_URL)
+from database import (init_db, save_assessment, get_user_history,
+                      create_user, get_user_by_email, upsert_google_user,
+                      upsert_course_completion, get_course_completions,
+                      get_completion_stats)
 # ── App ─────────────────────────────────────────────────────────
 app = FastAPI(title="Mentorix AI")
 
@@ -115,6 +121,12 @@ async def log_requests(request: Request, call_next):
     )
     return response
 
+class CourseAction(BaseModel):
+    course_title: str
+    course_url:   str
+    provider:     str
+    track:        str
+    status:       str
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -245,6 +257,87 @@ def login(data: LoginInput):
         "name":    user.get("name") or data.email.split("@")[0],
     }
 
+def get_google_redirect_uri(request):
+    """Build correct redirect URI based on environment."""
+    host = str(request.base_url).rstrip("/")
+    return f"{host}/auth/google/callback"
+
+
+@app.get("/auth/google/login")
+def google_login(request: Request):
+    redirect_uri = get_google_redirect_uri(request)
+    url = get_google_login_url(redirect_uri)
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url)
+
+
+@app.get("/auth/google/callback")
+async def google_callback(code: str = None, error: str = None, request: Request = None):
+    from fastapi.responses import RedirectResponse
+
+    if error or not code:
+        return RedirectResponse(f"{FRONTEND_URL}/login.html?error=google_cancelled")
+
+    redirect_uri = get_google_redirect_uri(request)
+    user_info    = await exchange_google_code(code, redirect_uri)
+
+    if not user_info or not user_info.get("email"):
+        return RedirectResponse(f"{FRONTEND_URL}/login.html?error=google_failed")
+
+    # Upsert user — creates if new, updates name/picture if existing
+    user  = upsert_google_user(
+        email=user_info["email"],
+        name=user_info.get("name", ""),
+        picture=user_info.get("picture", ""),
+    )
+    token = create_token(user_info["email"])
+    name  = (user_info.get("name") or user_info["email"].split("@")[0]).replace(" ", "%20")
+
+    logger.info(f"Google OAuth success: {user_info['email']}")
+
+    # Redirect to frontend with token in URL fragment — JS picks it up
+    return RedirectResponse(
+        f"{FRONTEND_URL}/login.html"
+        f"?token={token}"
+        f"&email={user_info['email']}"
+        f"&name={name}"
+        f"&provider=google"
+    )
+
+
+# ── Course completion routes ─────────────────────────────────────
+
+@app.post("/courses/track")
+def track_course(
+    data: CourseAction,
+    current_user: str = Depends(get_current_user)
+):
+    """Mark a course as started or completed."""
+    if data.status not in ("started", "completed"):
+        raise HTTPException(status_code=400, detail="status must be 'started' or 'completed'")
+
+    upsert_course_completion(
+        email=current_user,
+        course_title=data.course_title,
+        course_url=data.course_url,
+        provider=data.provider,
+        track=data.track,
+        status=data.status,
+    )
+
+    logger.info(f"course_track user={current_user} status={data.status} course={data.course_title}")
+    return {"message": f"Course marked as {data.status}.", "status": data.status}
+
+
+@app.get("/courses/progress")
+def get_progress(current_user: str = Depends(get_current_user)):
+    """Get all course completions + summary stats for current user."""
+    completions = get_course_completions(current_user)
+    stats       = get_completion_stats(current_user)
+    return {
+        "completions": completions,
+        "stats":       stats,
+    }
 
 # ── Protected Routes ─────────────────────────────────────────────
 @app.post("/analyze-risk")

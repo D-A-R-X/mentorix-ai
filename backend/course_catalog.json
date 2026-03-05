@@ -1,88 +1,268 @@
 {
   "software_track": [
     {
-      "title": "Python for Everybody",
-      "provider": "Coursera",
-      "duration": "6 weeks",
-      "url": "https://www.coursera.org/specializations/python"
+      "title": "Scientific Computing with Python",
+      "provider": "freeCodeCamp",
+      "duration": "10 weeks",
+      "url": "https://www.freecodecamp.org/learn/scientific-computing-with-python/",
+      "free": true,
+      "certificate": true,
+      "level": "beginner"
     },
     {
-      "title": "Web Development Fundamentals",
+      "title": "Responsive Web Design",
       "provider": "freeCodeCamp",
       "duration": "8 weeks",
-      "url": "https://www.freecodecamp.org/learn/responsive-web-design/"
+      "url": "https://www.freecodecamp.org/learn/responsive-web-design/",
+      "free": true,
+      "certificate": true,
+      "level": "beginner"
     },
     {
-      "title": "Data Structures for Interviews",
-      "provider": "Udemy",
-      "duration": "5 weeks",
-      "url": "https://www.udemy.com/course/data-structures-and-algorithms-bootcamp/"
+      "title": "Data Analysis with Python",
+      "provider": "freeCodeCamp",
+      "duration": "10 weeks",
+      "url": "https://www.freecodecamp.org/learn/data-analysis-with-python/",
+      "free": true,
+      "certificate": true,
+      "level": "intermediate"
+    },
+    {
+      "title": "CS50: Introduction to Computer Science",
+      "provider": "Harvard / edX",
+      "duration": "11 weeks",
+      "url": "https://cs50.harvard.edu/x/",
+      "free": true,
+      "certificate": false,
+      "level": "beginner"
     }
   ],
   "core_track": [
     {
-      "title": "Engineering Mathematics Refresh",
+      "title": "Introduction to Engineering Mechanics",
       "provider": "NPTEL",
       "duration": "8 weeks",
-      "url": "https://nptel.ac.in/courses/111/105/111105035/"
+      "url": "https://onlinecourses.nptel.ac.in/noc22_me01/preview",
+      "free": true,
+      "certificate": true,
+      "level": "beginner"
     },
     {
-      "title": "Core Mechanical/Electrical Concepts",
-      "provider": "Coursera",
+      "title": "Introduction to CAD and Modeling",
+      "provider": "NPTEL",
+      "duration": "8 weeks",
+      "url": "https://onlinecourses.nptel.ac.in/noc21_me83/preview",
+      "free": true,
+      "certificate": true,
+      "level": "beginner"
+    },
+    {
+      "title": "Basic Electronics",
+      "provider": "NPTEL",
+      "duration": "8 weeks",
+      "url": "https://onlinecourses.nptel.ac.in/noc20_ee84/preview",
+      "free": true,
+      "certificate": true,
+      "level": "beginner"
+    },
+    {
+      "title": "Introduction to Internet of Things",
+      "provider": "Cisco Networking Academy",
       "duration": "6 weeks",
-      "url": "https://www.coursera.org/learn/intro-engineering"
+      "url": "https://www.netacad.com/courses/iot/introduction-iot",
+      "free": true,
+      "certificate": true,
+      "level": "beginner"
+    }
+  ],
+  "management_track": [
+    {
+      "title": "Fundamentals of Digital Marketing",
+      "provider": "Google Digital Garage",
+      "duration": "40 hours",
+      "url": "https://learndigital.withgoogle.com/digitalgarage/course/digital-marketing",
+      "free": true,
+      "certificate": true,
+      "level": "beginner"
     },
     {
-      "title": "Applied Problem Solving for Engineers",
-      "provider": "edX",
+      "title": "Introduction to Project Management",
+      "provider": "IBM SkillsBuild",
       "duration": "4 weeks",
-      "url": "https://www.edx.org/learn/engineering"
+      "url": "https://skillsbuild.org/students/course-catalog/project-management-fundamentals",
+      "free": true,
+      "certificate": true,
+      "level": "beginner"
+    },
+    {
+      "title": "Grow Your Business with Google",
+      "provider": "Google Digital Garage",
+      "duration": "3 weeks",
+      "url": "https://learndigital.withgoogle.com/digitalgarage",
+      "free": true,
+      "certificate": true,
+      "level": "beginner"
+    },
+    {
+      "title": "Product Management",
+      "provider": "NPTEL",
+      "duration": "8 weeks",
+      "url": "https://onlinecourses.nptel.ac.in/noc22_mg37/preview",
+      "free": true,
+      "certificate": true,
+      "level": "beginner"
     }
   ],
   "foundation_track": [
     {
       "title": "Learning How to Learn",
-      "provider": "Coursera",
+      "provider": "Coursera (Audit)",
       "duration": "4 weeks",
-      "url": "https://www.coursera.org/learn/learning-how-to-learn"
+      "url": "https://www.coursera.org/learn/learning-how-to-learn",
+      "free": true,
+      "certificate": false,
+      "level": "beginner"
     },
     {
-      "title": "Career Planning Basics",
-      "provider": "FutureLearn",
+      "title": "Career Development for Young Professionals",
+      "provider": "IBM SkillsBuild",
       "duration": "3 weeks",
-      "url": "https://www.futurelearn.com/courses/career-planning"
+      "url": "https://skillsbuild.org/students/course-catalog/career-development",
+      "free": true,
+      "certificate": true,
+      "level": "beginner"
     },
     {
-      "title": "Confidence and Communication Essentials",
-      "provider": "Udemy",
+      "title": "Critical Thinking & Problem Solving",
+      "provider": "edX (Audit)",
+      "duration": "6 weeks",
+      "url": "https://www.edx.org/learn/critical-thinking",
+      "free": true,
+      "certificate": false,
+      "level": "beginner"
+    },
+    {
+      "title": "Time Management and Productivity",
+      "provider": "SWAYAM / NPTEL",
       "duration": "4 weeks",
-      "url": "https://www.udemy.com/course/confidence-and-communication/"
+      "url": "https://onlinecourses.nptel.ac.in/noc20_hs16/preview",
+      "free": true,
+      "certificate": true,
+      "level": "beginner"
     }
   ],
-  "management_track": [
+  "career_acceleration_track": [
     {
-      "title": "Introduction to Management & Leadership",
-      "provider": "Coursera",
-      "duration": "5 weeks",
-      "url": "https://www.coursera.org/learn/management-leadership-essentials"
+      "title": "AI For Everyone",
+      "provider": "Coursera (Audit)",
+      "duration": "4 weeks",
+      "url": "https://www.coursera.org/learn/ai-for-everyone",
+      "free": true,
+      "certificate": false,
+      "level": "beginner"
     },
     {
-      "title": "Product Management Fundamentals",
-      "provider": "Udemy",
+      "title": "Data Analysis with Python",
+      "provider": "freeCodeCamp",
+      "duration": "10 weeks",
+      "url": "https://www.freecodecamp.org/learn/data-analysis-with-python/",
+      "free": true,
+      "certificate": true,
+      "level": "intermediate"
+    },
+    {
+      "title": "Leadership and Influence",
+      "provider": "IBM SkillsBuild",
+      "duration": "4 weeks",
+      "url": "https://skillsbuild.org/students/course-catalog/leadership",
+      "free": true,
+      "certificate": true,
+      "level": "intermediate"
+    },
+    {
+      "title": "Agile Project Management",
+      "provider": "edX (Audit)",
       "duration": "6 weeks",
-      "url": "https://www.udemy.com/course/become-a-product-manager-learn-the-skills-get-a-job/"
+      "url": "https://www.edx.org/learn/project-management",
+      "free": true,
+      "certificate": false,
+      "level": "intermediate"
+    }
+  ],
+  "transition_track": [
+    {
+      "title": "Introduction to Programming with Python",
+      "provider": "freeCodeCamp",
+      "duration": "8 weeks",
+      "url": "https://www.freecodecamp.org/learn/scientific-computing-with-python/",
+      "free": true,
+      "certificate": true,
+      "level": "beginner"
     },
     {
-      "title": "Business Communication & Presentation Skills",
-      "provider": "FutureLearn",
-      "duration": "4 weeks",
-      "url": "https://www.futurelearn.com/courses/business-communication"
+      "title": "Computer Networking Basics",
+      "provider": "Cisco Networking Academy",
+      "duration": "6 weeks",
+      "url": "https://www.netacad.com/courses/networking-basics",
+      "free": true,
+      "certificate": true,
+      "level": "beginner"
     },
     {
-      "title": "Agile & Scrum for Beginners",
-      "provider": "edX",
-      "duration": "4 weeks",
-      "url": "https://www.edx.org/learn/agile"
+      "title": "Introduction to Data Science",
+      "provider": "IBM SkillsBuild",
+      "duration": "5 weeks",
+      "url": "https://skillsbuild.org/students/course-catalog/data-science",
+      "free": true,
+      "certificate": true,
+      "level": "beginner"
+    },
+    {
+      "title": "CS50: Introduction to Computer Science",
+      "provider": "Harvard / edX",
+      "duration": "11 weeks",
+      "url": "https://cs50.harvard.edu/x/",
+      "free": true,
+      "certificate": false,
+      "level": "beginner"
+    }
+  ],
+  "skill_upgrade_track": [
+    {
+      "title": "Machine Learning with Python",
+      "provider": "freeCodeCamp",
+      "duration": "12 weeks",
+      "url": "https://www.freecodecamp.org/learn/machine-learning-with-python/",
+      "free": true,
+      "certificate": true,
+      "level": "intermediate"
+    },
+    {
+      "title": "Introduction to Cybersecurity",
+      "provider": "Cisco Networking Academy",
+      "duration": "6 weeks",
+      "url": "https://www.netacad.com/courses/cybersecurity/introduction-cybersecurity",
+      "free": true,
+      "certificate": true,
+      "level": "intermediate"
+    },
+    {
+      "title": "Data Visualization with Python",
+      "provider": "freeCodeCamp",
+      "duration": "8 weeks",
+      "url": "https://www.freecodecamp.org/learn/data-visualization/",
+      "free": true,
+      "certificate": true,
+      "level": "intermediate"
+    },
+    {
+      "title": "Business Analytics Fundamentals",
+      "provider": "Coursera (Audit)",
+      "duration": "5 weeks",
+      "url": "https://www.coursera.org/learn/business-analytics",
+      "free": true,
+      "certificate": false,
+      "level": "intermediate"
     }
   ]
 }
