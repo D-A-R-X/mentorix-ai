@@ -488,66 +488,222 @@
     </div>
 
     <!-- ── STEP 3: Results ────────────────────────────────────── -->
-    <div class="step" id="step-results">
-      <div class="results-hero">
-        <div style="font-size:48px;margin-bottom:16px;">✅</div>
-        <h1>Your Career Assessment Report</h1>
-        <p>Based on your behavioral assessment — personalized to your profile.</p>
+<div class="step" id="step-results">
+      <!-- Hero -->
+      <div class="res-hero">
+        <div class="res-hero-icon">✦</div>
+        <h1 class="res-hero-title">Your Career Intelligence Report</h1>
+        <p class="res-hero-sub">Behavioral analysis complete — personalized to your profile.</p>
       </div>
 
-      <div class="results-grid">
-        <div class="result-card">
-          <div class="rc-label">Risk Level</div>
+      <!-- Top row: Risk + AI Explanation -->
+      <div class="res-grid">
+
+        <div class="res-card res-card--risk">
+          <div class="res-card-label">Risk Level</div>
           <div class="risk-badge" id="rRiskBadge">–</div>
-          <p style="font-size:13px;color:var(--muted);margin-top:8px;line-height:1.6" id="rSummary">–</p>
-        </div>
-        //   <div id="rAiExplanation" style="
-       display:none; margin-top:16px; padding:16px 20px;
-       background:rgba(124,77,255,0.08); border:1px solid rgba(124,77,255,0.2);
-       border-radius:12px; font-size:13px; line-height:1.8;
-       color:#d4cee8; font-style:italic; white-space:pre-wrap;
-     "></div>
-  
-     <div id="rLatency" style="
-      display:none; margin-top:10px;
-       font-family:'JetBrains Mono',monospace; font-size:10px;
-       color:#7a748e; padding:8px 12px;
-       border:1px solid rgba(108,59,206,0.1); border-radius:8px;
-     "></div>
-        <div class="result-card">
-          <div class="rc-label">Career Direction</div>
-          <div style="font-size:32px;margin-bottom:10px" id="rDirIcon">🎯</div>
-          <h3 style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--black);margin-bottom:6px" id="rDirection">–</h3>
-          <p style="font-size:13px;color:var(--muted);line-height:1.6" id="rInsight">–</p>
-          <div class="track-badge" id="rTrack">–</div>
+          <p class="res-summary" id="rSummary">–</p>
+          <div class="res-latency" id="rLatency" style="display:none"></div>
         </div>
 
-        <div class="result-card">
-          <div class="rc-label">Assessment Scores</div>
+        <div class="res-card res-card--insight">
+          <div class="res-card-label">Mentorix Insight <span class="ai-tag">AI</span></div>
+          <div class="ai-explanation" id="rAiExplanation" style="display:none"></div>
+          <div class="ai-placeholder" id="rAiPlaceholder">Generating your personalized insight...</div>
+        </div>
+
+        <!-- Row 2: Direction + Scores -->
+        <div class="res-card res-card--direction">
+          <div class="res-card-label">Career Direction</div>
+          <div class="dir-icon" id="rDirIcon">🎯</div>
+          <div class="dir-title" id="rDirection">–</div>
+          <div class="dir-insight" id="rInsight">–</div>
+          <div class="track-chip" id="rTrack">–</div>
+        </div>
+
+        <div class="res-card res-card--scores">
+          <div class="res-card-label">Scan Scores</div>
           <div id="rScoreBars"></div>
         </div>
 
-        <div class="result-card">
-          <div class="rc-label">Stability Profile</div>
-          <div style="display:flex;flex-direction:column;gap:10px" id="rStabilityMeta"></div>
+        <div class="res-card res-card--stability">
+          <div class="res-card-label">Stability Profile</div>
+          <div id="rStabilityMeta"></div>
         </div>
 
-        <div class="result-card full">
-          <div class="rc-label">Recommended Courses</div>
+        <!-- Row 3: Courses full width -->
+        <div class="res-card res-card--courses">
+          <div class="res-card-label">Recommended Next Steps</div>
           <div class="courses-list" id="rCourses"></div>
         </div>
+
       </div>
 
-      <div class="cta-row">
-        <a class="cta-btn primary" href="index.html">Go to Dashboard →</a>
-        <button class="cta-btn secondary" onclick="retakeAssessment()">Retake Assessment</button>
+      <div class="res-cta-row">
+        <a class="res-btn res-btn--primary" href="index.html">View Full Dashboard →</a>
+        <button class="res-btn res-btn--ghost" onclick="retakeAssessment()">Retake Scan</button>
       </div>
     </div>
 
   </main>
 
+  <style>
+    /* ── Results Hero ─────────────────────────────────────── */
+    .res-hero{text-align:center;padding:48px 24px 32px;animation:fadeUp 0.5s ease both}
+    .res-hero-icon{font-size:36px;color:var(--purple);margin-bottom:16px;font-family:'Syne',sans-serif;font-weight:800}
+    .res-hero-title{font-family:'Syne',sans-serif;font-size:clamp(22px,4vw,36px);font-weight:800;color:var(--black);margin-bottom:10px;line-height:1.2}
+    .res-hero-sub{font-size:15px;color:var(--muted);font-weight:300}
+
+    /* ── Results Grid ────────────────────────────────────── */
+    .res-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      grid-template-rows:auto;
+      gap:16px;
+      max-width:860px;
+      margin:0 auto 32px;
+      padding:0 16px;
+    }
+
+    .res-card{
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:24px;
+      position:relative;
+      overflow:hidden;
+      animation:fadeUp 0.5s ease both;
+      transition:box-shadow 0.2s;
+    }
+    .res-card:hover{box-shadow:0 4px 24px rgba(108,59,206,0.1)}
+    .res-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--purple),transparent);opacity:0;transition:opacity 0.2s}
+    .res-card:hover::before{opacity:1}
+
+    /* Card spans */
+    .res-card--risk{grid-column:span 1;animation-delay:0.05s}
+    .res-card--insight{grid-column:span 1;animation-delay:0.10s}
+    .res-card--direction{grid-column:span 1;animation-delay:0.15s}
+    .res-card--scores{grid-column:span 1;animation-delay:0.20s}
+    .res-card--stability{grid-column:span 1;animation-delay:0.22s}
+    .res-card--courses{grid-column:span 2;animation-delay:0.25s}
+
+    /* ── Card label ──────────────────────────────────────── */
+    .res-card-label{
+      font-family:'JetBrains Mono',monospace;font-size:10px;
+      letter-spacing:2px;text-transform:uppercase;color:var(--purple);
+      margin-bottom:16px;display:flex;align-items:center;gap:8px;
+    }
+    .res-card-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent)}
+    .ai-tag{
+      font-size:9px;padding:2px 7px;border-radius:4px;
+      background:rgba(108,59,206,0.1);border:1px solid rgba(108,59,206,0.25);
+      color:var(--purple);letter-spacing:1px;
+    }
+
+    /* ── Risk card ───────────────────────────────────────── */
+    .risk-badge{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:8px 18px;border-radius:999px;
+      font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;
+      margin-bottom:14px;
+    }
+    .risk-badge.Low{background:rgba(5,150,105,0.1);border:1px solid rgba(5,150,105,0.3);color:#059669}
+    .risk-badge.Medium{background:rgba(217,119,6,0.1);border:1px solid rgba(217,119,6,0.3);color:#d97706}
+    .risk-badge.High{background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);color:#dc2626}
+    .res-summary{font-size:13px;color:var(--muted);line-height:1.7;font-weight:300}
+    .res-latency{
+      margin-top:12px;padding:8px 12px;
+      background:var(--purple-light);border:1px solid var(--border);border-radius:8px;
+      font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);
+      line-height:1.6;
+    }
+
+    /* ── AI Explanation ──────────────────────────────────── */
+    .ai-explanation{
+      font-size:14px;line-height:1.85;color:var(--text);
+      font-weight:300;white-space:pre-wrap;
+    }
+    .ai-placeholder{
+      font-size:13px;color:var(--muted);font-style:italic;
+      display:flex;align-items:center;gap:8px;
+    }
+    .ai-placeholder::before{
+      content:'';display:inline-block;width:8px;height:8px;
+      border-radius:50%;background:var(--purple);
+      animation:pulse-dot 1.2s ease infinite;flex-shrink:0;
+    }
+    @keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.3;transform:scale(0.8)}}
+
+    /* ── Direction card ──────────────────────────────────── */
+    .dir-icon{font-size:32px;margin-bottom:10px}
+    .dir-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--black);margin-bottom:6px}
+    .dir-insight{font-size:13px;color:var(--muted);line-height:1.7;font-weight:300;margin-bottom:14px}
+    .track-chip{
+      display:inline-block;padding:5px 14px;border-radius:999px;
+      font-family:'JetBrains Mono',monospace;font-size:11px;
+      background:var(--purple-light);border:1px solid var(--border-dark);
+      color:var(--purple);text-transform:capitalize;
+    }
+
+    /* ── Score bars ──────────────────────────────────────── */
+    .score-row{display:grid;grid-template-columns:90px 1fr 28px;align-items:center;gap:10px;margin-bottom:11px}
+    .score-name{font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+    .score-track{height:7px;background:var(--border);border-radius:999px;overflow:hidden}
+    .score-fill{height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--purple),#a78bfa);transition:width 0.8s cubic-bezier(0.4,0,0.2,1)}
+    .score-val{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple);font-weight:600;text-align:right}
+
+    /* ── Stability ───────────────────────────────────────── */
+    .stab-row{
+      display:flex;justify-content:space-between;align-items:center;
+      font-size:13px;padding:10px 0;border-bottom:1px solid var(--border);
+    }
+    .stab-row:last-child{border-bottom:none}
+    .stab-label{color:var(--muted);font-weight:300}
+    .stab-val{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--black);font-weight:600}
+
+    /* ── Courses ─────────────────────────────────────────── */
+    .courses-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+    .course-item{
+      background:var(--bg);border:1px solid var(--border);border-radius:12px;
+      padding:16px;display:flex;flex-direction:column;gap:6px;
+      transition:border-color 0.2s,transform 0.2s;
+    }
+    .course-item:hover{border-color:var(--purple-dark);transform:translateY(-2px)}
+    .course-item h4{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--black);line-height:1.3}
+    .course-meta{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+    .course-cert{
+      display:inline-block;font-size:9px;padding:2px 7px;border-radius:4px;
+      background:rgba(5,150,105,0.08);border:1px solid rgba(5,150,105,0.25);
+      color:#059669;font-family:'JetBrains Mono',monospace;width:fit-content;
+    }
+    .course-link{
+      margin-top:auto;padding:7px 14px;border-radius:8px;
+      background:var(--purple);color:#fff;font-size:12px;font-weight:600;
+      text-decoration:none;text-align:center;font-family:'Syne',sans-serif;
+      transition:background 0.2s;
+    }
+    .course-link:hover{background:var(--purple-dark)}
+
+    /* ── CTA row ─────────────────────────────────────────── */
+    .res-cta-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;padding:0 16px 60px;max-width:860px;margin:0 auto}
+    .res-btn{padding:13px 28px;border-radius:10px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;text-decoration:none;cursor:pointer;transition:all 0.2s;border:none}
+    .res-btn--primary{background:var(--purple);color:#fff;box-shadow:0 4px 16px rgba(108,59,206,0.3)}
+    .res-btn--primary:hover{background:var(--purple-dark);transform:translateY(-2px)}
+    .res-btn--ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+    .res-btn--ghost:hover{border-color:var(--purple);color:var(--purple)}
+
+    /* ── Responsive ──────────────────────────────────────── */
+    @media(max-width:640px){
+      .res-grid{grid-template-columns:1fr}
+      .res-card--risk,.res-card--insight,.res-card--direction,
+      .res-card--scores,.res-card--stability,.res-card--courses{grid-column:span 1}
+      .courses-list{grid-template-columns:1fr}
+      .res-hero-title{font-size:22px}
+    }
+    @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+
   <script>
-    // ── Config ─────────────────────────────────────────────────
     function getApiBaseUrl() {
       const h = window.location.hostname;
       if (h.includes("github.dev") || h.includes("app.github.dev")) {
@@ -559,107 +715,85 @@
     }
 
     const API = getApiBaseUrl();
-
     function getToken() { return localStorage.getItem("mentorix_token"); }
     function getUserName() { return localStorage.getItem("mentorix_name") || "User"; }
-
     function logout() {
-      localStorage.removeItem("mentorix_token");
-      localStorage.removeItem("mentorix_email");
-      localStorage.removeItem("mentorix_name");
+      ["mentorix_token","mentorix_email","mentorix_name"].forEach(k=>localStorage.removeItem(k));
       window.location.href = "login.html";
     }
-
     function authHeaders() {
       return { "Content-Type": "application/json", "Authorization": `Bearer ${getToken()}` };
     }
 
-    // ── State ───────────────────────────────────────────────────
     let allQuestions  = [];
     let domains       = [];
     let currentDomain = 0;
-    let answers       = {};    // { q_id: option_index }
-    let questionTimers = {};   // { question_id: start_timestamp_ms }
-    let latencyData    = {};   // { question_id: response_time_ms }
+    let answers       = {};
+    let questionTimers = {};
+    let latencyData    = {};
 
     const DOMAIN_META = {
-      tech:           { icon: "💻", title: "Technical Inclination",        desc: "How you approach systems, logic, and building things." },
-      core:           { icon: "⚙️", title: "Engineering Thinking",         desc: "Your relationship with physical systems and mechanics." },
-      management:     { icon: "📊", title: "Leadership & Strategy",        desc: "How you approach planning, people, and direction." },
+      tech:           { icon: "💻", title: "Technical Inclination",         desc: "How you approach systems, logic, and building things." },
+      core:           { icon: "⚙️", title: "Engineering Thinking",          desc: "Your relationship with physical systems and mechanics." },
+      management:     { icon: "📊", title: "Leadership & Strategy",         desc: "How you approach planning, people, and direction." },
       confidence:     { icon: "🧠", title: "Self-Confidence & Persistence", desc: "How you handle challenges and uncertainty." },
-      decision_style: { icon: "⏱️", title: "Decision Making Style",        desc: "How you approach choices and commitments." },
+      decision_style: { icon: "⏱️", title: "Decision Making Style",         desc: "How you approach choices and commitments." },
     };
 
-    // ── Auth guard ──────────────────────────────────────────────
     if (!getToken()) { window.location.href = "login.html"; }
     document.getElementById("userLabel").textContent = getUserName();
 
-    // ── Profile step: show/hide fields by status ────────────────
     document.getElementById("profileStatus").addEventListener("change", function() {
       const isPro = this.value === "working_professional";
       const isStu = this.value === "student";
-      document.getElementById("cgpaField").style.display    = isStu  ? "flex" : "none";
-      document.getElementById("backlogsField").style.display = isStu  ? "flex" : "none";
-      document.getElementById("expField").style.display      = isPro  ? "flex" : "none";
-      document.getElementById("roleField").style.display     = isPro  ? "flex" : "none";
+      document.getElementById("cgpaField").style.display     = isStu ? "flex" : "none";
+      document.getElementById("backlogsField").style.display = isStu ? "flex" : "none";
+      document.getElementById("expField").style.display      = isPro ? "flex" : "none";
+      document.getElementById("roleField").style.display     = isPro ? "flex" : "none";
     });
 
-    // ── Load questions from backend ─────────────────────────────
     async function loadQuestions() {
       try {
         const res = await fetch(`${API}/assessment/questions`, { headers: authHeaders() });
         if (res.status === 401) { logout(); return; }
         const data = await res.json();
         allQuestions = data.questions;
-
-        // Group by domain preserving order
         const domainMap = {};
         for (const q of allQuestions) {
-          if (!domainMap[q.domain]) {
+          if (!domainMap[q.domain])
             domainMap[q.domain] = { key: q.domain, label: q.domain_label, questions: [] };
-          }
           domainMap[q.domain].questions.push(q);
         }
         domains = Object.values(domainMap);
-      } catch (e) {
-        console.error("Failed to load questions", e);
-      }
+      } catch (e) { console.error("Failed to load questions", e); }
     }
 
-    // ── Start assessment ────────────────────────────────────────
     async function startAssessment() {
       const status = document.getElementById("profileStatus").value;
-
       if (status === "student") {
         const cgpa = parseFloat(document.getElementById("profileCgpa").value);
         if (!cgpa || isNaN(cgpa)) {
-          showFeedback("profileFeedback", "Please enter your CGPA.", "error");
-          return;
+          showFeedback("profileFeedback", "Please enter your CGPA.", "error"); return;
         }
       }
-
       if (!allQuestions.length) await loadQuestions();
-
       showStep("step-questions");
       renderDomain(0);
       updateProgress();
     }
 
-    // ── Render a domain's questions ─────────────────────────────
     function renderDomain(index) {
       currentDomain = index;
       const domain = domains[index];
       const meta   = DOMAIN_META[domain.key] || { icon: "🎯", title: domain.label, desc: "Answer honestly." };
-
-      document.getElementById("domainLabel").textContent     = `Domain ${index + 1} of ${domains.length}`;
-      document.getElementById("domainTitle").textContent     = meta.title;
-      document.getElementById("domainIcon").textContent      = meta.icon;
+      document.getElementById("domainLabel").textContent      = `Domain ${index + 1} of ${domains.length}`;
+      document.getElementById("domainTitle").textContent      = meta.title;
+      document.getElementById("domainIcon").textContent       = meta.icon;
       document.getElementById("domainIntroTitle").textContent = meta.title;
       document.getElementById("domainIntroDesc").textContent  = meta.desc;
 
       const container = document.getElementById("questionsContainer");
       container.innerHTML = "";
-
       domain.questions.forEach((q, qi) => {
         const card = document.createElement("div");
         card.className = "question-card";
@@ -668,23 +802,19 @@
           <div class="q-text">${q.question}</div>
           <div class="options" id="opts-${q.id}">
             ${q.options.map((opt, oi) => `
-              <button class="option-btn ${answers[q.id] === oi ? 'selected' : ''}"
-                      onclick="selectOption('${q.id}', ${oi}, this)">
-                <span class="option-letter">${['A','B','C','D'][oi]}</span>
+              <button class="option-btn ${answers[q.id] === oi ? "selected" : ""}"
+                onclick="selectOption('${q.id}', ${oi}, this)">
+                <span class="option-letter">${["A","B","C","D"][oi]}</span>
                 <span>${opt}</span>
-              </button>
-            `).join("")}
-          </div>
-        `;
+              </button>`).join("")}
+          </div>`;
         container.appendChild(card);
-        questionTimers[q.id] = Date.now(); 
+        questionTimers[q.id] = Date.now();
       });
 
-      // Update nav buttons
       document.getElementById("backBtn").style.visibility = index === 0 ? "hidden" : "visible";
       document.getElementById("nextBtn").textContent =
-        index === domains.length - 1 ? "Submit Assessment →" : "Next Domain →";
-
+        index === domains.length - 1 ? "Generate Report →" : "Next Domain →";
       clearFeedback("questionFeedback");
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -702,30 +832,24 @@
     }
 
     function nextDomain() {
-      // Check all questions in current domain are answered
       const domain = domains[currentDomain];
       const unanswered = domain.questions.filter(q => answers[q.id] === undefined);
       if (unanswered.length > 0) {
-        showFeedback("questionFeedback", `Please answer all ${unanswered.length} remaining question${unanswered.length > 1 ? 's' : ''} before continuing.`, "error");
+        showFeedback("questionFeedback",
+          `Please answer all ${unanswered.length} remaining question${unanswered.length > 1 ? "s" : ""} before continuing.`,
+          "error");
         return;
       }
-
-      if (currentDomain === domains.length - 1) {
-        submitAssessment();
-      } else {
-        renderDomain(currentDomain + 1);
-        updateProgress();
-      }
+      if (currentDomain === domains.length - 1) submitAssessment();
+      else { renderDomain(currentDomain + 1); updateProgress(); }
     }
 
     function prevDomain() {
       if (currentDomain > 0) renderDomain(currentDomain - 1);
     }
 
-    // ── Submit ───────────────────────────────────────────────────
     async function submitAssessment() {
       showStep("step-loading");
-
       const status   = document.getElementById("profileStatus").value;
       const cgpa     = parseFloat(document.getElementById("profileCgpa").value) || 0;
       const backlogs = parseInt(document.getElementById("profileBacklogs").value) || 0;
@@ -733,33 +857,21 @@
       const role     = document.getElementById("profileRole").value?.trim() || "";
 
       const payload = {
-        answers,
-        latency_data: latencyData,
-        cgpa,
-        backlogs,
-        current_status:   status,
-        years_experience: exp,
-        current_job_role: role,
+        answers, latency_data: latencyData,
+        cgpa, backlogs, current_status: status,
+        years_experience: exp, current_job_role: role,
       };
 
       try {
         const res = await fetch(`${API}/assessment/submit`, {
-          method:  "POST",
-          headers: authHeaders(),
-          body:    JSON.stringify(payload),
+          method: "POST", headers: authHeaders(), body: JSON.stringify(payload),
         });
-
         if (res.status === 401) { logout(); return; }
-
         const result = await res.json();
         if (!res.ok) throw new Error(result.detail || "Submission failed");
-
-        // Store result for dashboard
         localStorage.setItem("mentorix_last_result", JSON.stringify(result));
-
         renderResults(result);
         showStep("step-results");
-
       } catch (err) {
         showStep("step-questions");
         renderDomain(currentDomain);
@@ -767,74 +879,85 @@
       }
     }
 
-    // ── Render results ───────────────────────────────────────────
     function renderResults(result) {
       const rec  = result.recommendation || {};
       const risk = result.risk_level || "–";
 
       // Risk
       const badge = document.getElementById("rRiskBadge");
-      badge.textContent = risk + " Risk"; badge.className = `risk-badge ${risk}`;
+      badge.textContent = `● ${risk} Risk`;
+      badge.className = `risk-badge ${risk}`;
       document.getElementById("rSummary").textContent = result.summary || "–";
-      const aiEl = document.getElementById("rAiExplanation");
-      // AI Explanation
-      if (aiEl && result.ai_explanation) {
-        aiEl.textContent  = result.ai_explanation;
-        aiEl.style.display = "block";
-      }
-        // Latency insight
+
+      // Latency
       const latEl = document.getElementById("rLatency");
-        if (latEl && result.latency_analysis && result.latency_analysis.decisiveness) {
-            const d = result.latency_analysis;
-            latEl.textContent = `Decision speed: ${d.decisiveness} · Avg ${(d.avg_response_time_ms/1000).toFixed(1)}s per question · Hesitation score: ${d.hesitation_score}`;
-            latEl.style.display = "block";
-       }
+      if (latEl && result.latency_analysis?.decisiveness) {
+        const d = result.latency_analysis;
+        latEl.innerHTML = `⏱ Decision speed: <strong>${d.decisiveness}</strong> &nbsp;·&nbsp; Avg ${(d.avg_response_time_ms/1000).toFixed(1)}s per question &nbsp;·&nbsp; Hesitation: ${d.hesitation_score}`;
+        latEl.style.display = "block";
+      }
+
+      // AI Explanation
+      const aiEl   = document.getElementById("rAiExplanation");
+      const aiPlch = document.getElementById("rAiPlaceholder");
+      if (result.ai_explanation) {
+        aiEl.textContent = result.ai_explanation;
+        aiEl.style.display = "block";
+        aiPlch.style.display = "none";
+      } else {
+        aiPlch.textContent = result.summary || "No explanation available.";
+        aiPlch.style.animation = "none";
+        aiPlch.style.fontStyle = "normal";
+        aiPlch.style.color = "var(--muted)";
+        if(aiPlch.style) aiPlch.classList && aiPlch.classList.remove("ai-placeholder");
+      }
+
       // Direction
       document.getElementById("rDirection").textContent = result.career_direction || "–";
       document.getElementById("rInsight").textContent   = result.insight || "–";
       document.getElementById("rDirIcon").textContent   = getDirectionIcon(result.career_direction);
       document.getElementById("rTrack").textContent     = (rec.track || "–").replace(/_/g, " ");
 
-      // Score bars from assessment_scores
-      const scoreBars = document.getElementById("rScoreBars");
-      const scores    = result.assessment_scores || {};
-      const labels    = { tech: "Tech", core: "Core Eng", management: "Management", confidence: "Confidence", decision_style: "Decision" };
-      scoreBars.innerHTML = Object.entries(scores).map(([k, s]) => {
+      // Score bars
+      const scores = result.assessment_scores || {};
+      const labels = { tech:"Tech", core:"Core Eng", management:"Management", confidence:"Confidence", decision_style:"Decision" };
+      document.getElementById("rScoreBars").innerHTML = Object.entries(scores).map(([k,s]) => {
         const pct = Math.round((s.normalized / 5) * 100);
         return `<div class="score-row">
-          <span class="score-name">${labels[k] || k}</span>
-          <div class="score-track"><div class="score-fill" style="width:${pct}%"></div></div>
-          <span class="score-val">${s.normalized}</span>
+          <span class="score-name">${labels[k]||k}</span>
+          <div class="score-track"><div class="score-fill" style="width:0%" data-pct="${pct}"></div></div>
+          <span class="score-val">${s.normalized}/5</span>
         </div>`;
       }).join("");
+      // Animate bars
+      requestAnimationFrame(()=>{
+        document.querySelectorAll(".score-fill").forEach(el=>{
+          el.style.width = el.dataset.pct + "%";
+        });
+      });
 
-      // Stability meta
-      const meta = document.getElementById("rStabilityMeta");
-      meta.innerHTML = `
-        <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding:6px 0;border-bottom:1px solid var(--border)">
-          <span>Stability Index</span><strong style="color:var(--text)">${result.stability_index ? (result.stability_index * 100).toFixed(1) + "%" : "–"}</strong>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding:6px 0;border-bottom:1px solid var(--border)">
-          <span>Trend</span><strong style="color:var(--text)">${result.trend || "–"}</strong>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding:6px 0">
-          <span>Volatility</span><strong style="color:var(--text)">${result.volatility > 0.0002 ? "⚠️ Detected" : "✅ Stable"}</strong>
-        </div>
+      // Stability
+      const si = result.stability_index;
+      document.getElementById("rStabilityMeta").innerHTML = `
+        <div class="stab-row"><span class="stab-label">Stability Index</span><span class="stab-val">${si?(si*100).toFixed(1)+"%":"–"}</span></div>
+        <div class="stab-row"><span class="stab-label">Trend</span><span class="stab-val">${getTrendLabel(result.trend)}</span></div>
+        <div class="stab-row"><span class="stab-label">Volatility</span><span class="stab-val">${result.volatility>0.0002?"⚠️ Detected":"✅ Stable"}</span></div>
+        <div class="stab-row"><span class="stab-label">Sessions</span><span class="stab-val">${(result.history||[]).length}</span></div>
       `;
 
       // Courses
       const courses = rec.courses || [];
       document.getElementById("rCourses").innerHTML = courses.length
-        ? courses.map(c => `
-            <div class="course-item">
-              <h4>${c.title}</h4>
-              <div class="course-meta">${c.provider} · ${c.duration}</div>
-              <a class="course-link" href="${c.url}" target="_blank">Start Learning →</a>
-            </div>`).join("")
-        : "<p style='font-size:13px;color:var(--muted)'>No courses found for this track.</p>";
+        ? courses.map(c=>`
+          <div class="course-item">
+            <h4>${c.title}</h4>
+            <div class="course-meta">${c.provider} · ${c.duration}</div>
+            ${c.certificate?'<span class="course-cert">CERTIFICATE</span>':""}
+            <a class="course-link" href="${c.url}" target="_blank" rel="noopener">Start Learning →</a>
+          </div>`).join("")
+        : "<p style='font-size:13px;color:var(--muted)'>No courses found.</p>";
     }
 
-    // ── Helpers ──────────────────────────────────────────────────
     function showStep(id) {
       document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
       document.getElementById(id).classList.add("active");
@@ -846,42 +969,42 @@
       const pct      = total ? Math.round((answered / total) * 100) : 0;
       document.getElementById("progressFill").style.width  = pct + "%";
       document.getElementById("progressCount").textContent = `${answered} / ${total}`;
-
-      if (answered === total && total > 0) {
-        document.getElementById("progressLabel").textContent = "✅ All questions answered";
-      } else {
-        const domainIndex = currentDomain + 1;
-        document.getElementById("progressLabel").textContent = `Domain ${domainIndex} of ${domains.length}`;
-      }
+      document.getElementById("progressLabel").textContent =
+        answered === total && total > 0
+          ? "✅ All questions answered"
+          : `Domain ${currentDomain + 1} of ${domains.length}`;
     }
 
     function showFeedback(id, msg, type) {
       const el = document.getElementById(id);
       el.textContent = msg; el.className = `feedback ${type}`;
     }
-
     function clearFeedback(id) {
       const el = document.getElementById(id);
       el.textContent = ""; el.className = "feedback";
     }
-
     function getDirectionIcon(d) {
       if (!d) return "🎯"; const l = d.toLowerCase();
-      if (l.includes("software") || l.includes("data")) return "💻";
-      if (l.includes("management") || l.includes("product")) return "📊";
+      if (l.includes("software")||l.includes("data")) return "💻";
+      if (l.includes("management")||l.includes("product")) return "📊";
       if (l.includes("core")) return "⚙️";
       if (l.includes("transition")) return "🔄";
       return "🔭";
     }
-
+    function getTrendLabel(t) {
+      if(!t)return"–";
+      if(t==="improving")return"📈 Improving";
+      if(t==="declining")return"📉 Declining";
+      if(t==="stable")return"➡️ Stable";
+      if(t==="insufficient_data")return"🔭 First Session";
+      return t;
+    }
     function retakeAssessment() {
-      answers = {}; currentDomain = 0;
+      answers = {}; latencyData = {}; currentDomain = 0;
       showStep("step-profile");
       updateProgress();
     }
 
-    // ── Init ─────────────────────────────────────────────────────
     loadQuestions();
   </script>
 </body>
-</html>
