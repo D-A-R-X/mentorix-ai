@@ -237,7 +237,11 @@
           <div>
             <div class="hero-greeting">Career Intelligence Report</div>
             <div class="hero-name">Hey, ${name} 👋</div>
-            <div class="hero-sub">${result.summary||"Your behavioral assessment has been analyzed."}</div>
+            <div class="hero-sub">
+   ${result.ai_explanation
+     ? result.ai_explanation.split('\n\n')[0]   // first paragraph only
+     : result.summary || "Your behavioral scan has been analyzed."}
+ </div>
           </div>
           <div class="hero-stats">
             <div class="hero-stat"><div class="hero-stat-val ${risk}">${risk}</div><div class="hero-stat-label">Risk Level</div></div>
@@ -298,6 +302,22 @@
             <div class="card-label">Career Journey</div>
             ${renderTimeline(history)}
           </div>
+          // <!-- AI Explanation Card -->
+ <div class="card c8" style="animation-delay:0.08s">
+   <div class="card-label">Mentorix Insight</div>
+   <div id="aiExplanationText" style="
+     font-size:14px;line-height:1.85;color:#c4bedd;
+     font-style:italic;white-space:pre-wrap;
+   ">${result.ai_explanation || insight_fallback}</div>
+   ${result.latency_analysis && result.latency_analysis.decisiveness ? `
+   <div style="margin-top:16px;padding:10px 14px;background:rgba(0,229,180,0.05);
+     border:1px solid rgba(0,229,180,0.15);border-radius:8px;
+     font-family:'JetBrains Mono',monospace;font-size:10px;color:#7a748e">
+     ⏱ Decision speed: ${result.latency_analysis.decisiveness}
+     · Avg ${(result.latency_analysis.avg_response_time_ms/1000).toFixed(1)}s per question
+     · Hesitation score: ${result.latency_analysis.hesitation_score}
+   </div>` : ''}
+ </div>
         </div>
       `;
 
