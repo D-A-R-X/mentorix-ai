@@ -25,6 +25,7 @@ from database import (init_db, save_assessment, get_user_history,
                       create_user, get_user_by_email, upsert_google_user,
                       upsert_course_completion, get_course_completions,
                       get_completion_stats,migrate_db)
+from explainer import generate_explanation, score_latency
 # ── App ─────────────────────────────────────────────────────────
 app = FastAPI(title="Mentorix AI")
 
@@ -103,6 +104,7 @@ class StudentInput(BaseModel):
 
 class AssessmentSubmission(BaseModel):
     answers: Dict[str, int]
+    latency_data: Dict[str, int] = {}   # ← ADD THIS
     cgpa: float = Field(0.0, ge=0, le=10)
     backlogs: int = Field(0, ge=0)
     current_status: str = "student"
@@ -439,22 +441,22 @@ def get_questions():
 
 
 @app.post("/assessment/submit")
-def submit_assessment(
+async def submit_assessment(
     data: AssessmentSubmission,
     current_user: str = Depends(get_current_user)
 ):
-    """
-    Score MCQ answers → map to engine inputs → run full analysis.
-    Returns same structure as /analyze-risk so frontend is identical.
-    """
     if model is None:
         raise HTTPException(status_code=500, detail="Model not loaded")
 
-    # Score the MCQ answers
-    scored = score_assessment(data.answers)
+    # Score MCQ answers
+    scored        = score_assessment(data.answers)
     engine_inputs = scored["engine_inputs"]
 
-    # Build StudentInput from MCQ scores + basic profile
+    # Score latency
+    latency_analysis = score_latency(data.latency_data) if data.latency_data else {}
+    latency_adjustment = latency_analysis.get("stability_adjustment", 0.0)
+
+    # Build StudentInput
     student_data = StudentInput(
         cgpa=data.cgpa,
         backlogs=data.backlogs,
@@ -476,49 +478,68 @@ def submit_assessment(
     try:
         risk = model.predict(features)[0]
     except Exception as exc:
-        logger.exception("Prediction failed in assessment")
         raise HTTPException(status_code=500, detail="Prediction failed") from exc
 
     if data.current_status == "working_professional" and (data.years_experience or 0) >= 5:
-        if risk == "High":     risk = "Medium"
+        if risk == "High":   risk = "Medium"
         elif risk == "Medium": risk = "Low"
 
     stability_index = compute_stability_index(student_data)
-    history         = get_user_history(current_user)
-    trend           = compute_trend(history)
-    volatility      = compute_volatility(history)
-    track_flips     = compute_track_instability(history)
 
-    explanation    = build_risk_explanation(student_data, risk)
-    recommendation = generate_recommendations(
-        student_data.model_dump(),
-        risk, stability_index, trend, volatility, track_flips, history
+    # Apply latency adjustment to stability
+    stability_index = max(0.0, min(1.0, stability_index + latency_adjustment))
+
+    history     = get_user_history(current_user)
+    trend       = compute_trend(history)
+    volatility  = compute_volatility(history)
+    track_flips = compute_track_instability(history)
+
+    explanation_data  = build_risk_explanation(student_data, risk)
+    recommendation    = generate_recommendations(
+        student_data.model_dump(), risk, stability_index,
+        trend, volatility, track_flips, history
     )
     career_direction, insight = infer_career_direction(student_data)
 
     save_assessment(current_user, risk, stability_index, recommendation["track"])
 
-    logger.info(f"assessment submitted user={current_user} track={recommendation['track']}")
-
-    return {
-        "risk_level":       risk,
-        "stability_score":  round(stability_index, 2),
-        "stability_index":  stability_index,
-        "trend":            trend,
-        "volatility":       volatility,
-        "track_flips":      track_flips,
-        "reasons":          explanation["reasons"],
-        "summary":          explanation.get("summary", ""),
-        "recommendation":   recommendation,
-        "career_direction": career_direction,
-        "insight":          insight,
-        "decision_scores":  recommendation["decision_scores"],
-        "history":          history,
-        # Assessment-specific extras
+    # Build result dict for explanation
+    result_for_explanation = {
+        "risk_level":        risk,
+        "stability_index":   stability_index,
+        "trend":             trend,
+        "volatility":        volatility,
+        "track":             recommendation["track"],
+        "career_direction":  career_direction,
         "assessment_scores": scored["raw_scores"],
-        "engine_inputs":     engine_inputs,
+        "history":           history,
+        "latency_analysis":  latency_analysis,
     }
 
+    # Generate AI explanation (async, non-blocking fallback)
+    ai_explanation = await generate_explanation(result_for_explanation)
+
+    logger.info(f"scan submitted user={current_user} track={recommendation['track']} latency_decisiveness={latency_analysis.get('decisiveness','n/a')}")
+
+    return {
+        "risk_level":        risk,
+        "stability_score":   round(stability_index, 2),
+        "stability_index":   stability_index,
+        "trend":             trend,
+        "volatility":        volatility,
+        "track_flips":       track_flips,
+        "reasons":           explanation_data["reasons"],
+        "summary":           explanation_data.get("summary", ""),
+        "ai_explanation":    ai_explanation,          # ← NEW
+        "recommendation":    recommendation,
+        "career_direction":  career_direction,
+        "insight":           insight,
+        "decision_scores":   recommendation["decision_scores"],
+        "history":           history,
+        "assessment_scores": scored["raw_scores"],
+        "engine_inputs":     engine_inputs,
+        "latency_analysis":  latency_analysis,        # ← NEW
+    }
 @app.get("/assessment/questions")
 def get_questions(current_user: str = Depends(get_current_user)):
     questions = get_all_questions()

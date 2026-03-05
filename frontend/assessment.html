@@ -491,7 +491,7 @@
     <div class="step" id="step-results">
       <div class="results-hero">
         <div style="font-size:48px;margin-bottom:16px;">✅</div>
-        <h1>Your Career Intelligence Report</h1>
+        <h1>Your Career Assessment Report</h1>
         <p>Based on your behavioral assessment — personalized to your profile.</p>
       </div>
 
@@ -501,7 +501,19 @@
           <div class="risk-badge" id="rRiskBadge">–</div>
           <p style="font-size:13px;color:var(--muted);margin-top:8px;line-height:1.6" id="rSummary">–</p>
         </div>
-
+        //   <div id="rAiExplanation" style="
+       display:none; margin-top:16px; padding:16px 20px;
+       background:rgba(124,77,255,0.08); border:1px solid rgba(124,77,255,0.2);
+       border-radius:12px; font-size:13px; line-height:1.8;
+       color:#d4cee8; font-style:italic; white-space:pre-wrap;
+     "></div>
+  
+     <div id="rLatency" style="
+      display:none; margin-top:10px;
+       font-family:'JetBrains Mono',monospace; font-size:10px;
+       color:#7a748e; padding:8px 12px;
+       border:1px solid rgba(108,59,206,0.1); border-radius:8px;
+     "></div>
         <div class="result-card">
           <div class="rc-label">Career Direction</div>
           <div style="font-size:32px;margin-bottom:10px" id="rDirIcon">🎯</div>
@@ -567,6 +579,8 @@
     let domains       = [];
     let currentDomain = 0;
     let answers       = {};    // { q_id: option_index }
+    let questionTimers = {};   // { question_id: start_timestamp_ms }
+    let latencyData    = {};   // { question_id: response_time_ms }
 
     const DOMAIN_META = {
       tech:           { icon: "💻", title: "Technical Inclination",        desc: "How you approach systems, logic, and building things." },
@@ -663,6 +677,7 @@
           </div>
         `;
         container.appendChild(card);
+        questionTimers[q.id] = Date.now(); 
       });
 
       // Update nav buttons
@@ -675,6 +690,10 @@
     }
 
     function selectOption(qId, optionIndex, btn) {
+      if (questionTimers[qId]) {
+        latencyData[qId] = Date.now() - questionTimers[qId];
+        delete questionTimers[qId];
+      }
       answers[qId] = optionIndex;
       const opts = document.querySelectorAll(`#opts-${qId} .option-btn`);
       opts.forEach(b => b.classList.remove("selected"));
@@ -715,6 +734,7 @@
 
       const payload = {
         answers,
+        latency_data: latencyData,
         cgpa,
         backlogs,
         current_status:   status,
@@ -756,7 +776,19 @@
       const badge = document.getElementById("rRiskBadge");
       badge.textContent = risk + " Risk"; badge.className = `risk-badge ${risk}`;
       document.getElementById("rSummary").textContent = result.summary || "–";
-
+      const aiEl = document.getElementById("rAiExplanation");
+      // AI Explanation
+      if (aiEl && result.ai_explanation) {
+        aiEl.textContent  = result.ai_explanation;
+        aiEl.style.display = "block";
+      }
+        // Latency insight
+      const latEl = document.getElementById("rLatency");
+        if (latEl && result.latency_analysis && result.latency_analysis.decisiveness) {
+            const d = result.latency_analysis;
+            latEl.textContent = `Decision speed: ${d.decisiveness} · Avg ${(d.avg_response_time_ms/1000).toFixed(1)}s per question · Hesitation score: ${d.hesitation_score}`;
+            latEl.style.display = "block";
+       }
       // Direction
       document.getElementById("rDirection").textContent = result.career_direction || "–";
       document.getElementById("rInsight").textContent   = result.insight || "–";
