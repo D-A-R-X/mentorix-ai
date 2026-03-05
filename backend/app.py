@@ -11,7 +11,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field, EmailStr
 import pickle
 import numpy as np
-
+from assessment import get_all_questions, score_assessment
 from database import init_db, save_assessment, get_user_history, create_user, get_user_by_email
 from risk_explanation import build_risk_explanation
 from recommender import generate_recommendations
@@ -95,7 +95,7 @@ class StudentInput(BaseModel):
     years_experience: Optional[int] = 0
 
 class AssessmentSubmission(BaseModel):
-    answers: dict[str, int]
+    answers: Dict[str, int]
     cgpa: float = Field(0.0, ge=0, le=10)
     backlogs: int = Field(0, ge=0)
     current_status: str = "student"
@@ -425,7 +425,71 @@ def submit_assessment(
         "engine_inputs":     engine_inputs,
     }
 
+@app.get("/assessment/questions")
+def get_questions(current_user: str = Depends(get_current_user)):
+    questions = get_all_questions()
+    return {"total": len(questions), "questions": questions}
 
+@app.post("/assessment/submit")
+def submit_assessment(
+    data: AssessmentSubmission,
+    current_user: str = Depends(get_current_user)
+):
+    if model is None:
+        raise HTTPException(status_code=500, detail="Model not loaded")
+    scored = score_assessment(data.answers)
+    engine_inputs = scored["engine_inputs"]
+    student_data = StudentInput(
+        cgpa=data.cgpa, backlogs=data.backlogs,
+        tech_interest=engine_inputs["tech_interest"],
+        core_interest=engine_inputs["core_interest"],
+        management_interest=engine_inputs["management_interest"],
+        confidence=engine_inputs["confidence"],
+        career_changes=engine_inputs["career_changes"],
+        decision_time=engine_inputs["decision_time"],
+        current_status=data.current_status,
+        years_experience=data.years_experience,
+        current_job_role=data.current_job_role,
+        industry=data.industry,
+        current_course=data.current_course,
+    )
+    features = normalize_input(student_data)
+    try:
+        risk = model.predict(features)[0]
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Prediction failed") from exc
+    if data.current_status == "working_professional" and (data.years_experience or 0) >= 5:
+        if risk == "High": risk = "Medium"
+        elif risk == "Medium": risk = "Low"
+    stability_index = compute_stability_index(student_data)
+    history = get_user_history(current_user)
+    trend = compute_trend(history)
+    volatility = compute_volatility(history)
+    track_flips = compute_track_instability(history)
+    explanation = build_risk_explanation(student_data, risk)
+    recommendation = generate_recommendations(
+        student_data.model_dump(), risk, stability_index, trend, volatility, track_flips, history
+    )
+    career_direction, insight = infer_career_direction(student_data)
+    save_assessment(current_user, risk, stability_index, recommendation["track"])
+    logger.info(f"assessment submitted user={current_user} track={recommendation['track']}")
+    return {
+        "risk_level": risk,
+        "stability_score": round(stability_index, 2),
+        "stability_index": stability_index,
+        "trend": trend,
+        "volatility": volatility,
+        "track_flips": track_flips,
+        "reasons": explanation["reasons"],
+        "summary": explanation.get("summary", ""),
+        "recommendation": recommendation,
+        "career_direction": career_direction,
+        "insight": insight,
+        "decision_scores": recommendation["decision_scores"],
+        "history": history,
+        "assessment_scores": scored["raw_scores"],
+        "engine_inputs": engine_inputs,
+    }
 # ── Run ──────────────────────────────────────────────────────────
 if __name__ == "__main__":
     import uvicorn
