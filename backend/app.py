@@ -24,7 +24,7 @@ from auth import (hash_password, verify_password, create_token,
 from database import (init_db, save_assessment, get_user_history,
                       create_user, get_user_by_email, upsert_google_user,
                       upsert_course_completion, get_course_completions,
-                      get_completion_stats)
+                      get_completion_stats,migrate_db)
 # ── App ─────────────────────────────────────────────────────────
 app = FastAPI(title="Mentorix AI")
 
@@ -35,6 +35,7 @@ logging.basicConfig(
 logger = logging.getLogger("mentorix-api")
 
 init_db()
+migrate_db()
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "model", "risk_model.pkl")
 model = None
