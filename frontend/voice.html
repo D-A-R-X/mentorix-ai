@@ -198,7 +198,19 @@ function startListening(){
   if(!SR){alert("Voice recognition not supported. Please switch to typing mode.");return;}
   rec=new SR();rec.continuous=false;rec.interimResults=true;rec.lang="en-US";
   rec.onstart=()=>{listening=true;micBtn.className="v-micbtn active";vDot.className="vdot on";vStatus.textContent="Listening...";};
-  rec.onresult=(e)=>{let f="",im="";for(let i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal)f+=e.results[i][0].transcript;else im+=e.results[i][0].transcript;}if(im||f)typeInp.value=f||im;if(f)handleUserInput(f.trim());};
+  let silenceTimer=null;
+  rec.onresult=(e)=>{
+    let f="",im="";
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal)f+=e.results[i][0].transcript;
+      else im+=e.results[i][0].transcript;
+    }
+    if(im||f)typeInp.value=f||im;
+    if(f){
+      clearTimeout(silenceTimer);
+      silenceTimer=setTimeout(()=>handleUserInput(f.trim()),1500);
+    }
+  };
   rec.onerror=(e)=>{if(e.error!=="no-speech")console.warn("STT:",e.error);};
   rec.onend=()=>{listening=false;micBtn.className="v-micbtn";vDot.className="vdot";vStatus.textContent="Your turn";typeInp.value="";};
   rec.start();
@@ -264,7 +276,9 @@ async function startSession(){
   setTimeout(()=>{
     document.getElementById("startOv").classList.add("gone");active=true;
     setTimeout(()=>{
-      const op=`Hi ${UNAME}! I'm Mentorix, your AI career guide. I'm here to have a real conversation with you about your interests and future. You can speak to me or type — whatever feels natural. Let's start — what are you currently studying, and which year are you in?`;
+      const savedProfile = JSON.parse(localStorage.getItem("mentorix_profile")||"{}");
+      const profileCtx = savedProfile.dept ? `I can see you're a ${savedProfile.status||"student"} from ${savedProfile.dept}, year ${savedProfile.year||"?"}, semester ${savedProfile.sem||"?"}. ` : "";
+      const op=`Hi ${UNAME}! I'm Mentorix, your AI career guide. ${profileCtx}I'm here to have a real conversation about your interests and career direction. You can speak or type — whatever feels comfortable. Let's dive in — what subjects or activities genuinely excite you the most right now?`;
       addMsg("ai",op);speak(op,enableInput);qIdx=1;renderDots();
     },500);
   },350);
@@ -289,7 +303,7 @@ async function handleUserInput(text){
   try{
     const reply=await getAIReply(text);removeMsg(tid);
     convo.push({role:"assistant",content:reply});
-    const isEnd=reply.includes("[[END]]")||convo.filter(m=>m.role==="user").length>=MAX_Q;
+    const isEnd=reply.includes("[[END]]");
     const clean=reply.replace("[[END]]","").trim();
     addMsg("ai",clean);
     if(isEnd)speak(clean,()=>endSession());else speak(clean,enableInput);
@@ -299,13 +313,15 @@ async function handleUserInput(text){
 async function getAIReply(msg){
   const sys=`You are Mentorix, a warm and professional AI career mentor — like a knowledgeable older sister who genuinely cares. You are speaking with ${UNAME}.
 
+${JSON.parse(localStorage.getItem('mentorix_profile')||'{}').dept ? `KNOWN PROFILE — NEVER ASK AGAIN: Dept: ${JSON.parse(localStorage.getItem('mentorix_profile')||'{}').dept}, Year: ${JSON.parse(localStorage.getItem('mentorix_profile')||'{}').year}, Sem: ${JSON.parse(localStorage.getItem('mentorix_profile')||'{}').sem}, Goal: ${JSON.parse(localStorage.getItem('mentorix_profile')||'{}').goal||'unknown'}.` : ''}
+
 Your goal through this conversation:
-1. Understand their department and year
-2. Discover what genuinely excites them academically and personally
+1. SKIP asking about dept/year/sem — you already know it
+2. Discover what genuinely excites them and what they're good at
 3. Understand what type of work they enjoy (technical, creative, leadership, research)
 4. Gauge their confidence and how they handle challenges
-5. Understand their career goals or confusion
-6. Learn their biggest concern about their future
+5. Understand their specific career goals or confusion
+6. Give clear actionable direction by end of conversation
 
 Rules:
 - Ask ONE question per response, never two
@@ -322,7 +338,7 @@ This is exchange ${convo.filter(m=>m.role==="user").length+1} of ${MAX_Q}.`;
   const d=await res.json();return d.reply||"That's interesting. Could you tell me more?";
 }
 
-async function endSession(){
+async function endSession(satisfied=true){
   active=false;stopListening();window.speechSynthesis.cancel();if(raf)cancelAnimationFrame(raf);
   document.getElementById("endOv").classList.add("show");
   try{
@@ -334,7 +350,57 @@ async function endSession(){
   }catch(e){document.getElementById("endSum").textContent="Session complete. Your conversation has been recorded. Visit your dashboard.";}
 }
 
-function confirmEnd(){if(!active)return;if(confirm("End this session? Your progress will be saved."))endSession();}
+function confirmEnd(){
+  if(!active)return;
+  const exchanges=convo.filter(m=>m.role==="user").length;
+  if(exchanges<3){
+    // Too early — AI hasn't gathered enough
+    if(confirm("You're ending early. Mentorix hasn't had enough conversation to help you properly.\n\nEnd anyway? (This will reduce your Honor Score)"))
+      endSessionWithPenalty();
+    return;
+  }
+  // Ask AI if session felt complete
+  askAIBeforeEnd();
+}
+
+async function askAIBeforeEnd(){
+  micBtn.className="v-micbtn off";typeInp.disabled=true;sendBtn.disabled=true;
+  const tid=addMsg("ai","",true);
+  try{
+    const res=await fetch(`${API}/chat`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${TOKEN}`},body:JSON.stringify({message:"The user wants to end the session now.",system:`You are Mentorix. The user wants to end the session. Based on the conversation so far, do you feel you have enough to give them useful career guidance?
+
+If YES — say a warm goodbye, summarise in 1 sentence what you'll recommend, and end with [[SATISFIED]].
+If NO — ask one final important question you still need answered, end with [[NEEDS_MORE]].
+
+Keep it to 2 sentences max.`,history:convo.slice(-6)})});
+    const d=await res.json();removeMsg(tid);
+    const reply=(d.reply||"").trim();
+    const satisfied=reply.includes("[[SATISFIED]]");
+    const clean=reply.replace("[[SATISFIED]]","").replace("[[NEEDS_MORE]]","").trim();
+    addMsg("ai",clean);
+    if(satisfied){
+      speak(clean,()=>endSession(true));
+    } else {
+      speak(clean,()=>{
+        enableInput();
+        // Show a "End anyway" option
+        const row=document.createElement("div");
+        row.style.cssText="text-align:center;padding:8px;";
+        const btn=document.createElement("button");
+        btn.style.cssText="padding:7px 18px;border-radius:8px;border:1px solid rgba(255,79,109,0.4);background:transparent;color:#ff4f6d;font-size:12px;cursor:pointer;font-family:'JetBrains Mono',monospace;";
+        btn.textContent="End anyway";
+        btn.onclick=()=>{row.remove();endSessionWithPenalty();};
+        row.appendChild(btn);vChat.appendChild(row);vChat.scrollTop=vChat.scrollHeight;
+      });
+    }
+  }catch(e){removeMsg(tid);endSession(true);}
+}
+
+function endSessionWithPenalty(){
+  // Store honor penalty flag
+  localStorage.setItem("mentorix_honor_penalty","early_exit");
+  endSession(false);
+}
 document.addEventListener("keydown",e=>{if(e.code==="Space"&&active&&!speaking&&mode==="voice"){e.preventDefault();toggleMic();}if(e.code==="Escape")confirmEnd();});
 </script>
 </body>
