@@ -237,8 +237,9 @@
         const res  = await fetch(`${API}/auth/google/login`);
         const data = await res.json();
         const url  = data.url || data.auth_url || "";
-        document.getElementById("googleLoginBtn").href  = url;
-        document.getElementById("googleSignupBtn").href = url;
+        // Direct link — no fetch needed, avoids CORS entirely
+document.getElementById("googleLoginBtn").href  = `${API}/auth/google/login`;
+document.getElementById("googleSignupBtn").href = `${API}/auth/google/login`;
       } catch(e) {
         ["googleLoginBtn","googleSignupBtn"].forEach(id => {
           document.getElementById(id).addEventListener("click", e => {
@@ -325,8 +326,13 @@
         localStorage.setItem("mentorix_email", email);
         redirectAfterLogin(data.token);
       } catch(e) {
-        showMsg("loginMsg", "Could not connect. Try again.", "error");
-        btn.disabled = false; btn.textContent = "Sign In →";
+  showMsg("loginMsg", "Server is waking up — please wait 30 seconds and try again.", "error");
+  btn.disabled = false; btn.textContent = "Sign In →";
+  // Auto-retry once after 30s
+  setTimeout(() => {
+    showMsg("loginMsg", "Retrying...", "success");
+    emailLogin();
+      }, 30000);
       }
     }
 
