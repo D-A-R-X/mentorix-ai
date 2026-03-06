@@ -39,6 +39,9 @@ logging.basicConfig(
 logger = logging.getLogger("mentorix-api")
 
 init_db()
+try:
+    from database import migrate_voice_sessions; migrate_voice_sessions()
+except: pass
 migrate_db()
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "model", "risk_model.pkl")
@@ -754,10 +757,13 @@ async def chat_endpoint(
         logger.exception(f"chat failed: {e}")
         raise HTTPException(status_code=502, detail="Chat failed")
 class VoiceSession(BaseModel):
-    transcript:     str
-    summary:        str
+    transcript:     str = ""
+    summary:        str = ""
     tab_warnings:   int = 0
     exchange_count: int = 0
+    scores:         dict = {}
+    overall:        int  = 0
+    mode:           str  = "voice"
 
 @app.post("/voice/save")
 async def save_voice_session(
@@ -767,17 +773,46 @@ async def save_voice_session(
     try:
         conn = get_connection()
         cur  = conn.cursor()
+        import json as _json
         cur.execute("""
             INSERT INTO voice_sessions
-              (email, transcript, summary, tab_warnings, exchange_count, created_at)
-            VALUES (%s, %s, %s, %s, %s, NOW())
+              (email, transcript, summary, tab_warnings, exchange_count, scores, overall_score, mode, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
         """, (current_user, data.transcript, data.summary,
-              data.tab_warnings, data.exchange_count))
+              data.tab_warnings, data.exchange_count,
+              _json.dumps(data.scores), data.overall, data.mode))
         conn.commit(); cur.close(); conn.close()
         return {"message": "Voice session saved."}
     except Exception as e:
         logger.warning(f"voice save failed: {e}")
         return {"message": "Saved with warning."}
+
+
+@app.get("/user/sessions")
+async def get_user_sessions(current_user: str = Depends(get_current_user)):
+    try:
+        conn = get_connection(); cur = conn.cursor()
+        cur.execute("""
+            SELECT summary, tab_warnings, exchange_count, scores, overall_score, mode, created_at
+            FROM voice_sessions WHERE email=%s ORDER BY created_at DESC LIMIT 10
+        """, (current_user,))
+        rows = cur.fetchall(); cur.close(); conn.close()
+        import json as _json
+        sessions = []
+        for r in rows:
+            sessions.append({
+                "summary":        r[0] or "",
+                "tab_warnings":   r[1] or 0,
+                "exchange_count": r[2] or 0,
+                "scores":         _json.loads(r[3]) if r[3] else {},
+                "overall_score":  r[4] or 0,
+                "mode":           r[5] or "voice",
+                "created_at":     r[6].isoformat() if r[6] else ""
+            })
+        return {"sessions": sessions}
+    except Exception as e:
+        logger.warning(f"get sessions failed: {e}")
+        return {"sessions": []}
 
 if __name__ == "__main__":
     import uvicorn
