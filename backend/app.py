@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field, EmailStr
 import pickle
+from llm_client import call_llm
 import numpy as np
 from assessment import get_all_questions, score_assessment
 from database import init_db, save_assessment, get_user_history, create_user, get_user_by_email
@@ -702,6 +703,14 @@ async def chat_endpoint(
     data: ChatRequest,
     current_user: str = Depends(get_current_user)
 ):
+    messages = [{"role": m["role"], "content": m["content"]} for m in (data.history or [])]
+    messages.append({"role": "user", "content": data.message})
+    
+    reply = await call_llm(messages, system=data.system or "", max_tokens=300, timeout=10.0)
+    if not reply:
+        raise HTTPException(status_code=503, detail="AI service unavailable")
+    return {"reply": reply}
+
     groq_api_key = os.getenv("GROQ_API_KEY", "")
     if not groq_api_key:
         raise HTTPException(status_code=503, detail="Chat not available")

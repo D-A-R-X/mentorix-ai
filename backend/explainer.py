@@ -1,7 +1,7 @@
 import os
 import logging
 from typing import Dict, Any, Optional
-
+from llm_client import call_llm
 logger = logging.getLogger("mentorix-api")
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
@@ -120,55 +120,11 @@ async def generate_explanation(data: Dict[str, Any]) -> Optional[str]:
         return None
 
     try:
-        import httpx
-
-        # Pass courses from recommendation into prompt data
-        rec = data.get("recommendation", {})
-        data["courses"] = rec.get("courses", [])
-
-        prompt = build_explanation_prompt(data)
-
-        async with httpx.AsyncClient(timeout=8.0) as client:
-            res = await client.post(
-                GROQ_URL,
-                headers={
-                    "Authorization": f"Bearer {GROQ_API_KEY}",
-                    "Content-Type":  "application/json",
-                },
-                json={
-                    "model":       GROQ_MODEL,
-                    "max_tokens":  250,
-                    "temperature": 0.65,
-                    "messages": [
-                        {
-                            "role":    "system",
-                            "content": "You are Mentorix, a direct and warm AI career mentor. You write short, clear, actionable career reports. You never write more than 120 words. You always end with exactly 3 action items under 'This week:'. No markdown. No bullet points with dashes. Plain text only."
-                        },
-                        {
-                            "role":    "user",
-                            "content": prompt
-                        }
-                    ]
-                }
-            )
-
-        if res.status_code != 200:
-            logger.error(f"Groq API error: {res.status_code} {res.text[:200]}")
-            return None
-
-        body = res.json()
-        text = (
-            body
-            .get("choices", [{}])[0]
-            .get("message", {})
-            .get("content", "")
-            .strip()
-        )
-        logger.info(f"Groq explanation generated: {len(text)} chars")
-        return text if text else None
-
+        messages = [{"role": "user", "content": prompt}]
+        text = await call_llm(messages, system="", max_tokens=300, timeout=8.0)
+        return text
     except Exception as e:
-        logger.exception(f"explanation generation failed: {e}")
+        logger.warning(f"explanation failed: {e}")
         return None
 
 
