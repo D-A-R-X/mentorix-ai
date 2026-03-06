@@ -519,13 +519,12 @@ def validate_engine(
     }
 
 @app.get("/assessment/questions")
-def get_questions():
-    """Return full question bank for the frontend."""
-    questions = get_all_questions()
-    return {
-        "total":     len(questions),
-        "questions": questions,
-    }
+def get_questions(
+    department: str = "",
+    current_user: str = Depends(get_current_user)
+):
+    questions = get_all_questions(department)
+    return {"total": len(questions), "questions": questions}
 
 
 @app.post("/assessment/submit")
