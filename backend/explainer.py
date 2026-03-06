@@ -13,12 +13,13 @@ def build_explanation_prompt(data: Dict[str, Any]) -> str:
     risk          = data.get("risk_level", "Unknown")
     stability     = data.get("stability_index", 0)
     trend         = data.get("trend", "unknown")
-    track         = data.get("track", "unknown").replace("_", " ")
+    track         = data.get("track", "unknown").replace("_", " ").title()
     career_dir    = data.get("career_direction", "")
     volatility    = data.get("volatility", 0)
     scores        = data.get("assessment_scores", {})
     history_count = len(data.get("history", []))
     latency       = data.get("latency_analysis", {})
+    courses       = data.get("courses", [])
 
     labels = {
         "tech": "Technical", "core": "Core Engineering",
@@ -26,59 +27,104 @@ def build_explanation_prompt(data: Dict[str, Any]) -> str:
         "decision_style": "Decision Style"
     }
 
+    # Find top scoring domain
+    top_domain = "technical"
+    top_score  = 0
     score_lines = []
     for k, s in scores.items():
         val = s.get("normalized", 0) if isinstance(s, dict) else s
         score_lines.append(f"  {labels.get(k, k)}: {val}/5")
+        if val > top_score:
+            top_score  = val
+            top_domain = labels.get(k, k)
     scores_text = "\n".join(score_lines) if score_lines else "  Not available"
 
-    latency_text = ""
+    # Latency signal
+    decisiveness = ""
     if latency:
-        avg_ms  = latency.get("avg_response_time_ms", 0)
-        hes     = latency.get("hesitation_score", 1.0)
-        avg_sec = round(avg_ms / 1000, 1)
+        hes = latency.get("hesitation_score", 1.0)
+        avg_sec = round(latency.get("avg_response_time_ms", 0) / 1000, 1)
         if hes < 1.5:
-            latency_text = f"Response timing shows decisiveness (avg {avg_sec}s per question), suggesting strong internal alignment."
+            decisiveness = f"You answered quickly and decisively (avg {avg_sec}s) — strong internal clarity."
         elif hes < 2.5:
-            latency_text = f"Response timing shows moderate deliberation (avg {avg_sec}s per question), suggesting thoughtful decision-making."
+            decisiveness = f"You took your time answering (avg {avg_sec}s) — thoughtful but some uncertainty present."
         else:
-            latency_text = f"Response timing shows high deliberation (avg {avg_sec}s per question), suggesting some career uncertainty."
+            decisiveness = f"You hesitated on many questions (avg {avg_sec}s) — suggests career direction is still forming."
 
-    return f"""You are Mentorix AI's explanation engine. Translate structured behavioral data into a clear, personal explanation. You never make decisions — the engine already made them. You only narrate what the data shows.
+    # Trend signal
+    trend_line = ""
+    if trend == "improving":
+        trend_line = f"Your stability is improving across {history_count} sessions — you're moving in the right direction."
+    elif trend == "declining":
+        trend_line = f"Your stability has been declining across {history_count} sessions — worth reflecting on what's changed."
+    elif trend == "stable":
+        trend_line = f"Your career thinking is consistent across {history_count} sessions — stable foundation."
+    else:
+        trend_line = "This is your first scan — your baseline has been set."
 
-Write exactly 3 short paragraphs. No headers. No bullet points. No markdown. Plain text only.
+    # First course recommendation
+    first_course = ""
+    if courses:
+        c = courses[0]
+        first_course = f'→ Start "{c.get("title","")}" on {c.get("provider","")}'
+    else:
+        first_course = "→ Explore the recommended courses in your dashboard"
 
-Paragraph 1 — Behavioral strengths: What the domain scores reveal about this person's inclinations.
-Paragraph 2 — Career alignment: Why the recommended track fits their behavioral pattern.
-Paragraph 3 — Stability and risk: What stability index, trend, and risk level mean right now.
+    return f"""You are Mentorix, a direct and warm AI career mentor. Your job is to give this person a clear, simple, actionable career report. 
 
-Tone: Confident, direct, warm. Like a mentor who respects the person's intelligence. Be specific to this data. Do not write generic career advice.
+Rules:
+- Write like a mentor texting a friend — warm, direct, no jargon
+- Never use bullet points with dashes inside paragraphs
+- Use → only for action items
+- Maximum 4 short sections
+- Be specific to the data — no generic advice
+- End with exactly 3 action items labeled "This week:"
 
-DATA:
+Here is the person's behavioral data:
 Risk Level: {risk}
-Stability Index: {round(stability * 100, 1)}%
+Stability: {round(stability * 100, 1)}%
 Trend: {trend}
-Volatility: {"High" if volatility > 0.0002 else "Low"}
 Recommended Track: {track}
 Career Direction: {career_dir}
+Top Domain: {top_domain} ({top_score}/5)
 Sessions completed: {history_count}
+Volatility: {"high" if volatility > 0.0002 else "low"}
 
 Domain Scores:
 {scores_text}
 
-{f"Behavioral timing: {latency_text}" if latency_text else ""}
+{f"Decision pattern: {decisiveness}" if decisiveness else ""}
+{trend_line}
 
-Write the 3 paragraphs now. Be specific to this data."""
+Write the report in this EXACT format — no deviations:
+
+[One sentence about their strongest behavioral signal and what it means]
+
+Recommended path: {track}
+[One or two sentences on why this track fits them specifically based on their scores]
+
+[One sentence on their stability trend and what it means for them right now]
+
+This week:
+{first_course}
+→ [One specific skill-building action related to their track — be concrete]
+→ Return for your next scan in 30 days to measure your progress
+
+Keep the entire response under 120 words. Be specific. Be human."""
 
 
 async def generate_explanation(data: Dict[str, Any]) -> Optional[str]:
-    """Call Groq to generate personalized explanation. Returns text or None."""
+    """Call Groq to generate mentor-style explanation. Returns text or None."""
     if not GROQ_API_KEY:
         logger.warning("GROQ_API_KEY not set — skipping explanation")
         return None
 
     try:
         import httpx
+
+        # Pass courses from recommendation into prompt data
+        rec = data.get("recommendation", {})
+        data["courses"] = rec.get("courses", [])
 
         prompt = build_explanation_prompt(data)
 
@@ -91,12 +137,12 @@ async def generate_explanation(data: Dict[str, Any]) -> Optional[str]:
                 },
                 json={
                     "model":       GROQ_MODEL,
-                    "max_tokens":  400,
-                    "temperature": 0.7,
+                    "max_tokens":  250,
+                    "temperature": 0.65,
                     "messages": [
                         {
                             "role":    "system",
-                            "content": "You are Mentorix AI's explanation engine. You translate structured behavioral data into clear, warm, specific 3-paragraph explanations. No markdown. No headers. Plain text only."
+                            "content": "You are Mentorix, a direct and warm AI career mentor. You write short, clear, actionable career reports. You never write more than 120 words. You always end with exactly 3 action items under 'This week:'. No markdown. No bullet points with dashes. Plain text only."
                         },
                         {
                             "role":    "user",
@@ -126,6 +172,24 @@ async def generate_explanation(data: Dict[str, Any]) -> Optional[str]:
         return None
 
 
+def parse_tasks_from_explanation(explanation: str) -> list:
+    """Extract 'This week:' tasks from AI explanation as a list."""
+    if not explanation:
+        return []
+    tasks = []
+    in_tasks = False
+    for line in explanation.split("\n"):
+        line = line.strip()
+        if "this week" in line.lower():
+            in_tasks = True
+            continue
+        if in_tasks and line.startswith("→"):
+            task = line.lstrip("→").strip()
+            if task:
+                tasks.append(task)
+    return tasks
+
+
 def score_latency(latency_data: Dict[str, int]) -> Dict[str, Any]:
     """
     latency_data: { "question_id": response_time_ms, ... }
@@ -140,7 +204,6 @@ def score_latency(latency_data: Dict[str, int]) -> Dict[str, Any]:
 
     avg_ms   = sum(times) / len(times)
     baseline = 3000
-
     mean     = avg_ms
     variance = sum((t - mean) ** 2 for t in times) / len(times)
     std_dev  = variance ** 0.5

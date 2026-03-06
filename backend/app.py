@@ -16,6 +16,7 @@ from database import init_db, save_assessment, get_user_history, create_user, ge
 from risk_explanation import build_risk_explanation
 from recommender import generate_recommendations
 from career_mapper import infer_career_direction
+from explainer import parse_tasks_from_explanation
 from auth import hash_password, verify_password, create_token, extract_email_from_token
 from validator import compute_baseline_rule, compute_consistency_score, compute_alignment_score
 from auth import (hash_password, verify_password, create_token,
@@ -521,6 +522,7 @@ async def submit_assessment(
 
     # Generate AI explanation (async, non-blocking fallback)
     ai_explanation = await generate_explanation(result_for_explanation)
+    weekly_tasks = parse_tasks_from_explanation(ai_explanation or "")
     full_result = {
         "risk_level": risk, "stability_score": round(stability_index, 2),
         "stability_index": stability_index, "trend": trend,
@@ -548,6 +550,7 @@ async def submit_assessment(
         "summary":           explanation_data.get("summary", ""),
         "ai_explanation":    ai_explanation,          # ← NEW
         "recommendation":    recommendation,
+        "weekly_tasks": weekly_tasks,   # ← ADD THIS
         "career_direction":  career_direction,
         "insight":           insight,
         "decision_scores":   recommendation["decision_scores"],
