@@ -1149,6 +1149,15 @@ async function startAssessment() {
       answers = {}; latencyData = {}; currentDomain = 0;
       const savedProfile = localStorage.getItem("mentorix_profile");
       if (savedProfile) {
+        try {
+          const p = JSON.parse(savedProfile);
+          if(p.status) document.querySelectorAll(".role-btn").forEach(b=>{ if(b.dataset.value===p.status) b.click(); });
+          if(p.dept)     { const s=document.getElementById("dept");     if(s){s.value=p.dept;    s.dispatchEvent(new Event('change'));} }
+          if(p.year)     { const s=document.getElementById("year");     if(s) s.value=p.year; }
+          if(p.sem)      { const s=document.getElementById("sem");      if(s) s.value=p.sem;  }
+          if(p.cgpa)     { const s=document.getElementById("cgpa");     if(s) s.value=p.cgpa; }
+          if(p.backlogs!==undefined){ const s=document.getElementById("backlogs"); if(s) s.value=p.backlogs; }
+        } catch(e){}
         // Returning user — skip profile, go straight to scan
         if (!allQuestions.length) loadQuestions().then(() => {
           showStep("step-questions");
