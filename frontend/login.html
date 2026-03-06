@@ -232,24 +232,8 @@
     fetch(`${API}/health`).catch(()=>{});
 
     // Setup Google buttons
-    async function setupGoogleBtn() {
-      try {
-        const res  = await fetch(`${API}/auth/google/login`);
-        const data = await res.json();
-        const url  = data.url || data.auth_url || "";
-        // Direct link — no fetch needed, avoids CORS entirely
-document.getElementById("googleLoginBtn").href  = `${API}/auth/google/login`;
-document.getElementById("googleSignupBtn").href = `${API}/auth/google/login`;
-      } catch(e) {
-        ["googleLoginBtn","googleSignupBtn"].forEach(id => {
-          document.getElementById(id).addEventListener("click", e => {
-            e.preventDefault();
-            showMsg("loginMsg","Could not connect to server. Try again in a moment.","error");
-          });
-        });
-      }
-    }
-    setupGoogleBtn();
+    document.getElementById("googleLoginBtn").href  = `${API}/auth/google/login`;
+    document.getElementById("googleSignupBtn").href = `${API}/auth/google/login`;
 
     // Handle Google OAuth callback
     const params = new URLSearchParams(window.location.search);
