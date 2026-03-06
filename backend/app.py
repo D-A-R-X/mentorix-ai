@@ -545,21 +545,14 @@ async def submit_assessment(
 
     # Build StudentInput
     student_data = StudentInput(
-        cgpa=data.cgpa,
-        backlogs=data.backlogs,
-        tech_interest=engine_inputs["tech_interest"],
-        core_interest=engine_inputs["core_interest"],
-        management_interest=engine_inputs["management_interest"],
-        confidence=engine_inputs["confidence"],
-        career_changes=engine_inputs["career_changes"],
-        decision_time=engine_inputs["decision_time"],
-        current_status=data.current_status,
-        years_experience=data.years_experience,
-        current_job_role=data.current_job_role,
-        industry=data.industry,
-        current_course=data.current_course,
+        cgpa=data.cgpa, backlogs=data.backlogs,
+        tech_interest=round(engine_inputs["tech_interest"]),
+        core_interest=round(engine_inputs["core_interest"]),
+        management_interest=round(engine_inputs["management_interest"]),
+        confidence=round(engine_inputs["confidence"]),
+        career_changes=round(engine_inputs["career_changes"]),
+        decision_time=round(engine_inputs["decision_time"]),
     )
-
     features = normalize_input(student_data)
 
     try:
