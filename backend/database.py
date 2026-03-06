@@ -3,7 +3,7 @@ import os
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 
-DB_NAME = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mentorix.db")
+DB_NAME = os.environ.get("DB_PATH", "/data/mentorix.db")
 
 def get_connection():
     conn = sqlite3.connect(DB_NAME)
