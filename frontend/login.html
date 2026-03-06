@@ -146,24 +146,22 @@
         showLoading("Signed in! Loading your dashboard...");
 
         // Check if user has prior assessments — if yes go to dashboard, if no go to assessment
-        fetch(`${API}/courses/progress`,{headers:{"Authorization":`Bearer ${token}`}})
-          .then(r=>r.json())
-          .then(()=>{
-            // Has account — check for assessment history
-            return fetch(`${API}/analyze-risk`,{
-              method:"POST",
-              headers:{"Content-Type":"application/json","Authorization":`Bearer ${token}`},
-              body:JSON.stringify({cgpa:0,backlogs:0,tech_interest:3,core_interest:3,management_interest:3,confidence:3,career_changes:0,decision_time:6,current_status:"student"})
-            });
-          })
-          .then(()=>{
-            // Returning user with data — go to dashboard
-            const lastResult=localStorage.getItem("mentorix_last_result");
-            window.location.href=lastResult?"index.html":"assessment.html";
-          })
-          .catch(()=>{
-            window.location.href="assessment.html";
-          });
+        // Check backend for existing scan history — never rely on localStorage
+fetch(`${API}/user/history`, {
+  headers: {"Authorization": `Bearer ${token}`}
+})
+  .then(r => r.json())
+  .then(data => {
+    // If user has prior assessments go to dashboard, otherwise assessment
+    if (data.history && data.history.length > 0) {
+      window.location.href = "index.html";
+    } else {
+      window.location.href = "assessment.html";
+    }
+  })
+  .catch(() => {
+    window.location.href = "assessment.html";
+  });
 
         window.history.replaceState({},"","/login.html");
         return;
