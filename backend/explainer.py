@@ -128,7 +128,7 @@ async def generate_explanation(data: Dict[str, Any]) -> Optional[str]:
 
         prompt = build_explanation_prompt(data)
 
-        async with httpx.AsyncClient(timeout=20.0) as client:
+        async with httpx.AsyncClient(timeout=8.0) as client:
             res = await client.post(
                 GROQ_URL,
                 headers={
