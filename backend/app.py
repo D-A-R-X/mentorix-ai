@@ -267,6 +267,26 @@ def get_google_redirect_uri(request):
     host = str(request.base_url).rstrip("/")
     return f"{host}/auth/google/callback"
 
+class UpdateNameRequest(BaseModel):
+    name: str
+
+@app.post("/auth/update-name")
+async def update_name(
+    data: UpdateNameRequest,
+    current_user: str = Depends(get_current_user)
+):
+    if len(data.name.strip()) < 2:
+        raise HTTPException(status_code=400, detail="Name too short")
+    conn = get_connection()
+    cur  = conn.cursor()
+    cur.execute(
+        "UPDATE users SET name = %s WHERE email = %s",
+        (data.name.strip(), current_user)
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {"ok": True}
 
 @app.get("/auth/google/login")
 def google_login(request: Request):
