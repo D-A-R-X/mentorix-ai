@@ -341,7 +341,10 @@ def get_progress(current_user: str = Depends(get_current_user)):
         "completions": completions,
         "stats":       stats,
     }
-
+@app.get("/user/history")
+def user_history(current_user: str = Depends(get_current_user)):
+    history = get_user_history(current_user)
+    return {"history": history, "count": len(history)}
 # ── Protected Routes ─────────────────────────────────────────────
 @app.post("/analyze-risk")
 def analyze_risk(
