@@ -357,7 +357,7 @@ document.addEventListener("DOMContentLoaded", function() {
         localStorage.setItem("mentorix_token", data.token);
         localStorage.setItem("mentorix_name",  name);
         localStorage.setItem("mentorix_email", email);
-        setTimeout(() => window.location.href = "assessment.html", 1000);
+        setTimeout(() => window.location.href = "onboarding.html", 1000);
       } catch(e) {
         showMsg("signupMsg", "Could not connect. Try again.", "error");
         btn.disabled = false; btn.textContent = "Create Account →";
