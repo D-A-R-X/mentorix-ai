@@ -205,7 +205,7 @@ function showChoice() {
   const sub=document.getElementById("obSub"); sub.textContent="Choose how you'd like to begin your career scan."; sub.style.display="block";
   const area=document.getElementById("obInputArea"); area.innerHTML="";
   const g=document.createElement("div"); g.className="choice-grid";
-  [{icon:"🎙️",title:"Voice Session",desc:"Talk naturally with Mentorix AI. She'll guide you through your career scan by conversation.",href:"voice.html"},{icon:"📋",title:"Written Scan",desc:"Answer 25 behavioral questions at your own pace. Takes about 5 minutes.",href:"assessment.html"}].forEach(c=>{
+  [{icon:"🎙️",title:"Voice Session",desc:"Talk naturally with Mentorix AI. She'll guide you through your career scan by conversation.",href:"voice.html"},{icon:"📊",title:"View Dashboard",desc:"See your AI analysis and career insights on your dashboard.",href:"index.html"}].forEach(c=>{
     const d=document.createElement("div"); d.className="choice-card";
     d.innerHTML=`<div class="choice-icon">${c.icon}</div><div class="choice-title">${c.title}</div><div class="choice-desc">${c.desc}</div>`;
     d.onclick=()=>{ saveProfile(c.href); };

@@ -418,7 +418,7 @@ function removeMessage(id) {
         <div class="user-chip"><div class="user-dot"></div><span id="userLabel">–</span></div>
         <a class="nav-pill" href="voice.html">🎙 Voice Session</a>
         <a class="nav-pill" href="hr-mode.html">⚔ HR Mode</a>
-        <a class="nav-pill" href="assessment.html">Retake Scan</a>
+        
         <button class="nav-pill cta" onclick="logout()">Sign Out</button>
       </nav>
     </div>
@@ -626,7 +626,7 @@ function removeMessage(id) {
     <div style="text-align:center;padding:24px 0">
       <div style="font-size:13px;color:var(--muted);font-weight:300;line-height:1.8">
         Behavioral profile available after your next scan.<br>
-        <a href="assessment.html" style="color:var(--purple);font-family:'JetBrains Mono',monospace;font-size:11px">Retake scan →</a>
+        
       </div>
     </div>`;
   return Object.entries(scores).map(([k,s])=>{
@@ -726,7 +726,7 @@ function removeMessage(id) {
           <span>📈</span>
           Complete more scans to see your career trajectory.
           <br><br>
-          <a href="assessment.html" style="color:var(--purple);font-family:'JetBrains Mono',monospace;font-size:12px;">Run another scan →</a>
+          
         </div>`;
       }
       return`<div class="timeline-list">
@@ -799,7 +799,7 @@ function removeMessage(id) {
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <a href="voice.html" style="padding:10px 18px;border-radius:10px;background:rgba(124,77,255,0.12);border:1px solid rgba(124,77,255,0.25);color:#b08dff;font-size:13px;text-decoration:none;font-family:'Syne',sans-serif;font-weight:600">🎙 New Voice Session</a>
             <a href="hr-mode.html" style="padding:10px 18px;border-radius:10px;background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.25);color:#e74c3c;font-size:13px;text-decoration:none;font-family:'Syne',sans-serif;font-weight:600">⚔ Retry HR Mode</a>
-            <a href="assessment.html" style="padding:10px 18px;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid #1a1030;color:#6b7280;font-size:13px;text-decoration:none;font-family:'Syne',sans-serif">📋 Written Scan</a>
+            
           </div>
         </div>`;
     }
@@ -833,7 +833,7 @@ function removeMessage(id) {
         <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:16px">
           <a class="empty-btn" href="voice.html" style="background:rgba(124,77,255,0.15);border:1px solid rgba(124,77,255,0.3);color:#b08dff">🎙 Voice Session</a>
           <a class="empty-btn" href="hr-mode.html" style="background:rgba(192,57,43,0.12);border:1px solid rgba(192,57,43,0.3);color:#e74c3c">⚔ HR Mode</a>
-          <a class="empty-btn" href="assessment.html">📋 Written Scan</a>
+          
         </div>
       </div>`;
     return;
@@ -849,7 +849,7 @@ function removeMessage(id) {
         <div class="empty-icon">⚠️</div>
         <div class="empty-title">Something went wrong</div>
         <div class="empty-sub">Could not load your dashboard. Try running a new scan.</div>
-        <a class="empty-btn" href="assessment.html">Start Scan →</a>
+        
       </div>`;
   }
 }
