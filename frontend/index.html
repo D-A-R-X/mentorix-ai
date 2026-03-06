@@ -366,17 +366,23 @@
     }
 
     function renderProfileBars(scores){
-      const labels={tech:"Tech",core:"Core Eng",management:"Management",confidence:"Confidence",decision_style:"Decision"};
-      if(!scores||!Object.keys(scores).length)return'<p style="font-size:13px;color:var(--muted)">No data yet.</p>';
-      return Object.entries(scores).map(([k,s])=>{
-        const val=s.normalized||0,pct=(val/5)*100;
-        return`<div class="profile-bar-row">
-          <span class="pb-label">${labels[k]||k}</span>
-          <div class="pb-track"><div class="pb-fill" style="width:${pct}%"></div></div>
-          <span class="pb-val">${val}/5</span>
-        </div>`;
-      }).join("");
-    }
+  const labels={tech:"Tech",core:"Core Eng",management:"Management",confidence:"Confidence",decision_style:"Decision"};
+  if(!scores||!Object.keys(scores).length) return`
+    <div style="text-align:center;padding:24px 0">
+      <div style="font-size:13px;color:var(--muted);font-weight:300;line-height:1.8">
+        Behavioral profile available after your next scan.<br>
+        <a href="assessment.html" style="color:var(--purple);font-family:'JetBrains Mono',monospace;font-size:11px">Retake scan →</a>
+      </div>
+    </div>`;
+  return Object.entries(scores).map(([k,s])=>{
+    const val=s.normalized||0,pct=(val/5)*100;
+    return`<div class="profile-bar-row">
+      <span class="pb-label">${labels[k]||k}</span>
+      <div class="pb-track"><div class="pb-fill" style="width:${pct}%"></div></div>
+      <span class="pb-val">${val}/5</span>
+    </div>`;
+  }).join("");
+}
 
     function renderCourses(courses,track){
       if(!courses||!courses.length)return'<p style="font-size:13px;color:var(--muted)">No courses found.</p>';

@@ -388,7 +388,7 @@ def analyze_risk(
     )
     career_direction, insight = infer_career_direction(data)
 
-    save_assessment(user_email, risk, stability_index, recommendation["track"])
+    save_assessment(current_user, risk, stability_index, recommendation["track"], scan_result=None)
 
     return {
         "risk_level":       risk,
@@ -521,7 +521,20 @@ async def submit_assessment(
 
     # Generate AI explanation (async, non-blocking fallback)
     ai_explanation = await generate_explanation(result_for_explanation)
-
+    full_result = {
+        "risk_level": risk, "stability_score": round(stability_index, 2),
+        "stability_index": stability_index, "trend": trend,
+        "volatility": volatility, "track_flips": track_flips,
+        "summary": explanation_data.get("summary", ""),
+        "ai_explanation": ai_explanation,
+        "recommendation": recommendation,
+        "career_direction": career_direction,
+        "insight": insight,
+        "decision_scores": recommendation["decision_scores"],
+        "history": history, "assessment_scores": scored["raw_scores"],
+        "engine_inputs": engine_inputs, "latency_analysis": latency_analysis,
+    }
+    save_assessment(current_user, risk, stability_index, recommendation["track"], scan_result=full_result)
     logger.info(f"scan submitted user={current_user} track={recommendation['track']} latency_decisiveness={latency_analysis.get('decisiveness','n/a')}")
 
     return {
@@ -553,43 +566,38 @@ async def get_latest_scan(current_user: str = Depends(get_current_user)):
     if not history:
         raise HTTPException(status_code=404, detail="No scan found")
     latest = history[0]
-    # Rebuild a minimal result the dashboard can render
-    track = latest["track"]
-    risk  = latest["risk_level"]
-    stability_index = latest["stability_score"]
+    # If full result was stored, return it directly
+    if latest.get("scan_result"):
+        result = latest["scan_result"]
+        result["history"] = get_user_history(current_user)
+        return result
+    # Fallback for old records without scan_result
     all_history = get_user_history(current_user)
-    trend     = compute_trend(all_history)
+    trend      = compute_trend(all_history)
     volatility = compute_volatility(all_history)
     track_flips = compute_track_instability(all_history)
     student_data = StudentInput(
-        cgpa=0, backlogs=0,
-        tech_interest=3, core_interest=3, management_interest=3,
-        confidence=3, career_changes=0, decision_time=6,
-        current_status="student"
+        cgpa=0, backlogs=0, tech_interest=3, core_interest=3,
+        management_interest=3, confidence=3, career_changes=0,
+        decision_time=6, current_status="student"
     )
-    recommendation = generate_recommendations(
-        student_data.model_dump(), risk, stability_index,
+    recommendation  = generate_recommendations(
+        student_data.model_dump(), latest["risk_level"], latest["stability_score"],
         trend, volatility, track_flips, all_history
     )
     career_direction, insight = infer_career_direction(student_data)
-    explanation_data = build_risk_explanation(student_data, risk)
+    explanation_data = build_risk_explanation(student_data, latest["risk_level"])
     return {
-        "risk_level":       risk,
-        "stability_score":  round(stability_index, 2),
-        "stability_index":  stability_index,
-        "trend":            trend,
-        "volatility":       volatility,
-        "track_flips":      track_flips,
-        "summary":          explanation_data.get("summary", ""),
-        "ai_explanation":   None,
-        "recommendation":   recommendation,
-        "career_direction": career_direction,
-        "insight":          insight,
-        "decision_scores":  recommendation["decision_scores"],
-        "history":          all_history,
-        "assessment_scores":{},
-        "engine_inputs":    {},
-        "latency_analysis": {},
+        "risk_level": latest["risk_level"],
+        "stability_score": round(latest["stability_score"], 2),
+        "stability_index": latest["stability_score"],
+        "trend": trend, "volatility": volatility, "track_flips": track_flips,
+        "summary": explanation_data.get("summary", ""),
+        "ai_explanation": None, "recommendation": recommendation,
+        "career_direction": career_direction, "insight": insight,
+        "decision_scores": recommendation["decision_scores"],
+        "history": all_history, "assessment_scores": {},
+        "engine_inputs": {}, "latency_analysis": {},
     }
 # ── Run ──────────────────────────────────────────────────────────
 if __name__ == "__main__":
