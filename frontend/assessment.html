@@ -1147,8 +1147,23 @@ async function startAssessment() {
     }
     function retakeAssessment() {
       answers = {}; latencyData = {}; currentDomain = 0;
-      showStep("step-profile");
-      updateProgress();
+      const savedProfile = localStorage.getItem("mentorix_profile");
+      if (savedProfile) {
+        // Returning user — skip profile, go straight to scan
+        if (!allQuestions.length) loadQuestions().then(() => {
+          showStep("step-questions");
+          renderDomain(0);
+          updateProgress();
+        });
+        else {
+          showStep("step-questions");
+          renderDomain(0);
+          updateProgress();
+        }
+      } else {
+        showStep("step-profile");
+        updateProgress();
+      }
     }
 
     loadQuestions();
