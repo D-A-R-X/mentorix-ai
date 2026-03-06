@@ -420,37 +420,116 @@
     <div class="step active" id="step-profile">
       <div class="step-label">Step 1 of 3 — Profile</div>
       <h1 class="step-title">Tell us about yourself</h1>
-      <p class="step-sub">Basic profile info helps calibrate your results. Takes 30 seconds.</p>
+      <p class="step-sub">Your profile helps calibrate results. Saved after first scan — never asked again.</p>
 
       <div class="profile-grid">
-        <div class="field">
-          <label>Current Status</label>
-          <select id="profileStatus">
-            <option value="student">Student</option>
-            <option value="working_professional">Working Professional</option>
-            <option value="career_switcher">Career Switcher</option>
+
+        <!-- Status — always shown -->
+        <div class="field span2">
+          <label>I am currently a</label>
+          <div class="status-toggle" id="statusToggle">
+            <button class="stog-btn active" data-val="student" onclick="setStatus('student',this)">🎓 Student</button>
+            <button class="stog-btn" data-val="working_professional" onclick="setStatus('working_professional',this)">💼 Professional</button>
+            <button class="stog-btn" data-val="career_switcher" onclick="setStatus('career_switcher',this)">🔄 Career Switcher</button>
+          </div>
+          <input type="hidden" id="profileStatus" value="student">
+        </div>
+
+        <!-- ── STUDENT FIELDS ── -->
+        <div class="field" id="deptField">
+          <label>Department / Branch</label>
+          <select id="profileDept">
+            <option value="">Select department</option>
+            <option value="CSE">Computer Science Engineering</option>
+            <option value="IT">Information Technology</option>
+            <option value="ECE">Electronics & Communication</option>
+            <option value="EEE">Electrical & Electronics</option>
+            <option value="MECH">Mechanical Engineering</option>
+            <option value="CIVIL">Civil Engineering</option>
+            <option value="CHEM">Chemical Engineering</option>
+            <option value="BIO">Biotechnology</option>
+            <option value="AIDS">AI & Data Science</option>
+            <option value="AIML">AI & Machine Learning</option>
+            <option value="OTHER">Other</option>
           </select>
         </div>
+
+        <div class="field" id="yearField">
+          <label>Current Year</label>
+          <select id="profileYear">
+            <option value="">Select year</option>
+            <option value="1">1st Year</option>
+            <option value="2">2nd Year</option>
+            <option value="3">3rd Year</option>
+            <option value="4">4th Year</option>
+          </select>
+        </div>
+
+        <div class="field" id="semField">
+          <label>Current Semester</label>
+          <select id="profileSem">
+            <option value="">Select semester</option>
+            <option value="1">Semester 1</option>
+            <option value="2">Semester 2</option>
+            <option value="3">Semester 3</option>
+            <option value="4">Semester 4</option>
+            <option value="5">Semester 5</option>
+            <option value="6">Semester 6</option>
+            <option value="7">Semester 7</option>
+            <option value="8">Semester 8</option>
+          </select>
+        </div>
+
         <div class="field" id="cgpaField">
-          <label>CGPA <span style="color:var(--muted);font-weight:400;text-transform:none">(0–10)</span></label>
+          <label>CGPA <span style="color:var(--muted);font-weight:400">(0–10)</span></label>
           <input type="number" id="profileCgpa" min="0" max="10" step="0.1" placeholder="8.5">
         </div>
+
         <div class="field" id="backlogsField">
           <label>Active Backlogs</label>
           <input type="number" id="profileBacklogs" min="0" placeholder="0">
         </div>
+
+        <!-- ── PROFESSIONAL FIELDS ── -->
         <div class="field" id="expField" style="display:none">
           <label>Years of Experience</label>
           <input type="number" id="profileExp" min="0" placeholder="3">
         </div>
-        <div class="field span2" id="roleField" style="display:none">
-          <label>Current Role / Industry</label>
-          <input type="text" id="profileRole" placeholder="e.g. Software Engineer at FinTech">
+
+        <div class="field" id="roleField" style="display:none">
+          <label>Current Role</label>
+          <input type="text" id="profileRole" placeholder="e.g. Software Engineer">
         </div>
+
+        <div class="field" id="industryField" style="display:none">
+          <label>Industry</label>
+          <select id="profileIndustry">
+            <option value="">Select industry</option>
+            <option value="tech">Technology / IT</option>
+            <option value="finance">Finance / Banking</option>
+            <option value="healthcare">Healthcare</option>
+            <option value="manufacturing">Manufacturing</option>
+            <option value="education">Education</option>
+            <option value="consulting">Consulting</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <!-- ── CAREER SWITCHER FIELDS ── -->
+        <div class="field" id="currentFieldDiv" style="display:none">
+          <label>Current Field</label>
+          <input type="text" id="profileCurrentField" placeholder="e.g. Mechanical Engineering">
+        </div>
+
+        <div class="field" id="targetFieldDiv" style="display:none">
+          <label>Target Field</label>
+          <input type="text" id="profileTargetField" placeholder="e.g. Data Science">
+        </div>
+
       </div>
 
       <div class="nav-row">
-        <button class="nav-btn primary" onclick="startAssessment()">Begin Assessment →</button>
+        <button class="nav-btn primary" onclick="startAssessment()">Begin Scan →</button>
       </div>
       <div class="feedback" id="profileFeedback"></div>
     </div>
@@ -617,6 +696,16 @@
       font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple);
       line-height:1.6;
     }
+    .status-toggle{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+    .stog-btn{
+     padding:10px 18px;border-radius:10px;border:1px solid var(--border-dark);
+    background:transparent;cursor:pointer;font-family:'DM Sans',sans-serif;
+    font-size:13px;color:var(--muted);transition:all 0.18s;
+  }
+.stog-btn:hover{border-color:var(--purple);color:var(--purple)}
+.stog-btn.active{background:var(--purple);color:#fff;border-color:var(--purple);box-shadow:0 2px 12px rgba(108,59,206,0.3)}
+.span2{grid-column:span 2}
+@media(max-width:600px){.span2{grid-column:span 1}.status-toggle{flex-direction:column}}
 
     /* ── AI Explanation ──────────────────────────────────── */
     .ai-explanation{
@@ -768,19 +857,72 @@
       } catch (e) { console.error("Failed to load questions", e); }
     }
 
-    async function startAssessment() {
-      const status = document.getElementById("profileStatus").value;
-      if (status === "student") {
-        const cgpa = parseFloat(document.getElementById("profileCgpa").value);
-        if (!cgpa || isNaN(cgpa)) {
-          showFeedback("profileFeedback", "Please enter your CGPA.", "error"); return;
-        }
-      }
-      if (!allQuestions.length) await loadQuestions();
-      showStep("step-questions");
-      renderDomain(0);
-      updateProgress();
-    }
+    async function setStatus(val, btn) {
+  document.getElementById("profileStatus").value = val;
+  document.querySelectorAll(".stog-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+
+  const isStudent  = val === "student";
+  const isPro      = val === "working_professional";
+  const isSwitcher = val === "career_switcher";
+
+  // Student fields
+  ["deptField","yearField","semField","cgpaField","backlogsField"].forEach(id => {
+    document.getElementById(id).style.display = isStudent ? "" : "none";
+  });
+  // Pro fields
+  ["expField","roleField","industryField"].forEach(id => {
+    document.getElementById(id).style.display = isPro ? "" : "none";
+  });
+  // Switcher fields
+  ["currentFieldDiv","targetFieldDiv","expField"].forEach(id => {
+    document.getElementById(id).style.display = isSwitcher ? "" : "none";
+  });
+}
+
+// Load saved profile for returning users
+function loadSavedProfile() {
+  const saved = localStorage.getItem("mentorix_profile");
+  if (!saved) return;
+  try {
+    const p = JSON.parse(saved);
+    if (p.status)   { setStatus(p.status, document.querySelector(`[data-val="${p.status}"]`)||document.querySelector(".stog-btn")); }
+    if (p.dept)     document.getElementById("profileDept").value     = p.dept;
+    if (p.year)     document.getElementById("profileYear").value     = p.year;
+    if (p.sem)      document.getElementById("profileSem").value      = p.sem;
+    if (p.cgpa)     document.getElementById("profileCgpa").value     = p.cgpa;
+    if (p.backlogs !== undefined) document.getElementById("profileBacklogs").value = p.backlogs;
+    if (p.exp)      document.getElementById("profileExp").value      = p.exp;
+    if (p.role)     document.getElementById("profileRole").value     = p.role;
+  } catch(e) {}
+}
+
+async function startAssessment() {
+  const status   = document.getElementById("profileStatus").value;
+  const cgpa     = parseFloat(document.getElementById("profileCgpa").value) || 0;
+  const backlogs = parseInt(document.getElementById("profileBacklogs").value) || 0;
+  const dept     = document.getElementById("profileDept")?.value || "";
+  const year     = document.getElementById("profileYear")?.value || "";
+  const sem      = document.getElementById("profileSem")?.value || "";
+
+  if (status === "student") {
+    if (!dept) { showFeedback("profileFeedback", "Please select your department.", "error"); return; }
+    if (!year) { showFeedback("profileFeedback", "Please select your current year.", "error"); return; }
+    if (!cgpa) { showFeedback("profileFeedback", "Please enter your CGPA.", "error"); return; }
+  }
+
+  // Save profile locally so returning users don't re-enter
+  localStorage.setItem("mentorix_profile", JSON.stringify({
+    status, cgpa, backlogs, dept, year, sem,
+    exp:  document.getElementById("profileExp")?.value || 0,
+    role: document.getElementById("profileRole")?.value || "",
+  }));
+
+  if (!allQuestions.length) await loadQuestions();
+  showStep("step-questions");
+  renderDomain(0);
+  updateProgress();
+}
 
     function renderDomain(index) {
       currentDomain = index;

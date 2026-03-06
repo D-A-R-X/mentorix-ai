@@ -609,6 +609,63 @@ async def get_latest_scan(current_user: str = Depends(get_current_user)):
         "history": all_history, "assessment_scores": {},
         "engine_inputs": {}, "latency_analysis": {},
     }
+
+# ═══════════════════════════════════════════════════════════════
+# ADD this to backend/app.py — before the # ── Run ── line
+# ═══════════════════════════════════════════════════════════════
+
+class ChatRequest(BaseModel):
+    message: str
+    system:  str = ""
+    history: list = []
+
+@app.post("/chat")
+async def chat_endpoint(
+    data: ChatRequest,
+    current_user: str = Depends(get_current_user)
+):
+    groq_api_key = os.getenv("GROQ_API_KEY", "")
+    if not groq_api_key:
+        raise HTTPException(status_code=503, detail="Chat not available")
+
+    messages = []
+    if data.system:
+        messages.append({"role": "system", "content": data.system})
+
+    # Add conversation history (max last 6 messages)
+    for h in data.history[-6:]:
+        if isinstance(h, dict) and h.get("role") in ("user", "assistant"):
+            messages.append({"role": h["role"], "content": h["content"]})
+
+    messages.append({"role": "user", "content": data.message})
+
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            res = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {groq_api_key}",
+                    "Content-Type":  "application/json",
+                },
+                json={
+                    "model":       "llama-3.1-8b-instant",
+                    "max_tokens":  200,
+                    "temperature": 0.7,
+                    "messages":    messages,
+                }
+            )
+        if res.status_code != 200:
+            raise HTTPException(status_code=502, detail="Chat service error")
+
+        body  = res.json()
+        reply = body["choices"][0]["message"]["content"].strip()
+        logger.info(f"chat user={current_user} tokens={body.get('usage',{}).get('total_tokens',0)}")
+        return {"reply": reply}
+
+    except Exception as e:
+        logger.exception(f"chat failed: {e}")
+        raise HTTPException(status_code=502, detail="Chat failed")
 # ── Run ──────────────────────────────────────────────────────────
 if __name__ == "__main__":
     import uvicorn
