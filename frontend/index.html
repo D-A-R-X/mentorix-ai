@@ -460,7 +460,7 @@ function removeMessage(id) {
           body:JSON.stringify({course_title:courseTitle,course_url:courseUrl,provider,track,status})
         });
         courseProgressData[courseUrl]=status;
-        const encodedUrl=btoa(courseUrl).replace(/[^a-zA-Z0-9]/g,"").substring(0,12);
+        const encodedUrl=btoa(courseUrl).replace(/[^a-zA-Z0-9]/g,"");
         const doneBtn=document.getElementById(`done-${encodedUrl}`);
         if(doneBtn){doneBtn.className="track-btn status-completed";doneBtn.textContent="✅ Done";}
         updateProgressDisplay();
@@ -640,7 +640,7 @@ function removeMessage(id) {
     function renderCourses(courses,track){
       if(!courses||!courses.length)return'<p style="font-size:13px;color:var(--muted)">No courses found.</p>';
       return courses.map((c,i)=>{
-        const encodedUrl=btoa(c.url).replace(/[^a-zA-Z0-9]/g,"").substring(0,12);
+        const encodedUrl=btoa(c.url).replace(/[^a-zA-Z0-9]/g,"");
         const status=courseProgressData[c.url]||"none";
         const certBadge=c.certificate?`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--accent);border:1px solid rgba(0,229,180,0.3);padding:2px 6px;border-radius:4px;margin-left:6px">CERT</span>`:"";
         const safeTitle=c.title.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
