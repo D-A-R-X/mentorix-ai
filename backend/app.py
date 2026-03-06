@@ -649,11 +649,6 @@ async def submit_assessment(
         "engine_inputs":     engine_inputs,
         "latency_analysis":  latency_analysis,        # ← NEW
     }
-@app.get("/assessment/questions")
-def get_questions(current_user: str = Depends(get_current_user)):
-    questions = get_all_questions()
-    return {"total": len(questions), "questions": questions}
-@app.get("/user/latest-scan")
 async def get_latest_scan(current_user: str = Depends(get_current_user)):
     history = get_user_history(current_user, limit=1)
     if not history:
@@ -749,7 +744,7 @@ async def chat_endpoint(
     except Exception as e:
         logger.exception(f"chat failed: {e}")
         raise HTTPException(status_code=502, detail="Chat failed")
-# ── Run ──────────────────────────────────────────────────────────
+
 if __name__ == "__main__":
     import uvicorn
     is_render = os.getenv("RENDER") is not None
