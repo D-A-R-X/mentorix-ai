@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+from pydantic import BaseModel, EmailStr
 from typing import Optional,Dict
 from assessment import get_all_questions, score_assessment
 from fastapi import FastAPI, HTTPException, Request, Depends
@@ -307,7 +308,70 @@ async def google_callback(code: str = None, error: str = None, request: Request 
         f"&name={name}"
         f"&provider=google"
     )
+class RegisterRequest(BaseModel):
+    name:     str
+    email:    EmailStr
+    password: str
 
+class LoginRequest(BaseModel):
+    email:    EmailStr
+    password: str
+
+@app.post("/auth/register")
+async def register(data: RegisterRequest):
+    import bcrypt
+    # Check if user exists
+    existing = get_user_by_email(data.email)
+    if existing:
+        raise HTTPException(status_code=400, detail="An account with this email already exists. Please sign in.")
+
+    if len(data.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
+    if len(data.name.strip()) < 2:
+        raise HTTPException(status_code=400, detail="Please enter your full name.")
+
+    # Hash password
+    pw_hash = bcrypt.hashpw(data.password.encode(), bcrypt.gensalt()).decode()
+
+    created = create_user(
+        email=data.email,
+        password_hash=pw_hash,
+        name=data.name.strip(),
+        auth_provider="email"
+    )
+    if not created:
+        raise HTTPException(status_code=500, detail="Could not create account. Try again.")
+
+    token = create_access_token(data.email)
+    logger.info(f"new user registered email={data.email}")
+    return {"token": token, "name": data.name.strip(), "email": data.email}
+
+
+@app.post("/auth/login")
+async def login(data: LoginRequest):
+    import bcrypt
+    user = get_user_by_email(data.email)
+    if not user:
+        raise HTTPException(status_code=401, detail="No account found with this email. Please create an account.")
+
+    if user.get("auth_provider") == "google":
+        raise HTTPException(status_code=400, detail="This email uses Google sign-in. Please use Continue with Google.")
+
+    pw_hash = user.get("password_hash", "")
+    if not pw_hash:
+        raise HTTPException(status_code=401, detail="Invalid credentials.")
+
+    try:
+        valid = bcrypt.checkpw(data.password.encode(), pw_hash.encode())
+    except Exception:
+        valid = False
+
+    if not valid:
+        raise HTTPException(status_code=401, detail="Incorrect password. Please try again.")
+
+    token = create_access_token(data.email)
+    logger.info(f"user logged in email={data.email}")
+    return {"token": token, "name": user.get("name") or data.email.split("@")[0], "email": data.email}
 
 # ── Course completion routes ─────────────────────────────────────
 

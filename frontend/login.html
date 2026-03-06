@@ -9,63 +9,115 @@
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{
-      --bg:#0b0914;--surface:#120f1e;--border:rgba(108,59,206,0.2);
+      --bg:#0b0914;--surface:#120f1e;--surface2:#1a1530;
+      --border:rgba(108,59,206,0.2);--border-focus:rgba(124,77,255,0.5);
       --purple:#7c4dff;--purple-dim:#5b35c0;--purple-glow:rgba(124,77,255,0.12);
       --accent:#00e5b4;--white:#f0ecff;--muted:#7a748e;--text:#d4cee8;
       --red:#ff5f6d;--green:#00e5b4;
     }
-    body{background:var(--bg);font-family:'DM Sans',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;color:var(--text)}
-
+    body{background:var(--bg);font-family:'DM Sans',sans-serif;min-height:100vh;
+      display:flex;align-items:center;justify-content:center;padding:24px;color:var(--text)}
     .ambient{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
     .orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:0.1}
     .orb1{width:500px;height:500px;background:var(--purple);top:-150px;left:-100px}
     .orb2{width:350px;height:350px;background:var(--accent);bottom:-100px;right:-80px}
 
-    .card{position:relative;z-index:1;background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:44px 40px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.4);animation:fadeUp 0.4s ease both}
+    .card{
+      position:relative;z-index:1;background:var(--surface);
+      border:1px solid var(--border);border-radius:22px;
+      padding:40px 36px;width:100%;max-width:400px;
+      box-shadow:0 20px 60px rgba(0,0,0,0.4);
+      animation:fadeUp 0.4s ease both;
+    }
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 
-    .logo{display:flex;align-items:center;gap:10px;margin-bottom:36px;justify-content:center}
-    .logo-mark{width:40px;height:40px;background:var(--purple);border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:#fff;box-shadow:0 0 24px rgba(124,77,255,0.4)}
-    .logo-text{font-family:'Syne',sans-serif;font-weight:700;font-size:20px;color:var(--white)}
+    /* Logo */
+    .logo{display:flex;align-items:center;gap:10px;margin-bottom:28px;justify-content:center}
+    .logo-mark{width:38px;height:38px;background:var(--purple);border-radius:10px;
+      display:flex;align-items:center;justify-content:center;
+      font-family:'Syne',sans-serif;font-weight:800;font-size:19px;color:#fff;
+      box-shadow:0 0 24px rgba(124,77,255,0.4)}
+    .logo-text{font-family:'Syne',sans-serif;font-weight:700;font-size:19px;color:var(--white)}
     .logo-text em{font-style:normal;color:var(--purple)}
 
-    .headline{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:var(--white);text-align:center;margin-bottom:8px;line-height:1.2}
-    .subline{font-size:13px;color:var(--muted);text-align:center;font-weight:300;line-height:1.6;margin-bottom:32px}
+    /* Tab toggle */
+    .auth-tabs{display:flex;background:rgba(255,255,255,0.04);border:1px solid var(--border);
+      border-radius:10px;padding:3px;margin-bottom:24px}
+    .auth-tab{flex:1;padding:8px;border-radius:7px;border:none;background:transparent;
+      font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;
+      color:var(--muted);cursor:pointer;transition:all 0.18s}
+    .auth-tab.active{background:var(--purple);color:#fff;box-shadow:0 2px 10px rgba(124,77,255,0.3)}
+
+    /* Headline */
+    .auth-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;
+      color:var(--white);text-align:center;margin-bottom:6px}
+    .auth-sub{font-size:13px;color:var(--muted);text-align:center;
+      font-weight:300;margin-bottom:24px;line-height:1.6}
 
     /* Google button */
     .google-btn{
+      width:100%;padding:13px 20px;border-radius:12px;
+      border:1px solid var(--border);background:var(--surface2);
       display:flex;align-items:center;justify-content:center;gap:12px;
-      width:100%;padding:14px 20px;border-radius:12px;
-      background:var(--white);color:#1a1030;
-      border:none;cursor:pointer;font-family:'Syne',sans-serif;
-      font-size:15px;font-weight:700;
-      box-shadow:0 4px 20px rgba(0,0,0,0.3);
-      transition:all 0.2s;text-decoration:none;
+      font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;
+      color:var(--white);cursor:pointer;transition:all 0.2s;
+      text-decoration:none;
     }
-    .google-btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,0.4)}
-    .google-btn:active{transform:translateY(0)}
-    .google-btn svg{width:20px;height:20px;flex-shrink:0}
+    .google-btn:hover{border-color:var(--border-focus);background:rgba(124,77,255,0.08);
+      box-shadow:0 4px 16px rgba(124,77,255,0.15)}
+    .google-icon{width:18px;height:18px;flex-shrink:0}
 
-    .divider{display:flex;align-items:center;gap:12px;margin:24px 0;color:var(--muted);font-size:12px;font-family:'JetBrains Mono',monospace}
+    /* Divider */
+    .divider{display:flex;align-items:center;gap:12px;margin:18px 0}
     .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+    .divider span{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;white-space:nowrap}
 
-    /* Features list */
-    .features{display:flex;flex-direction:column;gap:10px;margin-bottom:28px}
-    .feature{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);font-weight:300}
-    .feature-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;box-shadow:0 0 6px var(--accent)}
+    /* Form fields */
+    .field{margin-bottom:14px}
+    .field label{display:block;font-size:12px;font-family:'JetBrains Mono',monospace;
+      color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+    .field input{
+      width:100%;padding:11px 14px;border-radius:10px;
+      border:1px solid var(--border);background:var(--surface2);
+      font-family:'DM Sans',sans-serif;font-size:14px;color:var(--white);
+      outline:none;transition:border-color 0.18s;
+    }
+    .field input:focus{border-color:var(--border-focus);box-shadow:0 0 0 3px rgba(124,77,255,0.1)}
+    .field input::placeholder{color:var(--muted)}
 
-    /* Loading state */
-    .loading-state{display:none;text-align:center;padding:20px 0}
-    .spinner{display:inline-block;width:28px;height:28px;border:2px solid rgba(124,77,255,0.2);border-top-color:var(--purple);border-radius:50%;animation:spin 0.7s linear infinite;margin-bottom:12px}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .loading-text{font-size:13px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+    /* Submit button */
+    .submit-btn{
+      width:100%;padding:13px;border-radius:12px;border:none;
+      background:var(--purple);color:#fff;font-family:'Syne',sans-serif;
+      font-size:14px;font-weight:700;cursor:pointer;
+      transition:all 0.2s;box-shadow:0 4px 16px rgba(124,77,255,0.3);
+      margin-top:4px;
+    }
+    .submit-btn:hover{background:var(--purple-dim);transform:translateY(-1px)}
+    .submit-btn:disabled{opacity:0.6;cursor:not-allowed;transform:none}
 
     /* Error / success */
-    .feedback{padding:12px 16px;border-radius:10px;font-size:13px;margin-top:16px;display:none;text-align:center;line-height:1.5}
-    .feedback.error{background:rgba(255,95,109,0.08);border:1px solid rgba(255,95,109,0.25);color:var(--red);display:block}
-    .feedback.success{background:rgba(0,229,180,0.08);border:1px solid rgba(0,229,180,0.25);color:var(--green);display:block}
+    .msg{
+      margin-top:14px;padding:10px 14px;border-radius:8px;
+      font-size:13px;text-align:center;display:none;
+    }
+    .msg.error{background:rgba(255,95,109,0.1);border:1px solid rgba(255,95,109,0.3);color:var(--red)}
+    .msg.success{background:rgba(0,229,180,0.1);border:1px solid rgba(0,229,180,0.3);color:var(--green)}
+    .msg.show{display:block}
 
-    .footer-note{text-align:center;margin-top:24px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);opacity:0.6}
+    /* Features */
+    .features{margin-top:24px;padding-top:20px;border-top:1px solid var(--border);
+      display:flex;flex-direction:column;gap:8px}
+    .feature{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);font-weight:300}
+    .feature-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0}
+
+    .forgot{text-align:right;margin-top:-8px;margin-bottom:14px}
+    .forgot a{font-size:12px;color:var(--muted);text-decoration:none;
+      font-family:'JetBrains Mono',monospace;transition:color 0.15s}
+    .forgot a:hover{color:var(--purple)}
+
+    .footer-note{text-align:center;margin-top:20px;font-size:11px;color:var(--muted);
+      font-family:'JetBrains Mono',monospace}
   </style>
 </head>
 <!-- Vercel Analytics tracking script -->
@@ -80,38 +132,92 @@
     <div class="orb orb2"></div>
   </div>
 
-  <div class="card" id="mainCard">
+  <div class="card">
     <div class="logo">
       <div class="logo-mark">M</div>
       <span class="logo-text">Mentorix <em>AI</em></span>
     </div>
 
-    <h1 class="headline">Career Intelligence<br>for Engineers</h1>
-    <p class="subline">Behavioral assessment that tells you where you're heading — not just what you're good at.</p>
+    <!-- Tab toggle -->
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin" onclick="switchTab('login')">Sign In</button>
+      <button class="auth-tab" id="tabSignup" onclick="switchTab('signup')">Create Account</button>
+    </div>
 
+    <!-- LOGIN VIEW -->
+    <div id="viewLogin">
+      <div class="auth-title">Welcome back</div>
+      <div class="auth-sub">Sign in to access your Career Intelligence dashboard</div>
+
+      <!-- Google -->
+      <a class="google-btn" id="googleLoginBtn" href="#">
+        <svg class="google-icon" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        Continue with Google
+      </a>
+
+      <div class="divider"><span>or sign in with email</span></div>
+
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password"
+          onkeydown="if(event.key==='Enter')emailLogin()">
+      </div>
+      <div class="forgot"><a href="#" onclick="showForgot()">Forgot password?</a></div>
+
+      <button class="submit-btn" id="loginBtn" onclick="emailLogin()">Sign In →</button>
+      <div class="msg" id="loginMsg"></div>
+    </div>
+
+    <!-- SIGNUP VIEW -->
+    <div id="viewSignup" style="display:none">
+      <div class="auth-title">Create your account</div>
+      <div class="auth-sub">Join Mentorix — free behavioral career intelligence</div>
+
+      <a class="google-btn" id="googleSignupBtn" href="#">
+        <svg class="google-icon" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        Sign up with Google
+      </a>
+
+      <div class="divider"><span>or create with email</span></div>
+
+      <div class="field">
+        <label>Full Name</label>
+        <input type="text" id="signupName" placeholder="Your name" autocomplete="name">
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="signupEmail" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label>Password <span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">(min 8 characters)</span></label>
+        <input type="password" id="signupPassword" placeholder="••••••••" autocomplete="new-password"
+          onkeydown="if(event.key==='Enter')emailSignup()">
+      </div>
+
+      <button class="submit-btn" id="signupBtn" onclick="emailSignup()">Create Account →</button>
+      <div class="msg" id="signupMsg"></div>
+    </div>
+
+    <!-- Features -->
     <div class="features">
-      <div class="feature"><div class="feature-dot"></div><span>25-question behavioral assessment</span></div>
+      <div class="feature"><div class="feature-dot"></div><span>Career Intelligence Scan — 25 behavioral questions</span></div>
       <div class="feature"><div class="feature-dot"></div><span>AI-powered career direction analysis</span></div>
-      <div class="feature"><div class="feature-dot"></div><span>Free courses with certificates</span></div>
-      <div class="feature"><div class="feature-dot"></div><span>Track your progress over time</span></div>
+      <div class="feature"><div class="feature-dot"></div><span>Free certified courses + progress tracking</span></div>
     </div>
-
-    <a class="google-btn" href="#" id="googleBtn" onclick="handleGoogleLogin(event)">
-      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-      </svg>
-      Continue with Google
-    </a>
-
-    <div class="loading-state" id="loadingState">
-      <div class="spinner"></div>
-      <div class="loading-text" id="loadingText">Redirecting to Google...</div>
-    </div>
-
-    <div class="feedback" id="feedback"></div>
 
     <div class="footer-note">Mentorix AI · Behavioral Career Intelligence</div>
   </div>
@@ -119,88 +225,150 @@
   <script>
     function getApiBaseUrl(){
       const h=window.location.hostname;
-      if(h.includes("github.dev")||h.includes("app.github.dev")){const s=h.replace(/-5500\./,"-8000.").replace(/-5500-/,"-8000-");if(s!==h)return`https://${s}`;}
+      if(h.includes("github.dev")||h.includes("app.github.dev")){
+        const s=h.replace(/-5500\./,"-8000.").replace(/-5500-/,"-8000-");
+        if(s!==h)return`https://${s}`;
+      }
       if(h==="localhost"||h==="127.0.0.1")return"http://127.0.0.1:8000";
       return"https://mentorix-ai-backend.onrender.com";
     }
-    const API=getApiBaseUrl();
+    const API = getApiBaseUrl();
 
-    // ── Handle token from Google callback redirect ──────────────
-    function checkGoogleCallback(){
-      const params=new URLSearchParams(window.location.search);
-      const token=params.get("token");
-      const email=params.get("email");
-      const name=params.get("name");
-      const error=params.get("error");
-      const provider=params.get("provider");
+    // Wake up backend
+    fetch(`${API}/health`).catch(()=>{});
 
-      if(error){
-        showFeedback(
-          error==="google_cancelled"?"Google sign-in was cancelled. Try again.":"Google sign-in failed. Please try again.",
-          "error"
-        );
-        // Clean URL
-        window.history.replaceState({},"","/login.html");
-        return;
-      }
-
-      if(token&&email){
-        localStorage.setItem("mentorix_token",token);
-        localStorage.setItem("mentorix_email",decodeURIComponent(email));
-        localStorage.setItem("mentorix_name",decodeURIComponent(name||email.split("@")[0]));
-
-        showLoading("Signed in! Loading your dashboard...");
-
-        // Check if user has prior assessments — if yes go to dashboard, if no go to assessment
-        // Check backend for existing scan history — never rely on localStorage
-fetch(`${API}/user/history`, {
-  headers: {"Authorization": `Bearer ${token}`}
-})
-  .then(r => r.json())
-  .then(data => {
-    // If user has prior assessments go to dashboard, otherwise assessment
-    if (data.history && data.history.length > 0) {
-      window.location.href = "index.html";
-    } else {
-      window.location.href = "assessment.html";
-    }
-  })
-  .catch(() => {
-    window.location.href = "assessment.html";
-  });
-
-        window.history.replaceState({},"","/login.html");
-        return;
+    // Setup Google buttons
+    async function setupGoogleBtn() {
+      try {
+        const res  = await fetch(`${API}/auth/google/login`);
+        const data = await res.json();
+        const url  = data.url || data.auth_url || "";
+        document.getElementById("googleLoginBtn").href  = url;
+        document.getElementById("googleSignupBtn").href = url;
+      } catch(e) {
+        ["googleLoginBtn","googleSignupBtn"].forEach(id => {
+          document.getElementById(id).addEventListener("click", e => {
+            e.preventDefault();
+            showMsg("loginMsg","Could not connect to server. Try again in a moment.","error");
+          });
+        });
       }
     }
+    setupGoogleBtn();
 
-    function handleGoogleLogin(e){
-      e.preventDefault();
-      showLoading("Redirecting to Google...");
-      window.location.href=`${API}/auth/google/login`;
+    // Handle Google OAuth callback
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("token")) {
+      const token = params.get("token");
+      const name  = params.get("name") || "User";
+      const email = params.get("email") || "";
+      localStorage.setItem("mentorix_token", token);
+      localStorage.setItem("mentorix_name",  name);
+      localStorage.setItem("mentorix_email", email);
+      window.history.replaceState({}, "", "/login.html");
+      redirectAfterLogin(token);
+    }
+    if (params.get("error")) {
+      showMsg("loginMsg", "Google sign-in failed. Please try again.", "error");
     }
 
-    function showLoading(text){
-      document.getElementById("mainCard").querySelector(".features").style.display="none";
-      document.getElementById("googleBtn").style.display="none";
-      document.getElementById("loadingState").style.display="block";
-      document.getElementById("loadingText").textContent=text||"Loading...";
+    async function redirectAfterLogin(token) {
+      try {
+        const res  = await fetch(`${API}/user/history`, {
+          headers: {"Authorization": `Bearer ${token}`}
+        });
+        const data = await res.json();
+        window.location.href = (data.history && data.history.length > 0)
+          ? "index.html" : "assessment.html";
+      } catch(e) {
+        window.location.href = "assessment.html";
+      }
     }
 
-    function showFeedback(msg,type){
-      const el=document.getElementById("feedback");
-      el.textContent=msg;
-      el.className=`feedback ${type}`;
+    // Tab switching
+    function switchTab(tab) {
+      const isLogin = tab === "login";
+      document.getElementById("tabLogin").classList.toggle("active", isLogin);
+      document.getElementById("tabSignup").classList.toggle("active", !isLogin);
+      document.getElementById("viewLogin").style.display  = isLogin ? "" : "none";
+      document.getElementById("viewSignup").style.display = isLogin ? "none" : "";
     }
 
-    // ── Redirect if already logged in ──────────────────────────
-    const existingToken=localStorage.getItem("mentorix_token");
-    if(existingToken&&!window.location.search.includes("token")&&!window.location.search.includes("error")){
-      window.location.href="index.html";
+    // Email login
+    async function emailLogin() {
+      const email    = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value;
+      if (!email || !password) {
+        showMsg("loginMsg", "Please enter your email and password.", "error"); return;
+      }
+      const btn = document.getElementById("loginBtn");
+      btn.disabled = true; btn.textContent = "Signing in...";
+
+      try {
+        const res  = await fetch(`${API}/auth/login`, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({email, password})
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showMsg("loginMsg", data.detail || "Invalid email or password.", "error");
+          btn.disabled = false; btn.textContent = "Sign In →"; return;
+        }
+        localStorage.setItem("mentorix_token", data.token);
+        localStorage.setItem("mentorix_name",  data.name || email.split("@")[0]);
+        localStorage.setItem("mentorix_email", email);
+        redirectAfterLogin(data.token);
+      } catch(e) {
+        showMsg("loginMsg", "Could not connect. Try again.", "error");
+        btn.disabled = false; btn.textContent = "Sign In →";
+      }
     }
 
-    // Check for Google callback params on page load
-    checkGoogleCallback();
+    // Email signup
+    async function emailSignup() {
+      const name     = document.getElementById("signupName").value.trim();
+      const email    = document.getElementById("signupEmail").value.trim();
+      const password = document.getElementById("signupPassword").value;
+
+      if (!name)                        { showMsg("signupMsg","Please enter your name.","error"); return; }
+      if (!email)                       { showMsg("signupMsg","Please enter your email.","error"); return; }
+      if (password.length < 8)          { showMsg("signupMsg","Password must be at least 8 characters.","error"); return; }
+
+      const btn = document.getElementById("signupBtn");
+      btn.disabled = true; btn.textContent = "Creating account...";
+
+      try {
+        const res  = await fetch(`${API}/auth/register`, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({name, email, password})
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showMsg("signupMsg", data.detail || "Could not create account.", "error");
+          btn.disabled = false; btn.textContent = "Create Account →"; return;
+        }
+        showMsg("signupMsg", "Account created! Signing you in...", "success");
+        localStorage.setItem("mentorix_token", data.token);
+        localStorage.setItem("mentorix_name",  name);
+        localStorage.setItem("mentorix_email", email);
+        setTimeout(() => window.location.href = "assessment.html", 1000);
+      } catch(e) {
+        showMsg("signupMsg", "Could not connect. Try again.", "error");
+        btn.disabled = false; btn.textContent = "Create Account →";
+      }
+    }
+
+    function showForgot() {
+      showMsg("loginMsg", "Password reset coming soon. Use Google sign-in for now.", "error");
+    }
+
+    function showMsg(id, text, type) {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.className   = `msg ${type} show`;
+    }
   </script>
 </body>
 </html>
