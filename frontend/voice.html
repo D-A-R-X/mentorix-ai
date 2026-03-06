@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mentorix AI — Voice Session</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:       #04030a;
+      --surface:  #0d0b18;
+      --border:   rgba(124,77,255,0.15);
+      --purple:   #7c4dff;
+      --purple2:  #b08dff;
+      --accent:   #00e5b4;
+      --red:      #ff4f6d;
+      --white:    #f0ecff;
+      --muted:    #6b6585;
+      --text:     #c8c2e0;
+    }
+
+    html, body {
+      height: 100%; overflow: hidden;
+      background: var(--bg);
+      font-family: 'DM Sans', sans-serif;
+      color: var(--text);
+      user-select: none;
+    }
+
+    /* ── Ambient background ─────────────────────────────── */
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(124,77,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,77,255,0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+    .bg-glow {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background: radial-gradient(ellipse 60% 40% at 50% 60%, rgba(124,77,255,0.08) 0%, transparent 70%);
+      transition: opacity 0.6s;
+    }
+    .bg-glow.speaking { opacity: 2; }
+
+    /* ── Layout ─────────────────────────────────────────── */
+    .session-wrap {
+      position: relative; z-index: 1;
+      height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: space-between;
+      padding: 24px 24px 32px;
+    }
+
+    /* ── Header ─────────────────────────────────────────── */
+    .session-header {
+      width: 100%; display: flex;
+      align-items: center; justify-content: space-between;
+    }
+    .s-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-family: 'Syne', sans-serif; font-weight: 800;
+      font-size: 16px; color: var(--white);
+    }
+    .s-logo-mark {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--purple);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; box-shadow: 0 0 16px rgba(124,77,255,0.4);
+    }
+    .s-logo em { font-style: normal; color: var(--purple2); }
+
+    .session-status {
+      display: flex; align-items: center; gap: 8px;
+      font-family: 'JetBrains Mono', monospace; font-size: 11px;
+      color: var(--muted);
+    }
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    .status-dot.active {
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+      animation: pulse-dot 1.5s ease infinite;
+    }
+    .status-dot.speaking {
+      background: var(--purple2);
+      box-shadow: 0 0 8px var(--purple2);
+    }
+    @keyframes pulse-dot {
+      0%,100% { opacity:1; transform:scale(1); }
+      50%      { opacity:0.5; transform:scale(0.8); }
+    }
+
+    .end-btn {
+      padding: 7px 16px; border-radius: 8px;
+      border: 1px solid rgba(255,79,109,0.3);
+      background: transparent; cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; color: var(--red);
+      transition: all 0.2s;
+    }
+    .end-btn:hover { background: rgba(255,79,109,0.1); border-color: var(--red); }
+
+    /* ── Spectrum ───────────────────────────────────────── */
+    .spectrum-wrap {
+      flex: 1; width: 100%; max-width: 800px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 32px; position: relative;
+    }
+
+    .ai-avatar {
+      position: relative;
+      width: 100px; height: 100px;
+    }
+    .ai-avatar-ring {
+      position: absolute; inset: -8px; border-radius: 50%;
+      border: 1px solid rgba(124,77,255,0.2);
+      animation: ring-spin 8s linear infinite;
+    }
+    .ai-avatar-ring2 {
+      position: absolute; inset: -16px; border-radius: 50%;
+      border: 1px solid rgba(124,77,255,0.1);
+      animation: ring-spin 12s linear infinite reverse;
+    }
+    @keyframes ring-spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+    .ai-avatar-core {
+      width: 100px; height: 100px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #a478ff, #4c1d95);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif; font-weight: 800;
+      font-size: 36px; color: #fff;
+      box-shadow: 0 0 40px rgba(124,77,255,0.35),
+                  0 0 80px rgba(124,77,255,0.15);
+      transition: box-shadow 0.3s;
+      position: relative; z-index: 1;
+    }
+    .ai-avatar-core.speaking {
+      box-shadow: 0 0 60px rgba(124,77,255,0.6),
+                  0 0 120px rgba(124,77,255,0.25);
+      animation: avatar-pulse 0.6s ease infinite alternate;
+    }
+    @keyframes avatar-pulse {
+      from { transform: scale(1); }
+      to   { transform: scale(1.04); }
+    }
+
+    /* Canvas spectrum */
+    #spectrumCanvas {
+      width: 100%; max-width: 700px;
+      height: 120px; display: block;
+    }
+
+    /* ── Transcript ─────────────────────────────────────── */
+    .transcript-box {
+      width: 100%; max-width: 640px;
+      min-height: 80px; max-height: 140px;
+      overflow-y: auto;
+      padding: 16px 20px;
+      background: rgba(13,11,24,0.8);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      backdrop-filter: blur(12px);
+      text-align: center;
+      scrollbar-width: none;
+    }
+    .transcript-box::-webkit-scrollbar { display: none; }
+
+    .transcript-ai {
+      font-size: 15px; color: var(--white);
+      font-weight: 300; line-height: 1.7;
+      transition: opacity 0.4s;
+    }
+    .transcript-user {
+      font-size: 13px; color: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+      margin-top: 8px; opacity: 0.8;
+    }
+    .transcript-placeholder {
+      font-size: 13px; color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── Mic button ─────────────────────────────────────── */
+    .mic-section {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 12px;
+    }
+    .mic-btn {
+      width: 72px; height: 72px; border-radius: 50%;
+      border: 1px solid var(--border);
+      background: rgba(124,77,255,0.1);
+      cursor: pointer; transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px;
+      box-shadow: 0 0 0 0 rgba(124,77,255,0);
+    }
+    .mic-btn:hover { background: rgba(124,77,255,0.2); border-color: var(--purple); }
+    .mic-btn.listening {
+      background: rgba(124,77,255,0.25);
+      border-color: var(--purple);
+      box-shadow: 0 0 0 8px rgba(124,77,255,0.1),
+                  0 0 0 16px rgba(124,77,255,0.05);
+      animation: mic-ring 1.2s ease infinite;
+    }
+    .mic-btn.disabled { opacity: 0.3; cursor: not-allowed; }
+    @keyframes mic-ring {
+      0%,100% { box-shadow: 0 0 0 0 rgba(124,77,255,0.3), 0 0 0 0 rgba(124,77,255,0.1); }
+      50%      { box-shadow: 0 0 0 12px rgba(124,77,255,0.1), 0 0 0 24px rgba(124,77,255,0.04); }
+    }
+    .mic-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; color: var(--muted);
+      letter-spacing: 1px; text-transform: uppercase;
+    }
+
+    /* ── Progress dots ──────────────────────────────────── */
+    .progress-dots {
+      display: flex; gap: 8px; align-items: center;
+    }
+    .p-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--border); transition: all 0.3s;
+    }
+    .p-dot.done { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+    .p-dot.current { background: var(--purple); box-shadow: 0 0 8px var(--purple); animation: pulse-dot 1s infinite; }
+
+    /* ── Warning banner ─────────────────────────────────── */
+    .warning-banner {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(255,79,109,0.15);
+      border-bottom: 1px solid rgba(255,79,109,0.4);
+      backdrop-filter: blur(8px);
+      padding: 12px 24px;
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      color: var(--red); transform: translateY(-100%);
+      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .warning-banner.show { transform: translateY(0); }
+    .warning-count {
+      background: var(--red); color: #fff;
+      width: 20px; height: 20px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700;
+    }
+
+    /* ── Start overlay ──────────────────────────────────── */
+    .start-overlay {
+      position: fixed; inset: 0; z-index: 50;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 24px; padding: 40px;
+      transition: opacity 0.5s, transform 0.5s;
+    }
+    .start-overlay.hidden {
+      opacity: 0; transform: scale(1.02);
+      pointer-events: none;
+    }
+    .start-title {
+      font-family: 'Syne', sans-serif; font-weight: 800;
+      font-size: clamp(28px, 5vw, 48px);
+      color: var(--white); text-align: center; line-height: 1.2;
+    }
+    .start-title em { font-style: normal; color: var(--purple2); }
+    .start-sub {
+      font-size: 15px; color: var(--muted);
+      text-align: center; max-width: 480px; line-height: 1.7;
+      font-weight: 300;
+    }
+    .start-perms {
+      display: flex; flex-direction: column; gap: 10px;
+      width: 100%; max-width: 340px;
+    }
+    .perm-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(124,77,255,0.04);
+      font-size: 13px; color: var(--text);
+    }
+    .perm-icon { font-size: 18px; }
+    .perm-status {
+      margin-left: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; color: var(--muted);
+    }
+    .perm-status.granted { color: var(--accent); }
+    .start-btn {
+      padding: 16px 48px; border-radius: 14px;
+      background: var(--purple); color: #fff;
+      border: none; cursor: pointer;
+      font-family: 'Syne', sans-serif; font-weight: 800;
+      font-size: 16px;
+      box-shadow: 0 8px 32px rgba(124,77,255,0.4);
+      transition: all 0.2s;
+    }
+    .start-btn:hover { background: #6535e8; transform: translateY(-2px); box-shadow: 0 12px 40px rgba(124,77,255,0.5); }
+    .start-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .start-note {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; color: var(--muted);
+      text-align: center; max-width: 380px; line-height: 1.8;
+    }
+
+    /* ── End overlay ────────────────────────────────────── */
+    .end-overlay {
+      position: fixed; inset: 0; z-index: 50;
+      background: rgba(4,3,10,0.92);
+      backdrop-filter: blur(16px);
+      display: none; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 20px; padding: 40px;
+    }
+    .end-overlay.show { display: flex; }
+    .end-title {
+      font-family: 'Syne', sans-serif; font-weight: 800;
+      font-size: 28px; color: var(--white); text-align: center;
+    }
+    .end-summary {
+      max-width: 520px; background: rgba(13,11,24,0.9);
+      border: 1px solid var(--border); border-radius: 16px;
+      padding: 24px; font-size: 14px; line-height: 1.8;
+      color: var(--text); font-weight: 300;
+      white-space: pre-wrap; max-height: 260px; overflow-y: auto;
+    }
+    .end-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+    .end-btn-primary {
+      padding: 13px 32px; border-radius: 10px;
+      background: var(--purple); color: #fff;
+      border: none; cursor: pointer;
+      font-family: 'Syne', sans-serif; font-weight: 700;
+      font-size: 14px; transition: all 0.2s;
+    }
+    .end-btn-primary:hover { background: #6535e8; }
+    .end-btn-secondary {
+      padding: 13px 32px; border-radius: 10px;
+      background: transparent; color: var(--muted);
+      border: 1px solid var(--border); cursor: pointer;
+      font-family: 'DM Sans', sans-serif; font-size: 14px;
+      transition: all 0.2s;
+    }
+    .end-btn-secondary:hover { border-color: var(--purple); color: var(--white); }
+
+    /* Scrollbar for end summary */
+    .end-summary::-webkit-scrollbar { width: 4px; }
+    .end-summary::-webkit-scrollbar-track { background: transparent; }
+    .end-summary::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    @media(max-width:600px){
+      .session-wrap { padding: 16px 16px 24px; }
+      #spectrumCanvas { height: 80px; }
+      .ai-avatar-core { width: 80px; height: 80px; font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Background -->
+<div class="bg-grid"></div>
+<div class="bg-glow" id="bgGlow"></div>
+
+<!-- Warning banner -->
+<div class="warning-banner" id="warningBanner">
+  <span>⚠ Tab switch detected</span>
+  <div class="warning-count" id="warningCount">1</div>
+  <span>— please stay on this page during your session</span>
+</div>
+
+<!-- Start overlay -->
+<div class="start-overlay" id="startOverlay">
+  <div class="s-logo" style="font-size:20px;gap:12px">
+    <div class="s-logo-mark" style="width:40px;height:40px;font-size:18px">M</div>
+    Mentorix <em>AI</em>
+  </div>
+  <div class="start-title">Your <em>Voice Intelligence</em><br>Session</div>
+  <div class="start-sub">
+    Mentorix will have a real conversation with you — asking about your interests,
+    strengths, and goals. Speak naturally. There are no right or wrong answers.
+  </div>
+  <div class="start-perms">
+    <div class="perm-row">
+      <span class="perm-icon">🎙️</span>
+      <span>Microphone — for your voice</span>
+      <span class="perm-status" id="permMic">Required</span>
+    </div>
+    <div class="perm-row">
+      <span class="perm-icon">🔊</span>
+      <span>Speaker — to hear Mentorix</span>
+      <span class="perm-status granted">Ready</span>
+    </div>
+    <div class="perm-row">
+      <span class="perm-icon">🔒</span>
+      <span>Stay on this tab during session</span>
+      <span class="perm-status" id="permTab">Monitored</span>
+    </div>
+  </div>
+  <button class="start-btn" id="startBtn" onclick="startSession()">Begin Voice Session →</button>
+  <div class="start-note">
+    Session takes 5–8 minutes · Results saved to your dashboard<br>
+    Works best on Chrome or Edge · Keep your mic unmuted
+  </div>
+</div>
+
+<!-- End overlay -->
+<div class="end-overlay" id="endOverlay">
+  <div style="font-size:40px">✦</div>
+  <div class="end-title">Session Complete</div>
+  <div style="font-size:13px;color:var(--muted);font-family:'JetBrains Mono',monospace">
+    Analysis saved to your dashboard
+  </div>
+  <div class="end-summary" id="endSummary">Generating your analysis...</div>
+  <div class="end-actions">
+    <button class="end-btn-primary" onclick="goToDashboard()">View Dashboard →</button>
+    <button class="end-btn-secondary" onclick="window.location.reload()">Start New Session</button>
+  </div>
+</div>
+
+<!-- Main session UI -->
+<div class="session-wrap">
+  <div class="session-header">
+    <div class="s-logo">
+      <div class="s-logo-mark">M</div>
+      Mentorix <em>AI</em>
+    </div>
+    <div class="session-status">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Ready</span>
+    </div>
+    <button class="end-btn" onclick="confirmEnd()">End Session</button>
+  </div>
+
+  <div class="spectrum-wrap">
+    <div class="ai-avatar">
+      <div class="ai-avatar-ring"></div>
+      <div class="ai-avatar-ring2"></div>
+      <div class="ai-avatar-core" id="aiAvatar">M</div>
+    </div>
+
+    <canvas id="spectrumCanvas"></canvas>
+
+    <div class="transcript-box" id="transcriptBox">
+      <div class="transcript-placeholder" id="transcriptPlaceholder">
+        Mentorix is ready to speak with you...
+      </div>
+      <div class="transcript-ai" id="transcriptAi" style="display:none"></div>
+      <div class="transcript-user" id="transcriptUser" style="display:none"></div>
+    </div>
+
+    <div class="progress-dots" id="progressDots"></div>
+  </div>
+
+  <div class="mic-section">
+    <button class="mic-btn disabled" id="micBtn" onclick="toggleMic()">🎙️</button>
+    <div class="mic-label" id="micLabel">Waiting for Mentorix...</div>
+  </div>
+</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────
+function getAPI() {
+  const h = window.location.hostname;
+  if (h === "localhost" || h === "127.0.0.1") return "http://127.0.0.1:8000";
+  return "https://mentorix-ai-backend.onrender.com";
+}
+const API   = getAPI();
+const TOKEN = localStorage.getItem("mentorix_token");
+const NAME  = localStorage.getItem("mentorix_name") || "there";
+
+if (!TOKEN) window.location.href = "login.html";
+
+// ── State ─────────────────────────────────────────────────
+let sessionActive    = false;
+let isListening      = false;
+let isSpeaking       = false;
+let tabWarnings      = 0;
+let questionIndex    = 0;
+let conversationLog  = [];   // [{role, content}]
+let recognition      = null;
+let audioCtx         = null;
+let analyser         = null;
+let micStream        = null;
+let animFrame        = null;
+let currentUtterance = null;
+
+const MAX_WARNINGS   = 3;
+const QUESTIONS_COUNT = 8;
+
+// ── Questions flow ────────────────────────────────────────
+const OPENING = `Hi ${NAME}! I'm Mentorix. I'm going to have a quick conversation with you to understand your interests and help guide your career path. There are no right or wrong answers — just be yourself. Ready? Let's start. Tell me, what are you currently studying and which year are you in?`;
+
+// ── DOM refs ──────────────────────────────────────────────
+const startOverlay   = document.getElementById("startOverlay");
+const endOverlay     = document.getElementById("endOverlay");
+const warningBanner  = document.getElementById("warningBanner");
+const warningCount   = document.getElementById("warningCount");
+const statusDot      = document.getElementById("statusDot");
+const statusText     = document.getElementById("statusText");
+const aiAvatar       = document.getElementById("aiAvatar");
+const bgGlow         = document.getElementById("bgGlow");
+const micBtn         = document.getElementById("micBtn");
+const micLabel       = document.getElementById("micLabel");
+const transcriptAi   = document.getElementById("transcriptAi");
+const transcriptUser = document.getElementById("transcriptUser");
+const transcriptPh   = document.getElementById("transcriptPlaceholder");
+const progressDots   = document.getElementById("progressDots");
+const canvas         = document.getElementById("spectrumCanvas");
+const ctx2d          = canvas.getContext("2d");
+
+// ── Canvas resize ─────────────────────────────────────────
+function resizeCanvas() {
+  canvas.width  = canvas.offsetWidth  * window.devicePixelRatio;
+  canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+  ctx2d.scale(window.devicePixelRatio, window.devicePixelRatio);
+}
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
+// ── Progress dots ─────────────────────────────────────────
+function renderDots() {
+  progressDots.innerHTML = "";
+  for (let i = 0; i < QUESTIONS_COUNT; i++) {
+    const d = document.createElement("div");
+    d.className = "p-dot" +
+      (i < questionIndex ? " done" : i === questionIndex ? " current" : "");
+    progressDots.appendChild(d);
+  }
+}
+renderDots();
+
+// ── Tab detection ─────────────────────────────────────────
+document.addEventListener("visibilitychange", () => {
+  if (!sessionActive || document.visibilityState === "visible") return;
+  tabWarnings++;
+  warningCount.textContent = tabWarnings;
+  warningBanner.classList.add("show");
+  setTimeout(() => warningBanner.classList.remove("show"), 4000);
+  if (tabWarnings >= MAX_WARNINGS) {
+    speak("I noticed you left the session multiple times. Please stay focused. I'll continue but this will be noted.");
+  }
+});
+
+// ── Mic permission ────────────────────────────────────────
+async function requestMic() {
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    document.getElementById("permMic").textContent  = "✓ Granted";
+    document.getElementById("permMic").className    = "perm-status granted";
+    document.getElementById("permTab").textContent  = "✓ Active";
+    setupAudioAnalyser(micStream);
+    return true;
+  } catch(e) {
+    document.getElementById("permMic").textContent = "✗ Denied";
+    alert("Microphone access is required for the voice session. Please allow microphone access and try again.");
+    return false;
+  }
+}
+
+// ── Audio analyser ────────────────────────────────────────
+function setupAudioAnalyser(stream) {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 256;
+  const source = audioCtx.createMediaStreamSource(stream);
+  source.connect(analyser);
+  drawSpectrum();
+}
+
+// ── Spectrum draw ─────────────────────────────────────────
+const BAR_COUNT = 64;
+let   aiLevel   = 0;
+
+function drawSpectrum() {
+  animFrame = requestAnimationFrame(drawSpectrum);
+  const W = canvas.offsetWidth;
+  const H = canvas.offsetHeight;
+  ctx2d.clearRect(0, 0, W, H);
+
+  const dataArr = new Uint8Array(analyser ? analyser.frequencyBinCount : BAR_COUNT);
+  if (analyser && isListening) analyser.getByteFrequencyData(dataArr);
+
+  const barW   = W / BAR_COUNT - 1;
+  const cx     = W / 2;
+
+  for (let i = 0; i < BAR_COUNT; i++) {
+    let userVal = (dataArr[i] || 0) / 255;
+    let aiVal   = isSpeaking ? aiLevel * (0.3 + 0.7 * Math.sin(Date.now() / 80 + i * 0.4) ** 2) : 0;
+    let val     = Math.max(userVal, aiVal);
+    const barH  = val * H * 0.85;
+    const x     = i * (barW + 1);
+
+    // Color: purple for AI, teal for user
+    const r = isSpeaking ? 124 : 0;
+    const g = isSpeaking ? 77  : 229;
+    const b = isSpeaking ? 255 : 180;
+    const alpha = 0.15 + val * 0.85;
+
+    ctx2d.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+    const y = (H - barH) / 2;
+
+    // Rounded bars
+    const radius = Math.min(barW / 2, 3);
+    ctx2d.beginPath();
+    ctx2d.moveTo(x + radius, y);
+    ctx2d.lineTo(x + barW - radius, y);
+    ctx2d.quadraticCurveTo(x + barW, y, x + barW, y + radius);
+    ctx2d.lineTo(x + barW, y + barH - radius);
+    ctx2d.quadraticCurveTo(x + barW, y + barH, x + barW - radius, y + barH);
+    ctx2d.lineTo(x + radius, y + barH);
+    ctx2d.quadraticCurveTo(x, y + barH, x, y + barH - radius);
+    ctx2d.lineTo(x, y + radius);
+    ctx2d.quadraticCurveTo(x, y, x + radius, y);
+    ctx2d.closePath();
+    ctx2d.fill();
+  }
+}
+
+// ── TTS ───────────────────────────────────────────────────
+function speak(text, onEnd) {
+  window.speechSynthesis.cancel();
+  isSpeaking = true;
+  aiAvatar.classList.add("speaking");
+  bgGlow.classList.add("speaking");
+  statusDot.className  = "status-dot speaking";
+  statusText.textContent = "Mentorix speaking...";
+  micBtn.className     = "mic-btn disabled";
+  micLabel.textContent = "Please listen...";
+
+  // Animate aiLevel
+  let lvl = 0; let dir = 1;
+  const lvlInterval = setInterval(() => {
+    lvl += dir * 0.08;
+    if (lvl >= 1) dir = -1;
+    if (lvl <= 0) dir = 1;
+    aiLevel = lvl;
+  }, 60);
+
+  transcriptPh.style.display  = "none";
+  transcriptAi.style.display  = "block";
+  transcriptAi.textContent    = text;
+  transcriptUser.style.display = "none";
+
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate   = 0.92;
+  utter.pitch  = 1.0;
+  utter.volume = 1.0;
+
+  // Pick a good voice
+  const voices = window.speechSynthesis.getVoices();
+  const preferred = voices.find(v =>
+    v.name.includes("Google") && v.lang.startsWith("en")
+  ) || voices.find(v => v.lang.startsWith("en")) || voices[0];
+  if (preferred) utter.voice = preferred;
+
+  utter.onend = () => {
+    clearInterval(lvlInterval);
+    aiLevel  = 0;
+    isSpeaking = false;
+    aiAvatar.classList.remove("speaking");
+    bgGlow.classList.remove("speaking");
+    if (onEnd) onEnd();
+  };
+  currentUtterance = utter;
+  window.speechSynthesis.speak(utter);
+}
+
+// Ensure voices load
+window.speechSynthesis.onvoiceschanged = () => {};
+
+// ── STT ───────────────────────────────────────────────────
+function startListening() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    alert("Voice recognition not supported. Please use Chrome or Edge.");
+    return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.continuous     = false;
+  recognition.interimResults = true;
+  recognition.lang           = "en-US";
+
+  recognition.onstart = () => {
+    isListening = true;
+    micBtn.className     = "mic-btn listening";
+    micLabel.textContent = "Listening...";
+    statusDot.className  = "status-dot active";
+    statusText.textContent = "Listening...";
+    transcriptUser.style.display = "block";
+    transcriptUser.textContent   = "🎙 ...";
+  };
+
+  recognition.onresult = (e) => {
+    let interim = "";
+    let final   = "";
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) final += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    transcriptUser.textContent = "You: " + (final || interim);
+    if (final) handleUserResponse(final.trim());
+  };
+
+  recognition.onerror = (e) => {
+    if (e.error === "no-speech") {
+      micBtn.className     = "mic-btn";
+      micLabel.textContent = "Tap to speak";
+    }
+  };
+
+  recognition.onend = () => {
+    isListening = false;
+    micBtn.className     = "mic-btn";
+    micLabel.textContent = "Tap to speak";
+    statusDot.className  = "status-dot";
+    statusText.textContent = "Thinking...";
+  };
+
+  recognition.start();
+}
+
+function stopListening() {
+  if (recognition) { recognition.stop(); recognition = null; }
+  isListening = false;
+}
+
+function toggleMic() {
+  if (micBtn.classList.contains("disabled")) return;
+  if (isListening) stopListening();
+  else startListening();
+}
+
+// ── Session start ─────────────────────────────────────────
+async function startSession() {
+  const granted = await requestMic();
+  if (!granted) return;
+
+  document.getElementById("startBtn").disabled = true;
+  document.getElementById("startBtn").textContent = "Starting...";
+
+  // Short delay then hide overlay
+  setTimeout(() => {
+    startOverlay.classList.add("hidden");
+    sessionActive = true;
+
+    // Speak opening after overlay fades
+    setTimeout(() => {
+      speak(OPENING, () => {
+        enableMic();
+        questionIndex = 1;
+        renderDots();
+      });
+    }, 600);
+  }, 400);
+}
+
+function enableMic() {
+  micBtn.className     = "mic-btn";
+  micLabel.textContent = "Tap to speak";
+  statusDot.className  = "status-dot";
+  statusText.textContent = "Your turn";
+}
+
+// ── User response handler ─────────────────────────────────
+async function handleUserResponse(userText) {
+  if (!userText || userText.length < 2) {
+    speak("I didn't catch that. Could you say that again?", enableMic);
+    return;
+  }
+
+  conversationLog.push({ role: "user", content: userText });
+  micBtn.className     = "mic-btn disabled";
+  micLabel.textContent = "Processing...";
+  statusDot.className  = "status-dot";
+  statusText.textContent = "Thinking...";
+
+  questionIndex = Math.min(questionIndex + 1, QUESTIONS_COUNT);
+  renderDots();
+
+  try {
+    const reply = await getAIResponse(userText);
+    conversationLog.push({ role: "assistant", content: reply });
+
+    // Check if session should end
+    const isEnding = reply.includes("[[END_SESSION]]") ||
+                     conversationLog.filter(m => m.role === "user").length >= QUESTIONS_COUNT;
+
+    const cleanReply = reply.replace("[[END_SESSION]]", "").trim();
+
+    if (isEnding) {
+      speak(cleanReply, () => endSession());
+    } else {
+      speak(cleanReply, enableMic);
+    }
+  } catch(e) {
+    speak("I had a small glitch. Could you repeat that?", enableMic);
+  }
+}
+
+// ── Groq AI ───────────────────────────────────────────────
+async function getAIResponse(userMessage) {
+  const systemPrompt = `You are Mentorix, an AI career counselor conducting a voice-based career intelligence session with a student named ${NAME}.
+
+Your goal is to have a natural, warm conversation to understand:
+1. Their department/branch and year of study
+2. Which subjects or topics they genuinely enjoy
+3. What kind of work excites them (technical, creative, leadership, research)
+4. Their confidence level and how they handle challenges
+5. Their long-term career interests or confusion
+6. Their biggest concern about their future
+
+Rules:
+- Ask ONE question at a time — never multiple questions in one response
+- Keep responses SHORT — max 2-3 sentences + one question
+- Be warm, encouraging, and specific to what they said
+- Reference their previous answers to show you're listening
+- After 7-8 exchanges, summarize what you've learned and say goodbye with [[END_SESSION]]
+- Never mention scoring or assessment — just have a natural conversation
+- If they seem confused or lost, be extra encouraging
+
+Current exchange number: ${conversationLog.filter(m => m.role === "user").length + 1} of ${QUESTIONS_COUNT}`;
+
+  const messages = [
+    { role: "system", content: systemPrompt },
+    ...conversationLog.slice(-10),
+    { role: "user", content: userMessage }
+  ];
+
+  const res = await fetch(`${API}/chat`, {
+    method: "POST",
+    headers: {
+      "Content-Type":  "application/json",
+      "Authorization": `Bearer ${TOKEN}`
+    },
+    body: JSON.stringify({
+      message: userMessage,
+      system:  systemPrompt,
+      history: conversationLog.slice(-10)
+    })
+  });
+
+  if (!res.ok) throw new Error("API failed");
+  const data = await res.json();
+  return data.reply || "That's interesting. Can you tell me more?";
+}
+
+// ── End session ───────────────────────────────────────────
+async function endSession() {
+  sessionActive = false;
+  stopListening();
+  window.speechSynthesis.cancel();
+  if (animFrame) cancelAnimationFrame(animFrame);
+
+  // Generate summary
+  endOverlay.classList.add("show");
+  document.getElementById("endSummary").textContent = "Generating your analysis...";
+
+  try {
+    const summary = await generateSummary();
+    document.getElementById("endSummary").textContent = summary;
+
+    // Save to backend
+    await saveVoiceSession(summary);
+  } catch(e) {
+    document.getElementById("endSummary").textContent =
+      "Session complete. Your conversation has been recorded. Visit your dashboard for insights.";
+  }
+}
+
+async function generateSummary() {
+  const transcript = conversationLog
+    .map(m => `${m.role === "user" ? NAME : "Mentorix"}: ${m.content}`)
+    .join("\n");
+
+  const res = await fetch(`${API}/chat`, {
+    method: "POST",
+    headers: {
+      "Content-Type":  "application/json",
+      "Authorization": `Bearer ${TOKEN}`
+    },
+    body: JSON.stringify({
+      message: "Generate analysis",
+      system: `You are Mentorix. Based on the following conversation, write a brief career intelligence summary for ${NAME}.
+
+Format:
+What I observed: [2-3 sentences about their strengths and interests]
+Recommended direction: [specific track/field]
+What to do this week:
+→ [action 1]
+→ [action 2]
+→ [action 3]
+
+Keep it under 120 words. Be warm and specific.
+
+Conversation:
+${transcript}`,
+      history: []
+    })
+  });
+
+  const data = await res.json();
+  return data.reply || "Session analysis complete.";
+}
+
+async function saveVoiceSession(summary) {
+  try {
+    const transcript = conversationLog
+      .map(m => `${m.role === "user" ? NAME : "Mentorix"}: ${m.content}`)
+      .join("\n");
+
+    await fetch(`${API}/voice/save`, {
+      method: "POST",
+      headers: {
+        "Content-Type":  "application/json",
+        "Authorization": `Bearer ${TOKEN}`
+      },
+      body: JSON.stringify({
+        transcript,
+        summary,
+        tab_warnings: tabWarnings,
+        exchange_count: conversationLog.filter(m => m.role === "user").length
+      })
+    });
+  } catch(e) {
+    console.log("Save failed silently:", e);
+  }
+}
+
+function confirmEnd() {
+  if (!sessionActive) return;
+  if (confirm("End this voice session? Your progress so far will be saved.")) {
+    endSession();
+  }
+}
+
+function goToDashboard() {
+  window.location.href = "index.html";
+}
+
+// ── Keyboard shortcut ─────────────────────────────────────
+document.addEventListener("keydown", e => {
+  if (e.code === "Space" && sessionActive && !isSpeaking) {
+    e.preventDefault();
+    toggleMic();
+  }
+  if (e.code === "Escape") confirmEnd();
+});
+</script>
+</body>
+</html>

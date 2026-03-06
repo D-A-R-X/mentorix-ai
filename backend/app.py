@@ -737,6 +737,31 @@ async def chat_endpoint(
     except Exception as e:
         logger.exception(f"chat failed: {e}")
         raise HTTPException(status_code=502, detail="Chat failed")
+class VoiceSession(BaseModel):
+    transcript:     str
+    summary:        str
+    tab_warnings:   int = 0
+    exchange_count: int = 0
+
+@app.post("/voice/save")
+async def save_voice_session(
+    data: VoiceSession,
+    current_user: str = Depends(get_current_user)
+):
+    try:
+        conn = get_connection()
+        cur  = conn.cursor()
+        cur.execute("""
+            INSERT INTO voice_sessions
+              (email, transcript, summary, tab_warnings, exchange_count, created_at)
+            VALUES (%s, %s, %s, %s, %s, NOW())
+        """, (current_user, data.transcript, data.summary,
+              data.tab_warnings, data.exchange_count))
+        conn.commit(); cur.close(); conn.close()
+        return {"message": "Voice session saved."}
+    except Exception as e:
+        logger.warning(f"voice save failed: {e}")
+        return {"message": "Saved with warning."}
 
 if __name__ == "__main__":
     import uvicorn
