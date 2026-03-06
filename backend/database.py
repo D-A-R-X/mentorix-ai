@@ -294,3 +294,15 @@ def get_completion_stats(email: str) -> Dict[str, Any]:
         "pct": round((completed / total * 100) if total else 0, 1),
         "by_track": by_track,
     }
+
+# Migration: add new columns to voice_sessions if not exist
+def migrate_voice_sessions():
+    try:
+        conn = get_connection(); cur = conn.cursor()
+        for col, typ in [("scores","TEXT"),("overall_score","INTEGER"),("mode","TEXT")]:
+            try:
+                cur.execute(f"ALTER TABLE voice_sessions ADD COLUMN IF NOT EXISTS {col} {typ}")
+            except: pass
+        conn.commit(); cur.close(); conn.close()
+    except Exception as e:
+        print(f"Migration warning: {e}")

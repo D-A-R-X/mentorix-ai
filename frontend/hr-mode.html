@@ -445,13 +445,21 @@ function speak(text,cb){
 function startListening(){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){alert("Voice recognition not available. Switch to typing mode.");return;}
-  rec=new SR();rec.continuous=false;rec.interimResults=true;rec.lang="en-US";
+  rec=new SR();rec.continuous=true;rec.interimResults=true;rec.lang="en-US";rec.maxAlternatives=3;
   rec.onstart=()=>{listening=true;hrMicBtn.className="hr-micbtn active";hrDot.className="hr-dot rec";hrStatus.textContent="RECORDING";};
+  let fullTranscript="";
   rec.onresult=(e)=>{
-    let f="",im="";
-    for(let i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal)f+=e.results[i][0].transcript;else im+=e.results[i][0].transcript;}
-    if(im||f)hrTypeInp.value=f||im;
-    if(f){clearTimeout(silenceTimer);silenceTimer=setTimeout(()=>handleResponse(f.trim()),1500);}
+    let interim="";
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal) fullTranscript+=e.results[i][0].transcript+" ";
+      else interim+=e.results[i][0].transcript;
+    }
+    hrTypeInp.value=(fullTranscript+interim).trim();
+    clearTimeout(silenceTimer);
+    if(fullTranscript.trim()) silenceTimer=setTimeout(()=>{
+      const txt=fullTranscript.trim();fullTranscript="";
+      handleResponse(txt);
+    },2000);
   };
   rec.onerror=(e)=>{if(e.error!=="no-speech")console.warn(e.error);};
   rec.onend=()=>{listening=false;hrMicBtn.className="hr-micbtn";hrDot.className="hr-dot";hrStatus.textContent="STANDBY";hrTypeInp.value="";};
