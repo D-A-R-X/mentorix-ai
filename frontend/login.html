@@ -275,11 +275,10 @@ document.addEventListener("DOMContentLoaded", function() {
           headers: {"Authorization": `Bearer ${token}`}
         });
         const data = await res.json();
-        window.location.href = (data.history && data.history.length > 0)
-          const hasProfile = localStorage.getItem("mentorix_profile");
-  if (data.history && data.history.length > 0) window.location.href = "index.html";
-  else if (hasProfile) window.location.href = "assessment.html";
-  else window.location.href = "onboarding.html";
+        const hasProfile = localStorage.getItem("mentorix_profile");
+        if (data.history && data.history.length > 0) window.location.href = "index.html";
+        else if (hasProfile) window.location.href = "assessment.html";
+        else window.location.href = "onboarding.html";
       } catch(e) {
         window.location.href = "assessment.html";
       }
