@@ -843,7 +843,9 @@
 
     async function loadQuestions() {
       try {
-        const res = await fetch(`${API}/assessment/questions`, { headers: authHeaders() });
+        const profile = JSON.parse(localStorage.getItem("mentorix_profile") || "{}");
+        const dept    = profile.dept || "";
+        const res = await fetch(`${API}/assessment/questions?department=${dept}`, { headers: authHeaders() });
         if (res.status === 401) { logout(); return; }
         const data = await res.json();
         allQuestions = data.questions;

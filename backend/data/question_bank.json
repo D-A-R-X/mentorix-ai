@@ -1,4 +1,30 @@
 {
+  "version": "2.0",
+  "department_groups": {
+    "IT": [
+      "CSE",
+      "IT",
+      "AIDS",
+      "AIML"
+    ],
+    "ENGINEERING": [
+      "ECE",
+      "EEE",
+      "MECH",
+      "CIVIL",
+      "CHEM"
+    ],
+    "BIO_AGRI": [
+      "BIO",
+      "BIOTECH",
+      "FOOD",
+      "AGRI"
+    ],
+    "GENERAL": [
+      "OTHER",
+      ""
+    ]
+  },
   "domains": {
     "tech": {
       "label": "Technical Inclination",
@@ -13,295 +39,786 @@
             "Creating a process for people to follow efficiently",
             "Assigning roles so a team can complete it faster"
           ],
-          "scores": [4, 2, 1, 1]
+          "scores": [
+            4,
+            2,
+            1,
+            1
+          ],
+          "dept_group": "ALL"
         },
         {
           "id": "tech_002",
-          "question": "You encounter a complex problem with multiple variables. What do you instinctively do first?",
+          "question": "Which of these activities excites you the most?",
           "options": [
-            "Break it down logically and test solutions step by step",
-            "Sketch diagrams or models of the physical system",
-            "Think about the practical outcomes and impact",
-            "Discuss with others to gather different viewpoints"
+            "Building and deploying a web application",
+            "Designing circuits or embedded systems",
+            "Optimizing supply chains or workflows",
+            "Presenting ideas to stakeholders"
           ],
-          "scores": [4, 2, 1, 1]
+          "scores": [
+            4,
+            3,
+            2,
+            1
+          ],
+          "dept_group": "IT"
+        },
+        {
+          "id": "tech_002e",
+          "question": "Which of these activities excites you the most?",
+          "options": [
+            "Designing and testing mechanical or electrical systems",
+            "Writing code to control or monitor machines",
+            "Planning infrastructure or construction",
+            "Managing a project team to deliver on time"
+          ],
+          "scores": [
+            4,
+            3,
+            2,
+            1
+          ],
+          "dept_group": "ENGINEERING"
+        },
+        {
+          "id": "tech_002b",
+          "question": "Which of these activities excites you the most?",
+          "options": [
+            "Researching biological systems or food processes",
+            "Designing experiments to test hypotheses",
+            "Analyzing data from lab results",
+            "Managing research teams or projects"
+          ],
+          "scores": [
+            4,
+            3,
+            2,
+            1
+          ],
+          "dept_group": "BIO_AGRI"
         },
         {
           "id": "tech_003",
-          "question": "Which activity feels most satisfying after completion?",
+          "question": "When learning something new in your field, you prefer to:",
           "options": [
-            "Building a program or digital system that works perfectly",
-            "Constructing a mechanical design that functions smoothly",
-            "Launching a strategy that improves results",
-            "Leading a group to achieve a shared goal"
+            "Build a working prototype or project immediately",
+            "Study theory deeply before attempting anything",
+            "Watch others do it first then replicate",
+            "Discuss concepts with peers and learn collaboratively"
           ],
-          "scores": [4, 2, 1, 1]
+          "scores": [
+            4,
+            3,
+            2,
+            1
+          ],
+          "dept_group": "ALL"
         },
         {
           "id": "tech_004",
-          "question": "When learning something new, what draws your attention most?",
+          "question": "How do you feel about spending hours debugging or troubleshooting a complex problem?",
           "options": [
-            "Understanding how systems and algorithms work internally",
-            "Seeing how machines or structures operate physically",
-            "Learning how decisions influence outcomes",
-            "Observing how people collaborate effectively"
+            "I enjoy it — finding the root cause is satisfying",
+            "I can do it but prefer collaborative problem solving",
+            "I prefer someone else handles the deep technical work",
+            "I focus more on the big picture than technical details"
           ],
-          "scores": [4, 2, 1, 1]
+          "scores": [
+            4,
+            3,
+            2,
+            1
+          ],
+          "dept_group": "ALL"
         },
         {
           "id": "tech_005",
-          "question": "If given a weekend project, which would you most likely choose?",
+          "question": "If you had to choose a side project this weekend, which would you pick?",
           "options": [
-            "Building a small software tool or app",
-            "Assembling or modifying a device or machine",
-            "Planning a small venture or initiative",
-            "Organizing a group activity or event"
+            "Build a personal tool or app to solve a daily problem",
+            "Design or fabricate something physical in a workshop",
+            "Research and write a report on an emerging technology",
+            "Organize a community event or hackathon"
           ],
-          "scores": [4, 2, 1, 1]
+          "scores": [
+            4,
+            3,
+            2,
+            1
+          ],
+          "dept_group": "ALL"
         }
       ]
     },
     "core": {
-      "label": "Core Engineering Inclination",
+      "label": "Domain Alignment",
       "weight_output": "core_interest",
       "questions": [
         {
           "id": "core_001",
-          "question": "When you see a machine or device, what are you most curious about?",
+          "question": "When you see a complex system, what are you most curious about?",
           "options": [
-            "How software controls or optimizes its behavior",
-            "How the mechanical parts interact and move",
-            "How the product could succeed in the market",
-            "How teams collaborate to build it"
+            "How software or algorithms control its behavior",
+            "How the physical components interact and function",
+            "How the system could be improved or scaled",
+            "How teams collaborate to maintain and improve it"
           ],
-          "scores": [2, 4, 1, 1]
+          "scores": [
+            4,
+            3,
+            2,
+            1
+          ],
+          "dept_group": "ALL"
         },
         {
           "id": "core_002",
-          "question": "Which task would you enjoy most during a project?",
+          "question": "Which subject or topic did you find most naturally engaging in your studies?",
           "options": [
-            "Programming system logic",
-            "Designing the structure or mechanism",
-            "Creating the strategy for launching it",
-            "Coordinating people working on it"
+            "Programming, algorithms, or data structures",
+            "Physics, circuits, or mechanical systems",
+            "Biology, chemistry, or environmental science",
+            "Business, economics, or social systems"
           ],
-          "scores": [2, 4, 1, 1]
+          "scores": [
+            4,
+            3,
+            2,
+            1
+          ],
+          "dept_group": "ALL"
         },
         {
-          "id": "core_003",
-          "question": "When solving practical problems, what approach do you prefer?",
+          "id": "core_003it",
+          "question": "Which area of computer science interests you most?",
           "options": [
-            "Writing algorithms to optimize performance",
-            "Testing materials and mechanical configurations",
-            "Evaluating cost and business feasibility",
-            "Discussing with others to find consensus"
+            "AI, machine learning, and data science",
+            "Cybersecurity and network systems",
+            "Software development and web technologies",
+            "Cloud computing and DevOps"
           ],
-          "scores": [2, 4, 1, 1]
+          "scores": [
+            4,
+            4,
+            3,
+            3
+          ],
+          "dept_group": "IT"
+        },
+        {
+          "id": "core_003e",
+          "question": "Which engineering area interests you most?",
+          "options": [
+            "Electronics, embedded systems, or VLSI",
+            "Mechanical design, thermodynamics, or manufacturing",
+            "Civil structures, environmental engineering",
+            "Chemical processes or material science"
+          ],
+          "scores": [
+            4,
+            4,
+            3,
+            3
+          ],
+          "dept_group": "ENGINEERING"
+        },
+        {
+          "id": "core_003b",
+          "question": "Which area interests you most in your field?",
+          "options": [
+            "Biotechnology, genetics, or pharmaceutical research",
+            "Food science, nutrition, or food processing",
+            "Agriculture technology or environmental sustainability",
+            "Research data analysis or bioinformatics"
+          ],
+          "scores": [
+            4,
+            4,
+            3,
+            3
+          ],
+          "dept_group": "BIO_AGRI"
         },
         {
           "id": "core_004",
-          "question": "Which type of challenge energizes you most?",
+          "question": "How do you approach learning a concept outside your comfort zone?",
           "options": [
-            "Improving a digital system's efficiency",
-            "Fixing or redesigning a physical mechanism",
-            "Improving an organization's strategy",
-            "Managing a group during a complex task"
+            "I dive deep into textbooks and documentation",
+            "I look for practical examples and apply them immediately",
+            "I find a mentor or course and follow structured guidance",
+            "I avoid it unless absolutely necessary"
           ],
-          "scores": [2, 4, 1, 1]
+          "scores": [
+            4,
+            3,
+            2,
+            1
+          ],
+          "dept_group": "ALL"
         },
         {
           "id": "core_005",
-          "question": "If something stops working, what interests you the most about fixing it?",
+          "question": "In your ideal career, the work you do every day involves:",
           "options": [
-            "Debugging the code or digital logic",
-            "Understanding the mechanical cause of failure",
-            "Evaluating the operational impact",
-            "Organizing efforts to repair it quickly"
+            "Solving technical problems using tools specific to your domain",
+            "Leading people and making strategic decisions",
+            "Research, analysis, and generating new knowledge",
+            "Creating products or services customers directly use"
           ],
-          "scores": [2, 4, 1, 1]
+          "scores": [
+            4,
+            2,
+            3,
+            2
+          ],
+          "dept_group": "ALL"
         }
       ]
     },
     "management": {
-      "label": "Management Inclination",
+      "label": "Leadership & Strategy",
       "weight_output": "management_interest",
       "questions": [
         {
           "id": "mgmt_001",
           "question": "During a group project, what role do you naturally take?",
           "options": [
-            "Developing the technical solution",
-            "Handling structural or technical implementation",
-            "Planning the strategy and overall direction",
-            "Motivating and coordinating the team"
+            "Developing the core technical solution",
+            "Planning the strategy and coordinating everyone",
+            "Motivating the team and resolving conflicts",
+            "Documenting processes and tracking deadlines"
           ],
-          "scores": [1, 1, 4, 3]
+          "scores": [
+            1,
+            4,
+            3,
+            2
+          ],
+          "dept_group": "ALL"
         },
         {
           "id": "mgmt_002",
-          "question": "What aspect of projects interests you the most?",
+          "question": "How do you feel about managing other people's work?",
           "options": [
-            "Building the software or system",
-            "Designing the hardware or structure",
-            "Deciding how the project should succeed",
-            "Ensuring everyone works together smoothly"
+            "I prefer doing the work myself rather than delegating",
+            "I enjoy guiding others but like staying hands-on too",
+            "I find leading teams more energizing than individual work",
+            "I avoid leadership roles — they stress me out"
           ],
-          "scores": [1, 1, 4, 3]
+          "scores": [
+            2,
+            3,
+            4,
+            1
+          ],
+          "dept_group": "ALL"
         },
         {
           "id": "mgmt_003",
-          "question": "When faced with a challenge, what motivates you most?",
+          "question": "When a project faces a major setback, you typically:",
           "options": [
-            "Solving the technical puzzle",
-            "Fixing the mechanical design",
-            "Creating a plan that drives results",
-            "Leading people toward a shared solution"
+            "Immediately analyze what went wrong and fix the technical issue",
+            "Communicate with stakeholders and restructure the plan",
+            "Motivate the team and keep morale high",
+            "Wait for someone else to take charge"
           ],
-          "scores": [1, 1, 4, 3]
+          "scores": [
+            3,
+            4,
+            3,
+            1
+          ],
+          "dept_group": "ALL"
         },
         {
           "id": "mgmt_004",
-          "question": "Which achievement would feel most rewarding?",
+          "question": "Your long-term career goal is closer to:",
           "options": [
-            "Building a reliable software system",
-            "Engineering a well-functioning mechanism",
-            "Launching a successful strategy or product",
-            "Guiding a team to accomplish something meaningful"
+            "Becoming a highly specialized technical expert",
+            "Leading a product, company, or large technical team",
+            "Running your own business or startup",
+            "Contributing to research or academic work"
           ],
-          "scores": [1, 1, 4, 3]
+          "scores": [
+            1,
+            4,
+            4,
+            2
+          ],
+          "dept_group": "ALL"
         },
         {
           "id": "mgmt_005",
-          "question": "If you could influence a project outcome, what would you focus on?",
+          "question": "When presenting your work to a non-technical audience, you:",
           "options": [
-            "Technical performance",
-            "Engineering reliability",
-            "Strategic direction and impact",
-            "Team alignment and motivation"
+            "Find it difficult and prefer technical audiences",
+            "Can do it but it requires extra effort",
+            "Enjoy translating complex ideas into simple language",
+            "Prefer to let others present while you focus on execution"
           ],
-          "scores": [1, 1, 4, 3]
+          "scores": [
+            1,
+            2,
+            4,
+            1
+          ],
+          "dept_group": "ALL"
         }
       ]
     },
     "confidence": {
-      "label": "Self Confidence",
+      "label": "Self-Confidence & Persistence",
       "weight_output": "confidence",
       "questions": [
         {
           "id": "conf_001",
-          "question": "When you face a difficult challenge you cannot solve immediately, what do you usually do?",
+          "question": "When you face a difficult challenge you cannot solve immediately, you usually:",
           "options": [
             "Move on quickly to something easier",
-            "Try briefly but give up if it feels too hard",
+            "Try briefly but stop if it feels too hard",
             "Research solutions and keep experimenting",
             "Persist until you eventually figure it out"
           ],
-          "scores": [1, 2, 3, 4]
+          "scores": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "dept_group": "ALL"
         },
         {
           "id": "conf_002",
-          "question": "When learning a new complex skill, how do you typically react?",
+          "question": "How confident are you in your ability to learn new technical skills on your own?",
           "options": [
-            "I feel overwhelmed and avoid it",
-            "I try but doubt my ability",
-            "I believe I can improve with practice",
-            "I confidently dive in and experiment"
+            "Not confident — I need structured guidance always",
+            "Somewhat confident with the right resources",
+            "Confident — I can figure things out independently",
+            "Very confident — I actively seek self-learning challenges"
           ],
-          "scores": [1, 2, 3, 4]
+          "scores": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "dept_group": "ALL"
         },
         {
           "id": "conf_003",
-          "question": "When someone challenges your idea, how do you respond?",
+          "question": "When you receive critical feedback on your work, you typically:",
           "options": [
-            "I usually withdraw or stay quiet",
-            "I hesitate but explain briefly",
-            "I calmly defend my reasoning",
-            "I confidently discuss and refine the idea"
+            "Feel discouraged and question your abilities",
+            "Accept it but need time to process before moving on",
+            "Use it constructively to improve your work",
+            "Welcome it eagerly as valuable input for growth"
           ],
-          "scores": [1, 2, 3, 4]
+          "scores": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "dept_group": "ALL"
         },
         {
           "id": "conf_004",
-          "question": "When working on a long project, how do you maintain motivation?",
+          "question": "How do you feel about taking on a project where you only know 50% of what is required?",
           "options": [
-            "I often lose interest quickly",
-            "I continue but feel unsure",
-            "I stay motivated with steady effort",
-            "I feel energized by the challenge"
+            "Anxious — I prefer to be fully prepared before starting",
+            "Cautious — I would ask for help or training first",
+            "Comfortable — I can learn the rest as I go",
+            "Excited — incomplete knowledge makes it more interesting"
           ],
-          "scores": [1, 2, 3, 4]
+          "scores": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "dept_group": "ALL"
         },
         {
           "id": "conf_005",
-          "question": "How comfortable are you making decisions under uncertainty?",
+          "question": "Looking at your current academic or work performance, you feel:",
           "options": [
-            "I avoid making the decision",
-            "I prefer someone else to decide",
-            "I make a decision cautiously",
-            "I decide confidently and adjust if needed"
+            "Behind where I want to be and unsure how to catch up",
+            "Average — doing okay but not standing out",
+            "On track — making steady progress toward my goals",
+            "Ahead — consistently outperforming my own expectations"
           ],
-          "scores": [1, 2, 3, 4]
+          "scores": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "dept_group": "ALL"
         }
       ]
     },
     "decision_style": {
-      "label": "Decision Style",
+      "label": "Decision Making Style",
       "weight_output": "decision_time",
       "questions": [
         {
           "id": "dec_001",
-          "question": "When making an important decision, what is your usual approach?",
+          "question": "When making an important decision, your usual approach is:",
           "options": [
-            "I decide quickly without much thought",
-            "I decide after brief consideration",
-            "I analyze options carefully",
-            "I deeply evaluate all possibilities before deciding"
+            "Decide quickly without much analysis",
+            "Decide after brief consideration",
+            "Analyze options carefully before deciding",
+            "Deeply evaluate all possibilities before committing"
           ],
-          "scores": [1, 2, 3, 4]
+          "scores": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "dept_group": "ALL"
         },
         {
           "id": "dec_002",
-          "question": "When multiple options are available, how do you choose?",
+          "question": "When choosing between two career paths that both seem good, you:",
           "options": [
-            "I pick the first reasonable option",
-            "I compare a couple of choices quickly",
-            "I weigh pros and cons systematically",
-            "I research extensively before deciding"
+            "Pick the one that pays more without much thought",
+            "Ask friends or family and go with their opinion",
+            "Research both paths thoroughly and compare them",
+            "Reflect deeply on your values and long-term vision before deciding"
           ],
-          "scores": [1, 2, 3, 4]
+          "scores": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "dept_group": "ALL"
         },
         {
           "id": "dec_003",
-          "question": "When facing a complex life decision, what do you rely on most?",
+          "question": "How often do you second-guess major decisions you have already made?",
           "options": [
-            "Immediate instinct",
-            "Quick reasoning",
-            "Careful reflection",
-            "Detailed analysis and planning"
+            "Almost always — I frequently doubt my choices",
+            "Sometimes — especially when things get difficult",
+            "Rarely — I commit and move forward",
+            "Never — once I decide, I focus entirely on execution"
           ],
-          "scores": [1, 2, 3, 4]
+          "scores": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "dept_group": "ALL"
         },
         {
           "id": "dec_004",
-          "question": "If a decision could impact your future significantly, what do you usually do?",
+          "question": "When your career plan does not go as expected, you:",
           "options": [
-            "Make a quick call and move forward",
-            "Take some time but avoid overthinking",
-            "Evaluate multiple possibilities carefully",
-            "Conduct deep research before deciding"
+            "Feel lost and unsure what to do next",
+            "Wait for external guidance before acting",
+            "Reassess and adapt your plan proactively",
+            "Immediately identify the next best opportunity and pivot"
           ],
-          "scores": [1, 2, 3, 4]
+          "scores": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "dept_group": "ALL"
         },
         {
           "id": "dec_005",
-          "question": "When someone asks for your opinion on a complex issue, how do you respond?",
+          "question": "How clear is your sense of what career direction you want to pursue?",
           "options": [
-            "Give an immediate answer",
-            "Think briefly before responding",
-            "Consider several perspectives first",
-            "Analyze deeply before giving a conclusion"
+            "Very unclear — I have no idea what I want",
+            "Vague — I have some ideas but nothing concrete",
+            "Fairly clear — I have a direction but not a specific path",
+            "Very clear — I know exactly what I want and am working toward it"
           ],
-          "scores": [1, 2, 3, 4]
+          "scores": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "dept_group": "ALL"
+        }
+      ]
+    }
+  },
+  "tracks": {
+    "software_track": {
+      "label": "Software Engineering",
+      "dept_groups": [
+        "IT",
+        "GENERAL"
+      ],
+      "courses": [
+        {
+          "title": "CS50: Introduction to Computer Science",
+          "provider": "Harvard / edX",
+          "duration": "12 weeks",
+          "url": "https://www.edx.org/course/introduction-computer-science-harvardx-cs50x",
+          "certificate": true,
+          "level": "beginner"
+        },
+        {
+          "title": "The Web Developer Bootcamp",
+          "provider": "Udemy",
+          "duration": "65 hours",
+          "url": "https://www.udemy.com/course/the-web-developer-bootcamp/",
+          "certificate": true,
+          "level": "beginner"
+        },
+        {
+          "title": "Full Stack Open",
+          "provider": "University of Helsinki",
+          "duration": "Self-paced",
+          "url": "https://fullstackopen.com",
+          "certificate": true,
+          "level": "intermediate"
+        }
+      ]
+    },
+    "data_science_track": {
+      "label": "Data Science & AI",
+      "dept_groups": [
+        "IT",
+        "ENGINEERING",
+        "BIO_AGRI",
+        "GENERAL"
+      ],
+      "courses": [
+        {
+          "title": "Python for Everybody",
+          "provider": "University of Michigan / Coursera",
+          "duration": "8 weeks",
+          "url": "https://www.coursera.org/specializations/python",
+          "certificate": true,
+          "level": "beginner"
+        },
+        {
+          "title": "Machine Learning Specialization",
+          "provider": "DeepLearning.AI / Coursera",
+          "duration": "3 months",
+          "url": "https://www.coursera.org/specializations/machine-learning-introduction",
+          "certificate": true,
+          "level": "intermediate"
+        },
+        {
+          "title": "Data Analysis with Python",
+          "provider": "freeCodeCamp",
+          "duration": "Self-paced",
+          "url": "https://www.freecodecamp.org/learn/data-analysis-with-python/",
+          "certificate": true,
+          "level": "beginner"
+        }
+      ]
+    },
+    "cybersecurity_track": {
+      "label": "Cybersecurity",
+      "dept_groups": [
+        "IT",
+        "ENGINEERING",
+        "GENERAL"
+      ],
+      "courses": [
+        {
+          "title": "Google Cybersecurity Certificate",
+          "provider": "Google / Coursera",
+          "duration": "6 months",
+          "url": "https://www.coursera.org/professional-certificates/google-cybersecurity",
+          "certificate": true,
+          "level": "beginner"
+        },
+        {
+          "title": "Introduction to Cybersecurity",
+          "provider": "Cisco Networking Academy",
+          "duration": "15 hours",
+          "url": "https://www.netacad.com/courses/cybersecurity/introduction-cybersecurity",
+          "certificate": true,
+          "level": "beginner"
+        },
+        {
+          "title": "CompTIA Security+ Prep",
+          "provider": "Professor Messer / Free",
+          "duration": "Self-paced",
+          "url": "https://www.professormesser.com/security-plus/sy0-701/sy0-701-video/sy0-701-comptia-security-plus-course/",
+          "certificate": false,
+          "level": "intermediate"
+        }
+      ]
+    },
+    "core_engineering_track": {
+      "label": "Core Engineering",
+      "dept_groups": [
+        "ENGINEERING",
+        "GENERAL"
+      ],
+      "courses": [
+        {
+          "title": "Introduction to Engineering Mechanics",
+          "provider": "Georgia Tech / edX",
+          "duration": "8 weeks",
+          "url": "https://www.edx.org/course/introduction-to-engineering-mechanics",
+          "certificate": true,
+          "level": "beginner"
+        },
+        {
+          "title": "Autodesk Fusion 360 for Beginners",
+          "provider": "Autodesk / Coursera",
+          "duration": "20 hours",
+          "url": "https://www.coursera.org/learn/autodesk-cad-cam-cae-for-mechanical-engineering",
+          "certificate": true,
+          "level": "beginner"
+        },
+        {
+          "title": "Circuits and Electronics",
+          "provider": "MIT / edX",
+          "duration": "16 weeks",
+          "url": "https://www.edx.org/course/circuits-and-electronics-1-basic-circuit-analysis",
+          "certificate": true,
+          "level": "intermediate"
+        }
+      ]
+    },
+    "biotech_track": {
+      "label": "Biotechnology & Life Sciences",
+      "dept_groups": [
+        "BIO_AGRI",
+        "GENERAL"
+      ],
+      "courses": [
+        {
+          "title": "Introduction to Biology — The Secret of Life",
+          "provider": "MIT / edX",
+          "duration": "16 weeks",
+          "url": "https://www.edx.org/course/introduction-to-biology-the-secret-of-life-3",
+          "certificate": true,
+          "level": "beginner"
+        },
+        {
+          "title": "Bioinformatics Specialization",
+          "provider": "UC San Diego / Coursera",
+          "duration": "8 months",
+          "url": "https://www.coursera.org/specializations/bioinformatics",
+          "certificate": true,
+          "level": "intermediate"
+        },
+        {
+          "title": "Genomic Data Science",
+          "provider": "Johns Hopkins / Coursera",
+          "duration": "4 months",
+          "url": "https://www.coursera.org/specializations/genomic-data-science",
+          "certificate": true,
+          "level": "intermediate"
+        }
+      ]
+    },
+    "food_agri_track": {
+      "label": "Food Technology & Agriculture",
+      "dept_groups": [
+        "BIO_AGRI",
+        "GENERAL"
+      ],
+      "courses": [
+        {
+          "title": "Science of Food",
+          "provider": "University of Auckland / Coursera",
+          "duration": "6 weeks",
+          "url": "https://www.coursera.org/learn/science-of-food",
+          "certificate": true,
+          "level": "beginner"
+        },
+        {
+          "title": "Sustainable Food Systems",
+          "provider": "SDG Academy / edX",
+          "duration": "8 weeks",
+          "url": "https://www.edx.org/course/food-sustainability-mindful-eating",
+          "certificate": true,
+          "level": "beginner"
+        },
+        {
+          "title": "Agriculture, Economics and Nature",
+          "provider": "University of Western Australia / edX",
+          "duration": "7 weeks",
+          "url": "https://www.edx.org/course/agriculture-economics-and-nature",
+          "certificate": true,
+          "level": "beginner"
+        }
+      ]
+    },
+    "management_track": {
+      "label": "Management & Leadership",
+      "dept_groups": [
+        "IT",
+        "ENGINEERING",
+        "BIO_AGRI",
+        "GENERAL"
+      ],
+      "courses": [
+        {
+          "title": "Introduction to Management",
+          "provider": "University of London / Coursera",
+          "duration": "5 weeks",
+          "url": "https://www.coursera.org/learn/management-leadership-iima",
+          "certificate": true,
+          "level": "beginner"
+        },
+        {
+          "title": "Project Management Principles",
+          "provider": "Google / Coursera",
+          "duration": "6 months",
+          "url": "https://www.coursera.org/professional-certificates/google-project-management",
+          "certificate": true,
+          "level": "beginner"
+        },
+        {
+          "title": "Leadership and Emotional Intelligence",
+          "provider": "IIM Calcutta / Coursera",
+          "duration": "4 weeks",
+          "url": "https://www.coursera.org/learn/leadership-emotional-intelligence",
+          "certificate": true,
+          "level": "beginner"
+        }
+      ]
+    },
+    "foundation_track": {
+      "label": "Foundation & Exploration",
+      "dept_groups": [
+        "IT",
+        "ENGINEERING",
+        "BIO_AGRI",
+        "GENERAL"
+      ],
+      "courses": [
+        {
+          "title": "Learning How to Learn",
+          "provider": "Deep Teaching Solutions / Coursera",
+          "duration": "4 weeks",
+          "url": "https://www.coursera.org/learn/learning-how-to-learn",
+          "certificate": true,
+          "level": "beginner"
+        },
+        {
+          "title": "Critical Thinking & Problem Solving",
+          "provider": "Rochester Institute of Technology / edX",
+          "duration": "6 weeks",
+          "url": "https://www.edx.org/course/critical-thinking-problem-solving",
+          "certificate": true,
+          "level": "beginner"
+        },
+        {
+          "title": "Career Planning: Your Career, Your Life",
+          "provider": "University of Auckland / Coursera",
+          "duration": "5 weeks",
+          "url": "https://www.coursera.org/learn/career-planning",
+          "certificate": true,
+          "level": "beginner"
         }
       ]
     }
