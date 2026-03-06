@@ -238,35 +238,36 @@
     fetch(`${API}/health`).catch(()=>{});
 
     // Setup Google buttons
-    document.getElementById("googleLoginBtn").href  = `${API}/auth/google/login`;
-    document.getElementById("googleSignupBtn").href = `${API}/auth/google/login`;
+    document.addEventListener("DOMContentLoaded", function() {
+      document.getElementById("googleLoginBtn").href  = `${API}/auth/google/login`;
+      document.getElementById("googleSignupBtn").href = `${API}/auth/google/login`;
+    });
 
     // Handle Google OAuth callback
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("token")) {
-  const token = params.get("token");
-  const name  = decodeURIComponent(params.get("name") || "");
-  const email = params.get("email") || "";
-  localStorage.setItem("mentorix_token", token);
-  localStorage.setItem("mentorix_email", email);
-  window.history.replaceState({}, "", "/login.html");
-
-  // Check if name looks like a nickname
-  const needsNameConfirm = !name
-    || name.trim().length < 4
-    || !name.trim().includes(" ")
-    || /[0-9_\-\.@#]/.test(name);
-
-  if (needsNameConfirm) {
-    showNameModal(name, token);
-  } else {
-    localStorage.setItem("mentorix_name", name);
-    redirectAfterLogin(token);
-  }
-}
-    if (params.get("error")) {
-      showMsg("loginMsg", "Google sign-in failed. Please try again.", "error");
-    }
+document.addEventListener("DOMContentLoaded", function() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("token")) {
+        const token = params.get("token");
+        const name  = decodeURIComponent(params.get("name") || "");
+        const email = params.get("email") || "";
+        localStorage.setItem("mentorix_token", token);
+        localStorage.setItem("mentorix_email", email);
+        window.history.replaceState({}, "", "/login.html");
+        const needsNameConfirm = !name
+          || name.trim().length < 4
+          || !name.trim().includes(" ")
+          || /[0-9_\-\.@#]/.test(name);
+        if (needsNameConfirm) {
+          showNameModal(name, token);
+        } else {
+          localStorage.setItem("mentorix_name", name);
+          redirectAfterLogin(token);
+        }
+      }
+      if (params.get("error")) {
+        showMsg("loginMsg", "Google sign-in failed. Please try again.", "error");
+      }
+    });
 
     async function redirectAfterLogin(token) {
       try {
