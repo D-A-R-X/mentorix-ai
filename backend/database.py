@@ -38,6 +38,7 @@ def init_db():
             email           TEXT NOT NULL,
             risk_level      TEXT NOT NULL,
             stability_score REAL NOT NULL,
+            scan_result     TEXT,
             track           TEXT NOT NULL DEFAULT 'unknown',
             created_at      TEXT NOT NULL
         )
@@ -78,6 +79,7 @@ def migrate_db():
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider TEXT NOT NULL DEFAULT 'email'",
         "ALTER TABLE course_completions ADD COLUMN IF NOT EXISTS provider TEXT",
         "ALTER TABLE course_completions ADD COLUMN IF NOT EXISTS track TEXT",
+        "ALTER TABLE assessments ADD COLUMN IF NOT EXISTS scan_result TEXT",  # ← ADD THIS
     ]
     for sql in migrations:
         try:
@@ -159,14 +161,17 @@ def save_assessment(
     email: str,
     risk_level: str,
     stability_score: float,
-    track: str = "unknown"
+    track: str = "unknown",
+    scan_result: dict = None
 ) -> None:
+    import json
     conn = get_connection()
     cur  = conn.cursor()
     cur.execute("""
-        INSERT INTO assessments (email, risk_level, stability_score, track, created_at)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO assessments (email, risk_level, stability_score, track, scan_result, created_at)
+        VALUES (%s, %s, %s, %s, %s, %s)
     """, (email, risk_level, round(stability_score, 4), track,
+          json.dumps(scan_result) if scan_result else None,
           datetime.now(timezone.utc).isoformat()))
     conn.commit()
     cur.close()
@@ -177,15 +182,17 @@ def get_user_history(email: str, limit: int = 10) -> List[Dict[str, Any]]:
     conn = get_connection()
     cur  = conn.cursor()
     cur.execute("""
-        SELECT risk_level, stability_score, track, created_at
+        SELECT risk_level, stability_score, track, scan_result, created_at
         FROM assessments WHERE email = %s
         ORDER BY created_at DESC LIMIT %s
     """, (email, limit))
     rows = cur.fetchall()
     cur.close()
     conn.close()
+    import json
     return [
-        {"risk_level": r[0], "stability_score": r[1], "track": r[2], "created_at": r[3]}
+        {"risk_level": r[0], "stability_score": r[1], "track": r[2],
+         "scan_result": json.loads(r[3]) if r[3] else None, "created_at": r[4]}
         for r in rows
     ]
 
