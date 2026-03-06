@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mentorix AI — Welcome</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #04030a;
+      --surface: #0d0b18;
+      --border:  rgba(124,77,255,0.15);
+      --purple:  #7c4dff;
+      --purple2: #b08dff;
+      --accent:  #00e5b4;
+      --white:   #f0ecff;
+      --muted:   #6b6585;
+      --text:    #c8c2e0;
+    }
+    html, body { height: 100%; overflow: hidden; background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text); }
+    .bg-grid { position: fixed; inset: 0; z-index: 0; background-image: linear-gradient(rgba(124,77,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(124,77,255,0.03) 1px, transparent 1px); background-size: 48px 48px; }
+    .bg-glow { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: radial-gradient(ellipse 50% 40% at 50% 55%, rgba(124,77,255,0.07) 0%, transparent 70%); }
+    .ob-logo { position: fixed; top: 24px; left: 24px; z-index: 10; display: flex; align-items: center; gap: 10px; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 16px; color: var(--white); }
+    .ob-logo-mark { width: 30px; height: 30px; border-radius: 8px; background: var(--purple); display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .ob-logo em { font-style: normal; color: var(--purple2); }
+    .ob-progress { position: fixed; top: 28px; right: 24px; z-index: 10; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); }
+    .ob-wrap { position: relative; z-index: 1; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 24px 40px; }
+    .ob-card { width: 100%; max-width: 520px; display: flex; flex-direction: column; align-items: center; gap: 28px; text-align: center; opacity: 0; transform: translateY(18px); transition: opacity 0.45s cubic-bezier(0.4,0,0.2,1), transform 0.45s cubic-bezier(0.4,0,0.2,1); pointer-events: none; }
+    .ob-card.visible { opacity: 1; transform: translateY(0); pointer-events: all; }
+    .ob-card.exit { opacity: 0; transform: translateY(-14px); transition: opacity 0.3s, transform 0.3s; }
+    .ob-avatar { position: relative; width: 72px; height: 72px; }
+    .ob-avatar-ring { position: absolute; inset: -6px; border-radius: 50%; border: 1px solid rgba(124,77,255,0.2); animation: ring-spin 8s linear infinite; }
+    @keyframes ring-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .ob-avatar-core { width: 72px; height: 72px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #a478ff, #4c1d95); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 26px; color: #fff; box-shadow: 0 0 30px rgba(124,77,255,0.3); transition: box-shadow 0.3s; position: relative; z-index: 1; }
+    .ob-avatar-core.speaking { box-shadow: 0 0 50px rgba(124,77,255,0.55), 0 0 100px rgba(124,77,255,0.2); animation: av-pulse 0.7s ease infinite alternate; }
+    @keyframes av-pulse { from { transform: scale(1); } to { transform: scale(1.05); } }
+    .ob-dots { display: flex; gap: 5px; align-items: center; height: 16px; }
+    .ob-dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--purple2); animation: dot-b 1.2s ease infinite; }
+    .ob-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .ob-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes dot-b { 0%,100% { transform: translateY(0); opacity:0.4; } 50% { transform: translateY(-5px); opacity:1; } }
+    .ob-question { font-family: 'Syne', sans-serif; font-weight: 700; font-size: clamp(20px,4vw,30px); color: var(--white); line-height: 1.3; }
+    .ob-sub { font-size: 14px; color: var(--muted); font-weight: 300; line-height: 1.7; max-width: 400px; }
+    .ob-options { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; width: 100%; }
+    .ob-option { padding: 12px 20px; border-radius: 12px; border: 1px solid var(--border); background: rgba(124,77,255,0.05); cursor: pointer; transition: all 0.2s; font-size: 14px; color: var(--text); min-width: 140px; }
+    .ob-option:hover { border-color: var(--purple); background: rgba(124,77,255,0.12); color: var(--white); }
+    .ob-option.selected { border-color: var(--purple); background: rgba(124,77,255,0.2); color: var(--white); box-shadow: 0 0 16px rgba(124,77,255,0.15); }
+    .ob-input { width: 100%; padding: 14px 18px; border-radius: 12px; border: 1px solid var(--border); background: rgba(13,11,24,0.8); color: var(--white); font-size: 15px; font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.2s; }
+    .ob-input:focus { border-color: var(--purple); }
+    .ob-input::placeholder { color: var(--muted); }
+    .ob-select { width: 100%; padding: 14px 18px; border-radius: 12px; border: 1px solid var(--border); background: rgba(13,11,24,0.8); color: var(--white); font-size: 14px; font-family: 'DM Sans', sans-serif; outline: none; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b6585' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; transition: border-color 0.2s; }
+    .ob-select:focus { border-color: var(--purple); }
+    .ob-select option { background: #0d0b18; }
+    .ob-row { display: flex; gap: 12px; width: 100%; }
+    .ob-col { flex: 1; display: flex; flex-direction: column; gap: 6px; text-align: left; }
+    .ob-col-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+    .ob-next { padding: 14px 40px; border-radius: 12px; background: var(--purple); color: #fff; border: none; cursor: pointer; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; box-shadow: 0 6px 24px rgba(124,77,255,0.35); transition: all 0.2s; min-width: 180px; }
+    .ob-next:hover { background: #6535e8; transform: translateY(-2px); }
+    .ob-next:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .choice-grid { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; width: 100%; }
+    .choice-card { flex: 1; min-width: 200px; max-width: 220px; padding: 28px 20px; border-radius: 18px; border: 1px solid var(--border); background: rgba(13,11,24,0.7); cursor: pointer; transition: all 0.25s; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; }
+    .choice-card:hover { border-color: var(--purple); background: rgba(124,77,255,0.08); transform: translateY(-4px); box-shadow: 0 12px 40px rgba(124,77,255,0.15); }
+    .choice-icon { font-size: 36px; }
+    .choice-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: var(--white); }
+    .choice-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  </style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+<div class="ob-logo"><div class="ob-logo-mark">M</div>Mentorix <em>AI</em></div>
+<div class="ob-progress" id="obProgress">1 / 5</div>
+<div class="ob-wrap">
+  <div class="ob-card" id="obCard">
+    <div class="ob-avatar"><div class="ob-avatar-ring"></div><div class="ob-avatar-core" id="obAvatar">M</div></div>
+    <div id="obDots" class="ob-dots" style="display:none"><span></span><span></span><span></span></div>
+    <div class="ob-question" id="obQuestion"></div>
+    <div class="ob-sub" id="obSub"></div>
+    <div id="obInputArea" style="width:100%"></div>
+    <button class="ob-next" id="obNext" onclick="nextStep()" disabled>Continue →</button>
+  </div>
+</div>
+<script>
+const API   = window.location.hostname === "localhost" ? "http://127.0.0.1:8000" : "https://mentorix-ai-backend.onrender.com";
+const TOKEN = localStorage.getItem("mentorix_token");
+const UNAME = localStorage.getItem("mentorix_name") || "there";
+if (!TOKEN) window.location.href = "login.html";
+if (localStorage.getItem("mentorix_profile")) window.location.href = "index.html";
+
+let currentStep = 0;
+let profile     = {};
+const card  = document.getElementById("obCard");
+const avatar= document.getElementById("obAvatar");
+const dots  = document.getElementById("obDots");
+const nextBtn=document.getElementById("obNext");
+
+const STEPS = [
+  { q:`Welcome, ${UNAME}! 👋`, sub:"I'm Mentorix — your AI career guide. Let me ask you a few quick questions to personalise your experience.", speech:`Hi ${UNAME}! Welcome to Mentorix. I'm your AI career guide. I'll ask you a few quick questions to personalise your journey. First — are you currently a student, a working professional, or switching careers?`, type:"options", key:"status", options:[{l:"🎓 Student",v:"student"},{l:"💼 Professional",v:"professional"},{l:"🔄 Career Switcher",v:"career_switcher"}] },
+  { q:"What's your department or field?", sub:"This helps me recommend the right courses and career paths for you.", speech:"Great choice! Now, what department or field are you from?", type:"select", key:"dept", studentOptions:["CSE","IT","AIDS","AIML","ECE","EEE","MECH","CIVIL","CHEM","BIO","FOOD","OTHER"], otherOptions:["Technology","Finance","Healthcare","Education","Manufacturing","Consulting","Other"], otherKey:"industry", otherQ:"What industry are you in?", otherSpeech:"What industry are you working in?" },
+  { q:"Which year and semester are you in?", sub:"I'll tailor my recommendations to your stage of study.", speech:"Which year and semester are you currently in?", type:"year_sem", studentOnly:true, altQ:"How many years of experience do you have?", altSpeech:"How many years of professional experience do you have?", altType:"options", altKey:"years_experience", altOptions:[{l:"Less than 1 year",v:"0"},{l:"1 to 3 years",v:"2"},{l:"3 to 5 years",v:"4"},{l:"5 or more years",v:"6"}] },
+  { q:"What's your current CGPA and backlogs?", sub:"Be honest — there's no judgment here. This helps me understand your academic situation.", speech:"Almost done! What's your current CGPA, and do you have any backlogs? Be honest, I'm here to help.", type:"cgpa", studentOnly:true, altQ:"What's your current role?", altSpeech:"What's your current job role or title?", altType:"text", altKey:"current_job_role", altPlaceholder:"e.g. Software Engineer, Data Analyst..." },
+  { q:"What's your biggest goal right now?", sub:"One sentence is enough. This is the most important question.", speech:`Last one, ${UNAME}! What's your biggest career goal right now?`, type:"text", key:"goal", placeholder:"e.g. Get placed in a top tech company, build a startup..." }
+];
+
+function getBestVoice() {
+  const vv = window.speechSynthesis.getVoices();
+  return vv.find(v=>v.name==="Google UK English Female") ||
+         vv.find(v=>v.name.includes("Zira")) ||
+         vv.find(v=>v.name==="Samantha") ||
+         vv.find(v=>v.name.toLowerCase().includes("female")&&v.lang.startsWith("en")) ||
+         vv.find(v=>v.lang==="en-GB") ||
+         vv.find(v=>v.lang.startsWith("en"));
+}
+
+function speak(text, cb) {
+  window.speechSynthesis.cancel();
+  avatar.classList.add("speaking"); dots.style.display="flex";
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate=0.9; u.pitch=1.1; u.volume=1.0;
+  const go = () => { const v=getBestVoice(); if(v) u.voice=v; u.onend=()=>{ avatar.classList.remove("speaking"); dots.style.display="none"; if(cb)cb(); }; window.speechSynthesis.speak(u); };
+  window.speechSynthesis.getVoices().length>0 ? go() : (window.speechSynthesis.onvoiceschanged=go);
+}
+
+function renderStep(i) {
+  if (i >= STEPS.length) { showChoice(); return; }
+  const s = STEPS[i];
+  const isStudent = profile.status === "student";
+  const useAlt = s.studentOnly && !isStudent;
+
+  document.getElementById("obProgress").textContent = `${i+1} / ${STEPS.length}`;
+  document.getElementById("obQuestion").textContent = useAlt ? s.altQ : s.q;
+  const subEl = document.getElementById("obSub");
+  subEl.textContent = useAlt ? "" : (s.sub||""); subEl.style.display = s.sub&&!useAlt?"block":"none";
+
+  const area = document.getElementById("obInputArea");
+  area.innerHTML = ""; nextBtn.disabled=true;
+
+  const type = useAlt ? s.altType : s.type;
+  const key  = useAlt ? s.altKey  : s.key;
+
+  if (type==="options") {
+    const opts = useAlt ? s.altOptions : s.options;
+    const g=document.createElement("div"); g.className="ob-options";
+    opts.forEach(o=>{
+      const b=document.createElement("button"); b.className="ob-option";
+      b.textContent = typeof o==="string"?o:o.l;
+      b.onclick=()=>{ g.querySelectorAll(".ob-option").forEach(x=>x.classList.remove("selected")); b.classList.add("selected"); profile[key]=typeof o==="string"?o:o.v; nextBtn.disabled=false; };
+      g.appendChild(b);
+    }); area.appendChild(g);
+
+  } else if (type==="select") {
+    const opts = (s.studentOnly||!isStudent) ? (isStudent?s.studentOptions:s.otherOptions) : (isStudent?s.studentOptions:s.otherOptions);
+    const finalKey = isStudent ? s.key : (s.otherKey||s.key);
+    const sel=document.createElement("select"); sel.className="ob-select";
+    sel.innerHTML=`<option value="">Select...</option>`;
+    opts.forEach(o=>{ const op=document.createElement("option"); op.value=op.textContent=o; sel.appendChild(op); });
+    sel.onchange=()=>{ if(sel.value){ profile[finalKey]=sel.value.split(" — ")[0]; nextBtn.disabled=false; } };
+    area.appendChild(sel);
+
+  } else if (type==="year_sem") {
+    const row=document.createElement("div"); row.className="ob-row";
+    [["Year","year",4],["Semester","sem",8]].forEach(([lbl,k,max])=>{
+      const col=document.createElement("div"); col.className="ob-col";
+      col.innerHTML=`<div class="ob-col-label">${lbl}</div>`;
+      const sel=document.createElement("select"); sel.className="ob-select";
+      sel.innerHTML=`<option value="">—</option>`;
+      for(let n=1;n<=max;n++) sel.innerHTML+=`<option value="${n}">${n}</option>`;
+      sel.onchange=()=>{ profile[k]=sel.value; if(profile.year&&profile.sem) nextBtn.disabled=false; };
+      col.appendChild(sel); row.appendChild(col);
+    }); area.appendChild(row);
+
+  } else if (type==="cgpa") {
+    const row=document.createElement("div"); row.className="ob-row";
+    [["CGPA (0–10)","cgpa","number","7.8",0,10,0.1],["Backlogs","backlogs","number","0",0,20,1]].forEach(([lbl,k,t,ph,mn,mx,st])=>{
+      const col=document.createElement("div"); col.className="ob-col";
+      col.innerHTML=`<div class="ob-col-label">${lbl}</div>`;
+      const inp=document.createElement("input"); inp.type=t; inp.min=mn; inp.max=mx; inp.step=st; inp.placeholder=ph; inp.className="ob-input";
+      inp.oninput=()=>{ profile[k]=k==="cgpa"?parseFloat(inp.value)||0:parseInt(inp.value)||0; if(profile.cgpa!==undefined) nextBtn.disabled=false; };
+      col.appendChild(inp); row.appendChild(col);
+    }); area.appendChild(row);
+
+  } else if (type==="text") {
+    const inp=document.createElement("input"); inp.type="text"; inp.className="ob-input";
+    inp.placeholder=useAlt?(s.altPlaceholder||"Type here..."):(s.placeholder||"Type here...");
+    inp.oninput=()=>{ if(inp.value.trim().length>2){ profile[key]=inp.value.trim(); nextBtn.disabled=false; } };
+    inp.onkeydown=e=>{ if(e.key==="Enter"&&!nextBtn.disabled) nextStep(); };
+    area.appendChild(inp); setTimeout(()=>inp.focus(),500);
+  }
+
+  card.classList.remove("exit","visible"); void card.offsetWidth; card.classList.add("visible");
+  speak(useAlt?(s.altSpeech||s.speech):s.speech);
+}
+
+function nextStep() {
+  if(nextBtn.disabled) return;
+  window.speechSynthesis.cancel();
+  card.classList.add("exit");
+  setTimeout(()=>{ currentStep++; renderStep(currentStep); }, 380);
+}
+
+function showChoice() {
+  document.getElementById("obProgress").textContent="Ready!";
+  document.getElementById("obQuestion").textContent=`You're all set, ${UNAME}!`;
+  const sub=document.getElementById("obSub"); sub.textContent="Choose how you'd like to begin your career scan."; sub.style.display="block";
+  const area=document.getElementById("obInputArea"); area.innerHTML="";
+  const g=document.createElement("div"); g.className="choice-grid";
+  [{icon:"🎙️",title:"Voice Session",desc:"Talk naturally with Mentorix AI. She'll guide you through your career scan by conversation.",href:"voice.html"},{icon:"📋",title:"Written Scan",desc:"Answer 25 behavioral questions at your own pace. Takes about 5 minutes.",href:"assessment.html"}].forEach(c=>{
+    const d=document.createElement("div"); d.className="choice-card";
+    d.innerHTML=`<div class="choice-icon">${c.icon}</div><div class="choice-title">${c.title}</div><div class="choice-desc">${c.desc}</div>`;
+    d.onclick=()=>{ saveProfile(c.href); };
+    g.appendChild(d);
+  }); area.appendChild(g);
+  nextBtn.style.display="none";
+  card.classList.remove("exit","visible"); void card.offsetWidth; card.classList.add("visible");
+  speak(`Wonderful, ${UNAME}! I have everything I need. Now choose how you'd like to discover your career path — a voice conversation with me, or a quick written scan. Either way, I'll guide you to your personalised dashboard.`);
+}
+
+async function saveProfile(redirect) {
+  localStorage.setItem("mentorix_profile", JSON.stringify(profile));
+  try { await fetch(`${API}/user/profile`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${TOKEN}`},body:JSON.stringify(profile)}); } catch(e){}
+  window.location.href = redirect;
+}
+
+window.addEventListener("load", ()=>setTimeout(()=>renderStep(0),300));
+</script>
+</body>
+</html>

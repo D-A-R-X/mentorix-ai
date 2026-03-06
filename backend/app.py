@@ -430,6 +430,13 @@ def get_progress(current_user: str = Depends(get_current_user)):
 def user_history(current_user: str = Depends(get_current_user)):
     history = get_user_history(current_user)
     return {"history": history, "count": len(history)}
+@app.post("/user/profile")
+async def save_profile(data: dict, current_user: str = Depends(get_current_user)):
+    conn = get_connection(); cur = conn.cursor()
+    cur.execute("""UPDATE users SET department=%s, year=%s, semester=%s WHERE email=%s""",
+      (data.get("dept",""), data.get("year",""), data.get("sem",""), current_user))
+    conn.commit(); cur.close(); conn.close()
+    return {"message": "Profile saved"}
 # ── Protected Routes ─────────────────────────────────────────────
 @app.post("/analyze-risk")
 def analyze_risk(

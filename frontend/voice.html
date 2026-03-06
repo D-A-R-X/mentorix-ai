@@ -6,951 +6,336 @@
   <title>Mentorix AI — Voice Session</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg:       #04030a;
-      --surface:  #0d0b18;
-      --border:   rgba(124,77,255,0.15);
-      --purple:   #7c4dff;
-      --purple2:  #b08dff;
-      --accent:   #00e5b4;
-      --red:      #ff4f6d;
-      --white:    #f0ecff;
-      --muted:    #6b6585;
-      --text:     #c8c2e0;
-    }
-
-    html, body {
-      height: 100%; overflow: hidden;
-      background: var(--bg);
-      font-family: 'DM Sans', sans-serif;
-      color: var(--text);
-      user-select: none;
-    }
-
-    /* ── Ambient background ─────────────────────────────── */
-    .bg-grid {
-      position: fixed; inset: 0; z-index: 0;
-      background-image:
-        linear-gradient(rgba(124,77,255,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(124,77,255,0.03) 1px, transparent 1px);
-      background-size: 48px 48px;
-    }
-    .bg-glow {
-      position: fixed; inset: 0; z-index: 0; pointer-events: none;
-      background: radial-gradient(ellipse 60% 40% at 50% 60%, rgba(124,77,255,0.08) 0%, transparent 70%);
-      transition: opacity 0.6s;
-    }
-    .bg-glow.speaking { opacity: 2; }
-
-    /* ── Layout ─────────────────────────────────────────── */
-    .session-wrap {
-      position: relative; z-index: 1;
-      height: 100vh;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: space-between;
-      padding: 24px 24px 32px;
-    }
-
-    /* ── Header ─────────────────────────────────────────── */
-    .session-header {
-      width: 100%; display: flex;
-      align-items: center; justify-content: space-between;
-    }
-    .s-logo {
-      display: flex; align-items: center; gap: 10px;
-      font-family: 'Syne', sans-serif; font-weight: 800;
-      font-size: 16px; color: var(--white);
-    }
-    .s-logo-mark {
-      width: 32px; height: 32px; border-radius: 8px;
-      background: var(--purple);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 15px; box-shadow: 0 0 16px rgba(124,77,255,0.4);
-    }
-    .s-logo em { font-style: normal; color: var(--purple2); }
-
-    .session-status {
-      display: flex; align-items: center; gap: 8px;
-      font-family: 'JetBrains Mono', monospace; font-size: 11px;
-      color: var(--muted);
-    }
-    .status-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: var(--muted);
-      transition: background 0.3s, box-shadow 0.3s;
-    }
-    .status-dot.active {
-      background: var(--accent);
-      box-shadow: 0 0 8px var(--accent);
-      animation: pulse-dot 1.5s ease infinite;
-    }
-    .status-dot.speaking {
-      background: var(--purple2);
-      box-shadow: 0 0 8px var(--purple2);
-    }
-    @keyframes pulse-dot {
-      0%,100% { opacity:1; transform:scale(1); }
-      50%      { opacity:0.5; transform:scale(0.8); }
-    }
-
-    .end-btn {
-      padding: 7px 16px; border-radius: 8px;
-      border: 1px solid rgba(255,79,109,0.3);
-      background: transparent; cursor: pointer;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px; color: var(--red);
-      transition: all 0.2s;
-    }
-    .end-btn:hover { background: rgba(255,79,109,0.1); border-color: var(--red); }
-
-    /* ── Spectrum ───────────────────────────────────────── */
-    .spectrum-wrap {
-      flex: 1; width: 100%; max-width: 800px;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 32px; position: relative;
-    }
-
-    .ai-avatar {
-      position: relative;
-      width: 100px; height: 100px;
-    }
-    .ai-avatar-ring {
-      position: absolute; inset: -8px; border-radius: 50%;
-      border: 1px solid rgba(124,77,255,0.2);
-      animation: ring-spin 8s linear infinite;
-    }
-    .ai-avatar-ring2 {
-      position: absolute; inset: -16px; border-radius: 50%;
-      border: 1px solid rgba(124,77,255,0.1);
-      animation: ring-spin 12s linear infinite reverse;
-    }
-    @keyframes ring-spin {
-      from { transform: rotate(0deg); }
-      to   { transform: rotate(360deg); }
-    }
-    .ai-avatar-core {
-      width: 100px; height: 100px; border-radius: 50%;
-      background: radial-gradient(circle at 35% 35%, #a478ff, #4c1d95);
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'Syne', sans-serif; font-weight: 800;
-      font-size: 36px; color: #fff;
-      box-shadow: 0 0 40px rgba(124,77,255,0.35),
-                  0 0 80px rgba(124,77,255,0.15);
-      transition: box-shadow 0.3s;
-      position: relative; z-index: 1;
-    }
-    .ai-avatar-core.speaking {
-      box-shadow: 0 0 60px rgba(124,77,255,0.6),
-                  0 0 120px rgba(124,77,255,0.25);
-      animation: avatar-pulse 0.6s ease infinite alternate;
-    }
-    @keyframes avatar-pulse {
-      from { transform: scale(1); }
-      to   { transform: scale(1.04); }
-    }
-
-    /* Canvas spectrum */
-    #spectrumCanvas {
-      width: 100%; max-width: 700px;
-      height: 120px; display: block;
-    }
-
-    /* ── Transcript ─────────────────────────────────────── */
-    .transcript-box {
-      width: 100%; max-width: 640px;
-      min-height: 80px; max-height: 140px;
-      overflow-y: auto;
-      padding: 16px 20px;
-      background: rgba(13,11,24,0.8);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      backdrop-filter: blur(12px);
-      text-align: center;
-      scrollbar-width: none;
-    }
-    .transcript-box::-webkit-scrollbar { display: none; }
-
-    .transcript-ai {
-      font-size: 15px; color: var(--white);
-      font-weight: 300; line-height: 1.7;
-      transition: opacity 0.4s;
-    }
-    .transcript-user {
-      font-size: 13px; color: var(--accent);
-      font-family: 'JetBrains Mono', monospace;
-      margin-top: 8px; opacity: 0.8;
-    }
-    .transcript-placeholder {
-      font-size: 13px; color: var(--muted);
-      font-family: 'JetBrains Mono', monospace;
-    }
-
-    /* ── Mic button ─────────────────────────────────────── */
-    .mic-section {
-      display: flex; flex-direction: column;
-      align-items: center; gap: 12px;
-    }
-    .mic-btn {
-      width: 72px; height: 72px; border-radius: 50%;
-      border: 1px solid var(--border);
-      background: rgba(124,77,255,0.1);
-      cursor: pointer; transition: all 0.2s;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 28px;
-      box-shadow: 0 0 0 0 rgba(124,77,255,0);
-    }
-    .mic-btn:hover { background: rgba(124,77,255,0.2); border-color: var(--purple); }
-    .mic-btn.listening {
-      background: rgba(124,77,255,0.25);
-      border-color: var(--purple);
-      box-shadow: 0 0 0 8px rgba(124,77,255,0.1),
-                  0 0 0 16px rgba(124,77,255,0.05);
-      animation: mic-ring 1.2s ease infinite;
-    }
-    .mic-btn.disabled { opacity: 0.3; cursor: not-allowed; }
-    @keyframes mic-ring {
-      0%,100% { box-shadow: 0 0 0 0 rgba(124,77,255,0.3), 0 0 0 0 rgba(124,77,255,0.1); }
-      50%      { box-shadow: 0 0 0 12px rgba(124,77,255,0.1), 0 0 0 24px rgba(124,77,255,0.04); }
-    }
-    .mic-label {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px; color: var(--muted);
-      letter-spacing: 1px; text-transform: uppercase;
-    }
-
-    /* ── Progress dots ──────────────────────────────────── */
-    .progress-dots {
-      display: flex; gap: 8px; align-items: center;
-    }
-    .p-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: var(--border); transition: all 0.3s;
-    }
-    .p-dot.done { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
-    .p-dot.current { background: var(--purple); box-shadow: 0 0 8px var(--purple); animation: pulse-dot 1s infinite; }
-
-    /* ── Warning banner ─────────────────────────────────── */
-    .warning-banner {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      background: rgba(255,79,109,0.15);
-      border-bottom: 1px solid rgba(255,79,109,0.4);
-      backdrop-filter: blur(8px);
-      padding: 12px 24px;
-      display: flex; align-items: center; justify-content: center; gap: 12px;
-      font-family: 'JetBrains Mono', monospace; font-size: 12px;
-      color: var(--red); transform: translateY(-100%);
-      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-    }
-    .warning-banner.show { transform: translateY(0); }
-    .warning-count {
-      background: var(--red); color: #fff;
-      width: 20px; height: 20px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 700;
-    }
-
-    /* ── Start overlay ──────────────────────────────────── */
-    .start-overlay {
-      position: fixed; inset: 0; z-index: 50;
-      background: var(--bg);
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 24px; padding: 40px;
-      transition: opacity 0.5s, transform 0.5s;
-    }
-    .start-overlay.hidden {
-      opacity: 0; transform: scale(1.02);
-      pointer-events: none;
-    }
-    .start-title {
-      font-family: 'Syne', sans-serif; font-weight: 800;
-      font-size: clamp(28px, 5vw, 48px);
-      color: var(--white); text-align: center; line-height: 1.2;
-    }
-    .start-title em { font-style: normal; color: var(--purple2); }
-    .start-sub {
-      font-size: 15px; color: var(--muted);
-      text-align: center; max-width: 480px; line-height: 1.7;
-      font-weight: 300;
-    }
-    .start-perms {
-      display: flex; flex-direction: column; gap: 10px;
-      width: 100%; max-width: 340px;
-    }
-    .perm-row {
-      display: flex; align-items: center; gap: 12px;
-      padding: 12px 16px; border-radius: 10px;
-      border: 1px solid var(--border);
-      background: rgba(124,77,255,0.04);
-      font-size: 13px; color: var(--text);
-    }
-    .perm-icon { font-size: 18px; }
-    .perm-status {
-      margin-left: auto;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 10px; color: var(--muted);
-    }
-    .perm-status.granted { color: var(--accent); }
-    .start-btn {
-      padding: 16px 48px; border-radius: 14px;
-      background: var(--purple); color: #fff;
-      border: none; cursor: pointer;
-      font-family: 'Syne', sans-serif; font-weight: 800;
-      font-size: 16px;
-      box-shadow: 0 8px 32px rgba(124,77,255,0.4);
-      transition: all 0.2s;
-    }
-    .start-btn:hover { background: #6535e8; transform: translateY(-2px); box-shadow: 0 12px 40px rgba(124,77,255,0.5); }
-    .start-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-    .start-note {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 10px; color: var(--muted);
-      text-align: center; max-width: 380px; line-height: 1.8;
-    }
-
-    /* ── End overlay ────────────────────────────────────── */
-    .end-overlay {
-      position: fixed; inset: 0; z-index: 50;
-      background: rgba(4,3,10,0.92);
-      backdrop-filter: blur(16px);
-      display: none; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 20px; padding: 40px;
-    }
-    .end-overlay.show { display: flex; }
-    .end-title {
-      font-family: 'Syne', sans-serif; font-weight: 800;
-      font-size: 28px; color: var(--white); text-align: center;
-    }
-    .end-summary {
-      max-width: 520px; background: rgba(13,11,24,0.9);
-      border: 1px solid var(--border); border-radius: 16px;
-      padding: 24px; font-size: 14px; line-height: 1.8;
-      color: var(--text); font-weight: 300;
-      white-space: pre-wrap; max-height: 260px; overflow-y: auto;
-    }
-    .end-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
-    .end-btn-primary {
-      padding: 13px 32px; border-radius: 10px;
-      background: var(--purple); color: #fff;
-      border: none; cursor: pointer;
-      font-family: 'Syne', sans-serif; font-weight: 700;
-      font-size: 14px; transition: all 0.2s;
-    }
-    .end-btn-primary:hover { background: #6535e8; }
-    .end-btn-secondary {
-      padding: 13px 32px; border-radius: 10px;
-      background: transparent; color: var(--muted);
-      border: 1px solid var(--border); cursor: pointer;
-      font-family: 'DM Sans', sans-serif; font-size: 14px;
-      transition: all 0.2s;
-    }
-    .end-btn-secondary:hover { border-color: var(--purple); color: var(--white); }
-
-    /* Scrollbar for end summary */
-    .end-summary::-webkit-scrollbar { width: 4px; }
-    .end-summary::-webkit-scrollbar-track { background: transparent; }
-    .end-summary::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-    @media(max-width:600px){
-      .session-wrap { padding: 16px 16px 24px; }
-      #spectrumCanvas { height: 80px; }
-      .ai-avatar-core { width: 80px; height: 80px; font-size: 28px; }
-    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--bg:#04030a;--surface:#0d0b18;--border:rgba(124,77,255,0.15);--purple:#7c4dff;--purple2:#b08dff;--accent:#00e5b4;--red:#ff4f6d;--white:#f0ecff;--muted:#6b6585;--text:#c8c2e0}
+    html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);user-select:none}
+    .bg-grid{position:fixed;inset:0;z-index:0;background-image:linear-gradient(rgba(124,77,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(124,77,255,0.03) 1px,transparent 1px);background-size:48px 48px}
+    .bg-glow{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 60% 40% at 50% 50%,rgba(124,77,255,0.07) 0%,transparent 70%);transition:opacity 0.5s}
+    .bg-glow.lit{opacity:2.5}
+    .v-wrap{position:relative;z-index:1;height:100vh;display:flex;flex-direction:column;padding:20px 20px 0;gap:0}
+    .v-header{display:flex;align-items:center;justify-content:space-between;flex-shrink:0;padding-bottom:14px}
+    .v-logo{display:flex;align-items:center;gap:10px;font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:var(--white)}
+    .v-logo-mark{width:30px;height:30px;border-radius:8px;background:var(--purple);display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 0 14px rgba(124,77,255,0.4)}
+    .v-logo em{font-style:normal;color:var(--purple2)}
+    .v-status{display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)}
+    .vdot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:all 0.3s}
+    .vdot.on{background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pdot 1.5s ease infinite}
+    .vdot.ai{background:var(--purple2);box-shadow:0 0 8px var(--purple2)}
+    @keyframes pdot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.8)}}
+    .ebtn{padding:6px 14px;border-radius:8px;border:1px solid rgba(255,79,109,0.3);background:transparent;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--red);transition:all 0.2s}
+    .ebtn:hover{background:rgba(255,79,109,0.1);border-color:var(--red)}
+    .v-spec-row{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:8px;padding-bottom:10px}
+    .v-av{position:relative;width:62px;height:62px}
+    .v-av-ring{position:absolute;inset:-5px;border-radius:50%;border:1px solid rgba(124,77,255,0.2);animation:rspin 8s linear infinite}
+    @keyframes rspin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+    .v-av-core{width:62px;height:62px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#a478ff,#4c1d95);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:#fff;box-shadow:0 0 28px rgba(124,77,255,0.3);transition:box-shadow 0.3s;position:relative;z-index:1}
+    .v-av-core.speaking{box-shadow:0 0 50px rgba(124,77,255,0.6),0 0 100px rgba(124,77,255,0.2);animation:avp 0.65s ease infinite alternate}
+    @keyframes avp{from{transform:scale(1)}to{transform:scale(1.06)}}
+    #specCanvas{width:100%;max-width:680px;height:68px;display:block}
+    .v-pdots{display:flex;gap:7px;flex-shrink:0;padding-bottom:6px}
+    .v-pdot{width:8px;height:8px;border-radius:50%;background:var(--border);transition:all 0.3s}
+    .v-pdot.done{background:var(--accent);box-shadow:0 0 6px var(--accent)}
+    .v-pdot.cur{background:var(--purple);box-shadow:0 0 8px var(--purple);animation:pdot 1s infinite}
+    .v-chat{flex:1;overflow-y:auto;padding:8px 2px 8px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth;min-height:0}
+    .v-chat::-webkit-scrollbar{width:3px}
+    .v-chat::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+    .chat-row{display:flex;gap:10px;animation:mIn 0.3s cubic-bezier(0.4,0,0.2,1)}
+    @keyframes mIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .chat-row.user{flex-direction:row-reverse}
+    .chat-av{width:28px;height:28px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#a478ff,#4c1d95);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0;font-family:'Syne',sans-serif}
+    .chat-av.uav{background:rgba(0,229,180,0.12);border:1px solid rgba(0,229,180,0.25);color:var(--accent);font-size:12px}
+    .chat-bubble{max-width:72%;padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.65;font-weight:300}
+    .chat-row.ai .chat-bubble{background:rgba(124,77,255,0.1);border:1px solid rgba(124,77,255,0.15);color:var(--white);border-top-left-radius:4px}
+    .chat-row.user .chat-bubble{background:rgba(0,229,180,0.07);border:1px solid rgba(0,229,180,0.12);color:var(--text);border-top-right-radius:4px}
+    .typing-dots{display:flex;gap:4px;align-items:center;padding:2px 0}
+    .typing-dots span{width:5px;height:5px;border-radius:50%;background:var(--purple2);animation:db 1.2s ease infinite}
+    .typing-dots span:nth-child(2){animation-delay:0.2s}.typing-dots span:nth-child(3){animation-delay:0.4s}
+    @keyframes db{0%,100%{opacity:0.3;transform:scale(0.8)}50%{opacity:1;transform:scale(1)}}
+    .chat-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;height:100%;opacity:0.35;pointer-events:none}
+    .chat-empty-i{font-size:28px}.chat-empty-t{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)}
+    .v-input-row{flex-shrink:0;padding:10px 0 18px;display:flex;gap:8px;align-items:flex-end}
+    .v-mode-toggle{display:flex;gap:4px;flex-shrink:0}
+    .vmbtn{padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);transition:all 0.2s}
+    .vmbtn.active{border-color:var(--purple);color:var(--purple2);background:rgba(124,77,255,0.1)}
+    .v-tinput{flex:1;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:rgba(13,11,24,0.85);color:var(--white);font-size:14px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color 0.2s;resize:none;height:46px;max-height:120px;line-height:1.5;user-select:text}
+    .v-tinput:focus{border-color:var(--purple)}.v-tinput::placeholder{color:var(--muted)}.v-tinput:disabled{opacity:0.4;cursor:not-allowed}
+    .v-sbtn{width:46px;height:46px;border-radius:12px;background:var(--purple);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;transition:all 0.2s;flex-shrink:0}
+    .v-sbtn:hover{background:#6535e8;transform:scale(1.05)}.v-sbtn:disabled{opacity:0.4;cursor:not-allowed;transform:none}
+    .v-micbtn{width:46px;height:46px;border-radius:12px;border:1px solid var(--border);background:rgba(124,77,255,0.1);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;transition:all 0.2s;flex-shrink:0}
+    .v-micbtn:hover{border-color:var(--purple);background:rgba(124,77,255,0.2)}
+    .v-micbtn.active{border-color:var(--purple);background:rgba(124,77,255,0.22);animation:micr 1.2s ease infinite}
+    .v-micbtn.off{opacity:0.3;cursor:not-allowed}
+    @keyframes micr{0%,100%{box-shadow:0 0 0 0 rgba(124,77,255,0.3)}50%{box-shadow:0 0 0 10px rgba(124,77,255,0.06)}}
+    .warn-bar{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(255,79,109,0.12);border-bottom:1px solid rgba(255,79,109,0.35);backdrop-filter:blur(8px);padding:10px 24px;display:flex;align-items:center;justify-content:center;gap:10px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--red);transform:translateY(-100%);transition:transform 0.3s cubic-bezier(0.4,0,0.2,1)}
+    .warn-bar.show{transform:translateY(0)}
+    .warn-n{background:var(--red);color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+    .start-ov{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:40px;transition:opacity 0.5s,transform 0.5s}
+    .start-ov.gone{opacity:0;transform:scale(1.02);pointer-events:none}
+    .st-title{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(24px,5vw,42px);color:var(--white);text-align:center;line-height:1.2}
+    .st-title em{font-style:normal;color:var(--purple2)}
+    .st-sub{font-size:15px;color:var(--muted);text-align:center;max-width:440px;line-height:1.7;font-weight:300}
+    .perm-list{display:flex;flex-direction:column;gap:8px;width:100%;max-width:310px}
+    .perm-r{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:rgba(124,77,255,0.04);font-size:13px;color:var(--text)}
+    .pst{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)}
+    .pst.ok{color:var(--accent)}
+    .st-go{padding:14px 42px;border-radius:13px;background:var(--purple);color:#fff;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-weight:800;font-size:15px;box-shadow:0 8px 28px rgba(124,77,255,0.4);transition:all 0.2s}
+    .st-go:hover{background:#6535e8;transform:translateY(-2px)}.st-go:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+    .st-note{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-align:center;max-width:340px;line-height:1.9}
+    .end-ov{position:fixed;inset:0;z-index:50;background:rgba(4,3,10,0.93);backdrop-filter:blur(16px);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:40px}
+    .end-ov.show{display:flex}
+    .end-t{font-family:'Syne',sans-serif;font-weight:800;font-size:26px;color:var(--white);text-align:center}
+    .end-sum{max-width:500px;background:rgba(13,11,24,0.9);border:1px solid var(--border);border-radius:14px;padding:22px;font-size:14px;line-height:1.8;color:var(--text);font-weight:300;white-space:pre-wrap;max-height:240px;overflow-y:auto}
+    .end-acts{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+    .end-pri{padding:12px 28px;border-radius:10px;background:var(--purple);color:#fff;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;transition:all 0.2s}
+    .end-pri:hover{background:#6535e8}
+    .end-sec{padding:12px 28px;border-radius:10px;background:transparent;color:var(--muted);border:1px solid var(--border);cursor:pointer;font-size:14px;transition:all 0.2s}
+    .end-sec:hover{border-color:var(--purple);color:var(--white)}
   </style>
 </head>
 <body>
-
-<!-- Background -->
 <div class="bg-grid"></div>
 <div class="bg-glow" id="bgGlow"></div>
-
-<!-- Warning banner -->
-<div class="warning-banner" id="warningBanner">
-  <span>⚠ Tab switch detected</span>
-  <div class="warning-count" id="warningCount">1</div>
-  <span>— please stay on this page during your session</span>
-</div>
+<div class="warn-bar" id="warnBar"><span>⚠ Tab switch detected</span><div class="warn-n" id="warnN">1</div><span>— please stay focused</span></div>
 
 <!-- Start overlay -->
-<div class="start-overlay" id="startOverlay">
-  <div class="s-logo" style="font-size:20px;gap:12px">
-    <div class="s-logo-mark" style="width:40px;height:40px;font-size:18px">M</div>
-    Mentorix <em>AI</em>
+<div class="start-ov" id="startOv">
+  <div class="v-logo" style="font-size:18px;gap:12px"><div class="v-logo-mark" style="width:36px;height:36px;font-size:16px">M</div>Mentorix <em>AI</em></div>
+  <div class="st-title">Your <em>Voice Intelligence</em><br>Session</div>
+  <div class="st-sub">Mentorix will have a real conversation with you. Speak naturally or type — whatever feels comfortable.</div>
+  <div class="perm-list">
+    <div class="perm-r">🎙️ Microphone — for your voice<span class="pst" id="pMic">Required</span></div>
+    <div class="perm-r">🔊 Speaker — to hear Mentorix<span class="pst ok">Ready</span></div>
+    <div class="perm-r">🔒 Stay on this tab<span class="pst ok">Monitored</span></div>
   </div>
-  <div class="start-title">Your <em>Voice Intelligence</em><br>Session</div>
-  <div class="start-sub">
-    Mentorix will have a real conversation with you — asking about your interests,
-    strengths, and goals. Speak naturally. There are no right or wrong answers.
-  </div>
-  <div class="start-perms">
-    <div class="perm-row">
-      <span class="perm-icon">🎙️</span>
-      <span>Microphone — for your voice</span>
-      <span class="perm-status" id="permMic">Required</span>
-    </div>
-    <div class="perm-row">
-      <span class="perm-icon">🔊</span>
-      <span>Speaker — to hear Mentorix</span>
-      <span class="perm-status granted">Ready</span>
-    </div>
-    <div class="perm-row">
-      <span class="perm-icon">🔒</span>
-      <span>Stay on this tab during session</span>
-      <span class="perm-status" id="permTab">Monitored</span>
-    </div>
-  </div>
-  <button class="start-btn" id="startBtn" onclick="startSession()">Begin Voice Session →</button>
-  <div class="start-note">
-    Session takes 5–8 minutes · Results saved to your dashboard<br>
-    Works best on Chrome or Edge · Keep your mic unmuted
-  </div>
+  <button class="st-go" id="startGoBtn" onclick="startSession()">Begin Session →</button>
+  <div class="st-note">5–8 minutes · Results saved to your dashboard<br>Chrome or Edge recommended · Space bar = toggle mic</div>
 </div>
 
 <!-- End overlay -->
-<div class="end-overlay" id="endOverlay">
-  <div style="font-size:40px">✦</div>
-  <div class="end-title">Session Complete</div>
-  <div style="font-size:13px;color:var(--muted);font-family:'JetBrains Mono',monospace">
-    Analysis saved to your dashboard
-  </div>
-  <div class="end-summary" id="endSummary">Generating your analysis...</div>
-  <div class="end-actions">
-    <button class="end-btn-primary" onclick="goToDashboard()">View Dashboard →</button>
-    <button class="end-btn-secondary" onclick="window.location.reload()">Start New Session</button>
+<div class="end-ov" id="endOv">
+  <div style="font-size:36px">✦</div>
+  <div class="end-t">Session Complete</div>
+  <div style="font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace">Analysis saved to your dashboard</div>
+  <div class="end-sum" id="endSum">Generating your analysis...</div>
+  <div class="end-acts">
+    <button class="end-pri" onclick="window.location.href='index.html'">View Dashboard →</button>
+    <button class="end-sec" onclick="window.location.reload()">New Session</button>
   </div>
 </div>
 
-<!-- Main session UI -->
-<div class="session-wrap">
-  <div class="session-header">
-    <div class="s-logo">
-      <div class="s-logo-mark">M</div>
-      Mentorix <em>AI</em>
-    </div>
-    <div class="session-status">
-      <div class="status-dot" id="statusDot"></div>
-      <span id="statusText">Ready</span>
-    </div>
-    <button class="end-btn" onclick="confirmEnd()">End Session</button>
+<!-- Main UI -->
+<div class="v-wrap">
+  <div class="v-header">
+    <div class="v-logo"><div class="v-logo-mark">M</div>Mentorix <em>AI</em></div>
+    <div class="v-status"><div class="vdot" id="vDot"></div><span id="vStatus">Ready</span></div>
+    <button class="ebtn" onclick="confirmEnd()">End Session</button>
   </div>
-
-  <div class="spectrum-wrap">
-    <div class="ai-avatar">
-      <div class="ai-avatar-ring"></div>
-      <div class="ai-avatar-ring2"></div>
-      <div class="ai-avatar-core" id="aiAvatar">M</div>
-    </div>
-
-    <canvas id="spectrumCanvas"></canvas>
-
-    <div class="transcript-box" id="transcriptBox">
-      <div class="transcript-placeholder" id="transcriptPlaceholder">
-        Mentorix is ready to speak with you...
-      </div>
-      <div class="transcript-ai" id="transcriptAi" style="display:none"></div>
-      <div class="transcript-user" id="transcriptUser" style="display:none"></div>
-    </div>
-
-    <div class="progress-dots" id="progressDots"></div>
+  <div class="v-spec-row">
+    <div class="v-av"><div class="v-av-ring"></div><div class="v-av-core" id="vAv">M</div></div>
+    <canvas id="specCanvas"></canvas>
+    <div class="v-pdots" id="vPdots"></div>
   </div>
-
-  <div class="mic-section">
-    <button class="mic-btn disabled" id="micBtn" onclick="toggleMic()">🎙️</button>
-    <div class="mic-label" id="micLabel">Waiting for Mentorix...</div>
+  <div class="v-chat" id="vChat">
+    <div class="chat-empty" id="chatEmpty"><div class="chat-empty-i">🎙️</div><div class="chat-empty-t">Session starting...</div></div>
+  </div>
+  <div class="v-input-row">
+    <div class="v-mode-toggle">
+      <button class="vmbtn active" id="modeV" onclick="setMode('voice')" title="Voice">🎙️</button>
+      <button class="vmbtn" id="modeT" onclick="setMode('type')" title="Type">⌨️</button>
+    </div>
+    <textarea class="v-tinput" id="typeInp" placeholder="Type here, or use 🎙️ voice..." disabled rows="1" onkeydown="handleTKey(event)" oninput="autoR(this)"></textarea>
+    <button class="v-micbtn off" id="micBtn" onclick="toggleMic()">🎙️</button>
+    <button class="v-sbtn" id="sendBtn" onclick="sendTyped()" disabled title="Send">➤</button>
   </div>
 </div>
 
 <script>
-// ── Config ────────────────────────────────────────────────
-function getAPI() {
-  const h = window.location.hostname;
-  if (h === "localhost" || h === "127.0.0.1") return "http://127.0.0.1:8000";
-  return "https://mentorix-ai-backend.onrender.com";
-}
-const API   = getAPI();
-const TOKEN = localStorage.getItem("mentorix_token");
-const NAME  = localStorage.getItem("mentorix_name") || "there";
+const API=window.location.hostname==="localhost"?"http://127.0.0.1:8000":"https://mentorix-ai-backend.onrender.com";
+const TOKEN=localStorage.getItem("mentorix_token");
+const UNAME=localStorage.getItem("mentorix_name")||"there";
+if(!TOKEN) window.location.href="login.html";
 
-if (!TOKEN) window.location.href = "login.html";
+let active=false,listening=false,speaking=false,tabW=0,qIdx=0,convo=[],rec=null;
+let audioCtx=null,analyser=null,micStream=null,raf=null,aiLv=0,mode="voice";
+const MAX_W=3,MAX_Q=8;
 
-// ── State ─────────────────────────────────────────────────
-let sessionActive    = false;
-let isListening      = false;
-let isSpeaking       = false;
-let tabWarnings      = 0;
-let questionIndex    = 0;
-let conversationLog  = [];   // [{role, content}]
-let recognition      = null;
-let audioCtx         = null;
-let analyser         = null;
-let micStream        = null;
-let animFrame        = null;
-let currentUtterance = null;
+const bgGlow=document.getElementById("bgGlow"),vDot=document.getElementById("vDot"),vStatus=document.getElementById("vStatus");
+const vAv=document.getElementById("vAv"),vChat=document.getElementById("vChat");
+const micBtn=document.getElementById("micBtn"),sendBtn=document.getElementById("sendBtn"),typeInp=document.getElementById("typeInp");
+const warnBar=document.getElementById("warnBar"),warnN=document.getElementById("warnN");
+const canvas=document.getElementById("specCanvas"),cx=canvas.getContext("2d");
 
-const MAX_WARNINGS   = 3;
-const QUESTIONS_COUNT = 8;
+function resizeCvs(){canvas.width=canvas.offsetWidth*devicePixelRatio;canvas.height=canvas.offsetHeight*devicePixelRatio;cx.scale(devicePixelRatio,devicePixelRatio);}
+window.addEventListener("resize",resizeCvs);resizeCvs();
 
-// ── Questions flow ────────────────────────────────────────
-const OPENING = `Hi ${NAME}! I'm Mentorix. I'm going to have a quick conversation with you to understand your interests and help guide your career path. There are no right or wrong answers — just be yourself. Ready? Let's start. Tell me, what are you currently studying and which year are you in?`;
-
-// ── DOM refs ──────────────────────────────────────────────
-const startOverlay   = document.getElementById("startOverlay");
-const endOverlay     = document.getElementById("endOverlay");
-const warningBanner  = document.getElementById("warningBanner");
-const warningCount   = document.getElementById("warningCount");
-const statusDot      = document.getElementById("statusDot");
-const statusText     = document.getElementById("statusText");
-const aiAvatar       = document.getElementById("aiAvatar");
-const bgGlow         = document.getElementById("bgGlow");
-const micBtn         = document.getElementById("micBtn");
-const micLabel       = document.getElementById("micLabel");
-const transcriptAi   = document.getElementById("transcriptAi");
-const transcriptUser = document.getElementById("transcriptUser");
-const transcriptPh   = document.getElementById("transcriptPlaceholder");
-const progressDots   = document.getElementById("progressDots");
-const canvas         = document.getElementById("spectrumCanvas");
-const ctx2d          = canvas.getContext("2d");
-
-// ── Canvas resize ─────────────────────────────────────────
-function resizeCanvas() {
-  canvas.width  = canvas.offsetWidth  * window.devicePixelRatio;
-  canvas.height = canvas.offsetHeight * window.devicePixelRatio;
-  ctx2d.scale(window.devicePixelRatio, window.devicePixelRatio);
-}
-window.addEventListener("resize", resizeCanvas);
-resizeCanvas();
-
-// ── Progress dots ─────────────────────────────────────────
-function renderDots() {
-  progressDots.innerHTML = "";
-  for (let i = 0; i < QUESTIONS_COUNT; i++) {
-    const d = document.createElement("div");
-    d.className = "p-dot" +
-      (i < questionIndex ? " done" : i === questionIndex ? " current" : "");
-    progressDots.appendChild(d);
-  }
-}
+function renderDots(){const el=document.getElementById("vPdots");el.innerHTML="";for(let i=0;i<MAX_Q;i++){const d=document.createElement("div");d.className="v-pdot"+(i<qIdx?" done":i===qIdx?" cur":"");el.appendChild(d);}}
 renderDots();
 
-// ── Tab detection ─────────────────────────────────────────
-document.addEventListener("visibilitychange", () => {
-  if (!sessionActive || document.visibilityState === "visible") return;
-  tabWarnings++;
-  warningCount.textContent = tabWarnings;
-  warningBanner.classList.add("show");
-  setTimeout(() => warningBanner.classList.remove("show"), 4000);
-  if (tabWarnings >= MAX_WARNINGS) {
-    speak("I noticed you left the session multiple times. Please stay focused. I'll continue but this will be noted.");
-  }
+document.addEventListener("visibilitychange",()=>{
+  if(!active||document.visibilityState==="visible")return;
+  tabW++;warnN.textContent=tabW;warnBar.classList.add("show");setTimeout(()=>warnBar.classList.remove("show"),4000);
+  if(tabW>=MAX_W) speak("I noticed you've switched tabs multiple times. Please stay on this page — it will be noted in your report.");
 });
 
-// ── Mic permission ────────────────────────────────────────
-async function requestMic() {
-  try {
-    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    document.getElementById("permMic").textContent  = "✓ Granted";
-    document.getElementById("permMic").className    = "perm-status granted";
-    document.getElementById("permTab").textContent  = "✓ Active";
-    setupAudioAnalyser(micStream);
-    return true;
-  } catch(e) {
-    document.getElementById("permMic").textContent = "✗ Denied";
-    alert("Microphone access is required for the voice session. Please allow microphone access and try again.");
-    return false;
+function getBestVoice(){
+  const vv=window.speechSynthesis.getVoices();
+  return vv.find(v=>v.name==="Google UK English Female")||vv.find(v=>v.name.includes("Zira"))||vv.find(v=>v.name==="Samantha")||vv.find(v=>v.name.toLowerCase().includes("female")&&v.lang.startsWith("en"))||vv.find(v=>v.lang==="en-GB")||vv.find(v=>v.lang.startsWith("en"));
+}
+
+function speak(text,cb){
+  window.speechSynthesis.cancel();speaking=true;
+  vAv.classList.add("speaking");bgGlow.classList.add("lit");
+  vDot.className="vdot ai";vStatus.textContent="Mentorix speaking...";
+  micBtn.className="v-micbtn off";typeInp.disabled=true;sendBtn.disabled=true;
+  let lv=0,dir=1;const iv=setInterval(()=>{lv+=dir*0.07;if(lv>=1)dir=-1;if(lv<=0)dir=1;aiLv=lv;},55);
+  const u=new SpeechSynthesisUtterance(text);u.rate=0.88;u.pitch=1.12;u.volume=1.0;
+  const go=()=>{const v=getBestVoice();if(v)u.voice=v;u.onend=()=>{clearInterval(iv);aiLv=0;speaking=false;vAv.classList.remove("speaking");bgGlow.classList.remove("lit");if(cb)cb();};window.speechSynthesis.speak(u);};
+  window.speechSynthesis.getVoices().length>0?go():(window.speechSynthesis.onvoiceschanged=go);
+}
+
+function startListening(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){alert("Voice recognition not supported. Please switch to typing mode.");return;}
+  rec=new SR();rec.continuous=false;rec.interimResults=true;rec.lang="en-US";
+  rec.onstart=()=>{listening=true;micBtn.className="v-micbtn active";vDot.className="vdot on";vStatus.textContent="Listening...";};
+  rec.onresult=(e)=>{let f="",im="";for(let i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal)f+=e.results[i][0].transcript;else im+=e.results[i][0].transcript;}if(im||f)typeInp.value=f||im;if(f)handleUserInput(f.trim());};
+  rec.onerror=(e)=>{if(e.error!=="no-speech")console.warn("STT:",e.error);};
+  rec.onend=()=>{listening=false;micBtn.className="v-micbtn";vDot.className="vdot";vStatus.textContent="Your turn";typeInp.value="";};
+  rec.start();
+}
+function stopListening(){if(rec){rec.stop();rec=null;}listening=false;}
+function toggleMic(){if(micBtn.classList.contains("off"))return;listening?stopListening():startListening();}
+
+function setMode(m){
+  mode=m;
+  document.getElementById("modeV").className="vmbtn"+(m==="voice"?" active":"");
+  document.getElementById("modeT").className="vmbtn"+(m==="type"?" active":"");
+  if(!speaking&&active){
+    typeInp.disabled=(m==="voice");sendBtn.disabled=(m==="voice");
+    micBtn.className="v-micbtn"+(m==="voice"?"":"  off");
+    if(m==="type"){typeInp.disabled=false;sendBtn.disabled=false;typeInp.focus();}
   }
 }
 
-// ── Audio analyser ────────────────────────────────────────
-function setupAudioAnalyser(stream) {
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  analyser = audioCtx.createAnalyser();
-  analyser.fftSize = 256;
-  const source = audioCtx.createMediaStreamSource(stream);
-  source.connect(analyser);
-  drawSpectrum();
+async function reqMic(){
+  try{micStream=await navigator.mediaDevices.getUserMedia({audio:true});document.getElementById("pMic").textContent="✓ Granted";document.getElementById("pMic").className="pst ok";setupAn(micStream);return true;}
+  catch(e){document.getElementById("pMic").textContent="✗ (typing only)";return false;}
 }
+function setupAn(stream){audioCtx=new(window.AudioContext||window.webkitAudioContext)();analyser=audioCtx.createAnalyser();analyser.fftSize=256;audioCtx.createMediaStreamSource(stream).connect(analyser);drawSpec();}
 
-// ── Spectrum draw ─────────────────────────────────────────
-const BAR_COUNT = 64;
-let   aiLevel   = 0;
-
-function drawSpectrum() {
-  animFrame = requestAnimationFrame(drawSpectrum);
-  const W = canvas.offsetWidth;
-  const H = canvas.offsetHeight;
-  ctx2d.clearRect(0, 0, W, H);
-
-  const dataArr = new Uint8Array(analyser ? analyser.frequencyBinCount : BAR_COUNT);
-  if (analyser && isListening) analyser.getByteFrequencyData(dataArr);
-
-  const barW   = W / BAR_COUNT - 1;
-  const cx     = W / 2;
-
-  for (let i = 0; i < BAR_COUNT; i++) {
-    let userVal = (dataArr[i] || 0) / 255;
-    let aiVal   = isSpeaking ? aiLevel * (0.3 + 0.7 * Math.sin(Date.now() / 80 + i * 0.4) ** 2) : 0;
-    let val     = Math.max(userVal, aiVal);
-    const barH  = val * H * 0.85;
-    const x     = i * (barW + 1);
-
-    // Color: purple for AI, teal for user
-    const r = isSpeaking ? 124 : 0;
-    const g = isSpeaking ? 77  : 229;
-    const b = isSpeaking ? 255 : 180;
-    const alpha = 0.15 + val * 0.85;
-
-    ctx2d.fillStyle = `rgba(${r},${g},${b},${alpha})`;
-    const y = (H - barH) / 2;
-
-    // Rounded bars
-    const radius = Math.min(barW / 2, 3);
-    ctx2d.beginPath();
-    ctx2d.moveTo(x + radius, y);
-    ctx2d.lineTo(x + barW - radius, y);
-    ctx2d.quadraticCurveTo(x + barW, y, x + barW, y + radius);
-    ctx2d.lineTo(x + barW, y + barH - radius);
-    ctx2d.quadraticCurveTo(x + barW, y + barH, x + barW - radius, y + barH);
-    ctx2d.lineTo(x + radius, y + barH);
-    ctx2d.quadraticCurveTo(x, y + barH, x, y + barH - radius);
-    ctx2d.lineTo(x, y + radius);
-    ctx2d.quadraticCurveTo(x, y, x + radius, y);
-    ctx2d.closePath();
-    ctx2d.fill();
+const N=64;
+function drawSpec(){
+  raf=requestAnimationFrame(drawSpec);
+  const W=canvas.offsetWidth,H=canvas.offsetHeight;cx.clearRect(0,0,W,H);
+  const data=new Uint8Array(analyser?analyser.frequencyBinCount:N);
+  if(analyser&&listening)analyser.getByteFrequencyData(data);
+  const bw=W/N-0.8;
+  for(let i=0;i<N;i++){
+    let uv=(data[i]||0)/255;
+    let av=speaking?aiLv*(0.25+0.75*Math.sin(Date.now()/75+i*0.45)**2):0;
+    let v=Math.max(uv,av);const bh=v*H*0.88,x=i*(bw+0.8),y=(H-bh)/2;
+    const r=speaking?124:0,g=speaking?77:229,b=speaking?255:180;
+    cx.fillStyle=`rgba(${r},${g},${b},${0.12+v*0.88})`;
+    if(bh>0){const rd=Math.min(bw/2,3);cx.beginPath();cx.moveTo(x+rd,y);cx.lineTo(x+bw-rd,y);cx.quadraticCurveTo(x+bw,y,x+bw,y+rd);cx.lineTo(x+bw,y+bh-rd);cx.quadraticCurveTo(x+bw,y+bh,x+bw-rd,y+bh);cx.lineTo(x+rd,y+bh);cx.quadraticCurveTo(x,y+bh,x,y+bh-rd);cx.lineTo(x,y+rd);cx.quadraticCurveTo(x,y,x+rd,y);cx.closePath();cx.fill();}
   }
 }
 
-// ── TTS ───────────────────────────────────────────────────
-function speak(text, onEnd) {
-  window.speechSynthesis.cancel();
-  isSpeaking = true;
-  aiAvatar.classList.add("speaking");
-  bgGlow.classList.add("speaking");
-  statusDot.className  = "status-dot speaking";
-  statusText.textContent = "Mentorix speaking...";
-  micBtn.className     = "mic-btn disabled";
-  micLabel.textContent = "Please listen...";
+let msgId=0;
+function addMsg(role,text,isTyping=false){
+  const emp=document.getElementById("chatEmpty");if(emp)emp.remove();
+  const row=document.createElement("div");row.className=`chat-row ${role}`;
+  const av=document.createElement("div");av.className=`chat-av${role==="user"?" uav":""}`;av.textContent=role==="ai"?"M":UNAME[0].toUpperCase();
+  const bub=document.createElement("div");bub.className="chat-bubble";
+  if(isTyping)bub.innerHTML='<div class="typing-dots"><span></span><span></span><span></span></div>';
+  else bub.textContent=text;
+  if(role==="ai"){row.appendChild(av);row.appendChild(bub);}else{row.appendChild(av);row.appendChild(bub);}
+  const id=`m${++msgId}`;row.dataset.id=id;
+  vChat.appendChild(row);vChat.scrollTop=vChat.scrollHeight;
+  return id;
+}
+function removeMsg(id){const el=vChat.querySelector(`[data-id="${id}"]`);if(el)el.remove();}
+function autoR(el){el.style.height="auto";el.style.height=Math.min(el.scrollHeight,120)+"px";}
 
-  // Animate aiLevel
-  let lvl = 0; let dir = 1;
-  const lvlInterval = setInterval(() => {
-    lvl += dir * 0.08;
-    if (lvl >= 1) dir = -1;
-    if (lvl <= 0) dir = 1;
-    aiLevel = lvl;
-  }, 60);
-
-  transcriptPh.style.display  = "none";
-  transcriptAi.style.display  = "block";
-  transcriptAi.textContent    = text;
-  transcriptUser.style.display = "none";
-
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.rate   = 0.92;
-  utter.pitch  = 1.0;
-  utter.volume = 1.0;
-
-  // Pick a good voice
-  const voices = window.speechSynthesis.getVoices();
-  const preferred = voices.find(v =>
-    v.name.includes("Google") && v.lang.startsWith("en")
-  ) || voices.find(v => v.lang.startsWith("en")) || voices[0];
-  if (preferred) utter.voice = preferred;
-
-  utter.onend = () => {
-    clearInterval(lvlInterval);
-    aiLevel  = 0;
-    isSpeaking = false;
-    aiAvatar.classList.remove("speaking");
-    bgGlow.classList.remove("speaking");
-    if (onEnd) onEnd();
-  };
-  currentUtterance = utter;
-  window.speechSynthesis.speak(utter);
+async function startSession(){
+  const g=await reqMic();
+  const btn=document.getElementById("startGoBtn");btn.disabled=true;btn.textContent="Starting...";
+  // If no mic, auto-switch to type mode
+  if(!g) setMode("type");
+  setTimeout(()=>{
+    document.getElementById("startOv").classList.add("gone");active=true;
+    setTimeout(()=>{
+      const op=`Hi ${UNAME}! I'm Mentorix, your AI career guide. I'm here to have a real conversation with you about your interests and future. You can speak to me or type — whatever feels natural. Let's start — what are you currently studying, and which year are you in?`;
+      addMsg("ai",op);speak(op,enableInput);qIdx=1;renderDots();
+    },500);
+  },350);
 }
 
-// Ensure voices load
-window.speechSynthesis.onvoiceschanged = () => {};
-
-// ── STT ───────────────────────────────────────────────────
-function startListening() {
-  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    alert("Voice recognition not supported. Please use Chrome or Edge.");
-    return;
-  }
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  recognition = new SR();
-  recognition.continuous     = false;
-  recognition.interimResults = true;
-  recognition.lang           = "en-US";
-
-  recognition.onstart = () => {
-    isListening = true;
-    micBtn.className     = "mic-btn listening";
-    micLabel.textContent = "Listening...";
-    statusDot.className  = "status-dot active";
-    statusText.textContent = "Listening...";
-    transcriptUser.style.display = "block";
-    transcriptUser.textContent   = "🎙 ...";
-  };
-
-  recognition.onresult = (e) => {
-    let interim = "";
-    let final   = "";
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) final += e.results[i][0].transcript;
-      else interim += e.results[i][0].transcript;
-    }
-    transcriptUser.textContent = "You: " + (final || interim);
-    if (final) handleUserResponse(final.trim());
-  };
-
-  recognition.onerror = (e) => {
-    if (e.error === "no-speech") {
-      micBtn.className     = "mic-btn";
-      micLabel.textContent = "Tap to speak";
-    }
-  };
-
-  recognition.onend = () => {
-    isListening = false;
-    micBtn.className     = "mic-btn";
-    micLabel.textContent = "Tap to speak";
-    statusDot.className  = "status-dot";
-    statusText.textContent = "Thinking...";
-  };
-
-  recognition.start();
+function enableInput(){
+  vDot.className="vdot";vStatus.textContent="Your turn";
+  if(mode==="voice"){micBtn.className="v-micbtn";}
+  else{typeInp.disabled=false;sendBtn.disabled=false;typeInp.focus();}
 }
 
-function stopListening() {
-  if (recognition) { recognition.stop(); recognition = null; }
-  isListening = false;
+function handleTKey(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendTyped();}}
+function sendTyped(){const txt=typeInp.value.trim();if(!txt||speaking)return;typeInp.value="";typeInp.style.height="auto";handleUserInput(txt);}
+
+async function handleUserInput(text){
+  if(!text||text.length<2){speak("I didn't catch that. Could you say that again?",enableInput);return;}
+  addMsg("user",text);convo.push({role:"user",content:text});
+  typeInp.disabled=true;sendBtn.disabled=true;micBtn.className="v-micbtn off";
+  vDot.className="vdot";vStatus.textContent="Thinking...";
+  qIdx=Math.min(qIdx+1,MAX_Q);renderDots();
+  const tid=addMsg("ai","",true);
+  try{
+    const reply=await getAIReply(text);removeMsg(tid);
+    convo.push({role:"assistant",content:reply});
+    const isEnd=reply.includes("[[END]]")||convo.filter(m=>m.role==="user").length>=MAX_Q;
+    const clean=reply.replace("[[END]]","").trim();
+    addMsg("ai",clean);
+    if(isEnd)speak(clean,()=>endSession());else speak(clean,enableInput);
+  }catch(e){removeMsg(tid);const fb="I had a small glitch. Could you repeat that?";addMsg("ai",fb);speak(fb,enableInput);}
 }
 
-function toggleMic() {
-  if (micBtn.classList.contains("disabled")) return;
-  if (isListening) stopListening();
-  else startListening();
-}
+async function getAIReply(msg){
+  const sys=`You are Mentorix, a warm and professional AI career mentor — like a knowledgeable older sister who genuinely cares. You are speaking with ${UNAME}.
 
-// ── Session start ─────────────────────────────────────────
-async function startSession() {
-  const granted = await requestMic();
-  if (!granted) return;
-
-  document.getElementById("startBtn").disabled = true;
-  document.getElementById("startBtn").textContent = "Starting...";
-
-  // Short delay then hide overlay
-  setTimeout(() => {
-    startOverlay.classList.add("hidden");
-    sessionActive = true;
-
-    // Speak opening after overlay fades
-    setTimeout(() => {
-      speak(OPENING, () => {
-        enableMic();
-        questionIndex = 1;
-        renderDots();
-      });
-    }, 600);
-  }, 400);
-}
-
-function enableMic() {
-  micBtn.className     = "mic-btn";
-  micLabel.textContent = "Tap to speak";
-  statusDot.className  = "status-dot";
-  statusText.textContent = "Your turn";
-}
-
-// ── User response handler ─────────────────────────────────
-async function handleUserResponse(userText) {
-  if (!userText || userText.length < 2) {
-    speak("I didn't catch that. Could you say that again?", enableMic);
-    return;
-  }
-
-  conversationLog.push({ role: "user", content: userText });
-  micBtn.className     = "mic-btn disabled";
-  micLabel.textContent = "Processing...";
-  statusDot.className  = "status-dot";
-  statusText.textContent = "Thinking...";
-
-  questionIndex = Math.min(questionIndex + 1, QUESTIONS_COUNT);
-  renderDots();
-
-  try {
-    const reply = await getAIResponse(userText);
-    conversationLog.push({ role: "assistant", content: reply });
-
-    // Check if session should end
-    const isEnding = reply.includes("[[END_SESSION]]") ||
-                     conversationLog.filter(m => m.role === "user").length >= QUESTIONS_COUNT;
-
-    const cleanReply = reply.replace("[[END_SESSION]]", "").trim();
-
-    if (isEnding) {
-      speak(cleanReply, () => endSession());
-    } else {
-      speak(cleanReply, enableMic);
-    }
-  } catch(e) {
-    speak("I had a small glitch. Could you repeat that?", enableMic);
-  }
-}
-
-// ── Groq AI ───────────────────────────────────────────────
-async function getAIResponse(userMessage) {
-  const systemPrompt = `You are Mentorix, an AI career counselor conducting a voice-based career intelligence session with a student named ${NAME}.
-
-Your goal is to have a natural, warm conversation to understand:
-1. Their department/branch and year of study
-2. Which subjects or topics they genuinely enjoy
-3. What kind of work excites them (technical, creative, leadership, research)
-4. Their confidence level and how they handle challenges
-5. Their long-term career interests or confusion
-6. Their biggest concern about their future
+Your goal through this conversation:
+1. Understand their department and year
+2. Discover what genuinely excites them academically and personally
+3. Understand what type of work they enjoy (technical, creative, leadership, research)
+4. Gauge their confidence and how they handle challenges
+5. Understand their career goals or confusion
+6. Learn their biggest concern about their future
 
 Rules:
-- Ask ONE question at a time — never multiple questions in one response
-- Keep responses SHORT — max 2-3 sentences + one question
-- Be warm, encouraging, and specific to what they said
-- Reference their previous answers to show you're listening
-- After 7-8 exchanges, summarize what you've learned and say goodbye with [[END_SESSION]]
-- Never mention scoring or assessment — just have a natural conversation
-- If they seem confused or lost, be extra encouraging
+- Ask ONE question per response, never two
+- Keep responses to 2-3 short sentences + one question
+- Be warm, encouraging, and personal — reference what they said
+- Sound natural and conversational, not like an interview
+- After all ${MAX_Q} exchanges, summarize what you learned warmly, give them a brief direction, say a kind goodbye, and add [[END]] at the very end of your response
+- Never mention scoring or "assessment" — just have a real conversation
 
-Current exchange number: ${conversationLog.filter(m => m.role === "user").length + 1} of ${QUESTIONS_COUNT}`;
+This is exchange ${convo.filter(m=>m.role==="user").length+1} of ${MAX_Q}.`;
 
-  const messages = [
-    { role: "system", content: systemPrompt },
-    ...conversationLog.slice(-10),
-    { role: "user", content: userMessage }
-  ];
-
-  const res = await fetch(`${API}/chat`, {
-    method: "POST",
-    headers: {
-      "Content-Type":  "application/json",
-      "Authorization": `Bearer ${TOKEN}`
-    },
-    body: JSON.stringify({
-      message: userMessage,
-      system:  systemPrompt,
-      history: conversationLog.slice(-10)
-    })
-  });
-
-  if (!res.ok) throw new Error("API failed");
-  const data = await res.json();
-  return data.reply || "That's interesting. Can you tell me more?";
+  const res=await fetch(`${API}/chat`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${TOKEN}`},body:JSON.stringify({message:msg,system:sys,history:convo.slice(-10)})});
+  if(!res.ok)throw new Error("API");
+  const d=await res.json();return d.reply||"That's interesting. Could you tell me more?";
 }
 
-// ── End session ───────────────────────────────────────────
-async function endSession() {
-  sessionActive = false;
-  stopListening();
-  window.speechSynthesis.cancel();
-  if (animFrame) cancelAnimationFrame(animFrame);
-
-  // Generate summary
-  endOverlay.classList.add("show");
-  document.getElementById("endSummary").textContent = "Generating your analysis...";
-
-  try {
-    const summary = await generateSummary();
-    document.getElementById("endSummary").textContent = summary;
-
-    // Save to backend
-    await saveVoiceSession(summary);
-  } catch(e) {
-    document.getElementById("endSummary").textContent =
-      "Session complete. Your conversation has been recorded. Visit your dashboard for insights.";
-  }
+async function endSession(){
+  active=false;stopListening();window.speechSynthesis.cancel();if(raf)cancelAnimationFrame(raf);
+  document.getElementById("endOv").classList.add("show");
+  try{
+    const transcript=convo.map(m=>`${m.role==="user"?UNAME:"Mentorix"}: ${m.content}`).join("\n");
+    const res=await fetch(`${API}/chat`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${TOKEN}`},body:JSON.stringify({message:"generate summary",system:`Based on this conversation, write a brief career intelligence summary for ${UNAME}.\n\nFormat:\nWhat I observed: [2-3 sentences about their strengths and interests]\nRecommended direction: [specific career track]\nThis week:\n→ [action 1]\n→ [action 2]\n→ [action 3]\n\nKeep it under 130 words. Be warm, specific, and encouraging.\n\nConversation:\n${transcript}`,history:[]})});
+    const d=await res.json();
+    document.getElementById("endSum").textContent=d.reply||"Session complete. Visit your dashboard for insights.";
+    await fetch(`${API}/voice/save`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${TOKEN}`},body:JSON.stringify({transcript,summary:d.reply||"",tab_warnings:tabW,exchange_count:convo.filter(m=>m.role==="user").length})});
+  }catch(e){document.getElementById("endSum").textContent="Session complete. Your conversation has been recorded. Visit your dashboard.";}
 }
 
-async function generateSummary() {
-  const transcript = conversationLog
-    .map(m => `${m.role === "user" ? NAME : "Mentorix"}: ${m.content}`)
-    .join("\n");
-
-  const res = await fetch(`${API}/chat`, {
-    method: "POST",
-    headers: {
-      "Content-Type":  "application/json",
-      "Authorization": `Bearer ${TOKEN}`
-    },
-    body: JSON.stringify({
-      message: "Generate analysis",
-      system: `You are Mentorix. Based on the following conversation, write a brief career intelligence summary for ${NAME}.
-
-Format:
-What I observed: [2-3 sentences about their strengths and interests]
-Recommended direction: [specific track/field]
-What to do this week:
-→ [action 1]
-→ [action 2]
-→ [action 3]
-
-Keep it under 120 words. Be warm and specific.
-
-Conversation:
-${transcript}`,
-      history: []
-    })
-  });
-
-  const data = await res.json();
-  return data.reply || "Session analysis complete.";
-}
-
-async function saveVoiceSession(summary) {
-  try {
-    const transcript = conversationLog
-      .map(m => `${m.role === "user" ? NAME : "Mentorix"}: ${m.content}`)
-      .join("\n");
-
-    await fetch(`${API}/voice/save`, {
-      method: "POST",
-      headers: {
-        "Content-Type":  "application/json",
-        "Authorization": `Bearer ${TOKEN}`
-      },
-      body: JSON.stringify({
-        transcript,
-        summary,
-        tab_warnings: tabWarnings,
-        exchange_count: conversationLog.filter(m => m.role === "user").length
-      })
-    });
-  } catch(e) {
-    console.log("Save failed silently:", e);
-  }
-}
-
-function confirmEnd() {
-  if (!sessionActive) return;
-  if (confirm("End this voice session? Your progress so far will be saved.")) {
-    endSession();
-  }
-}
-
-function goToDashboard() {
-  window.location.href = "index.html";
-}
-
-// ── Keyboard shortcut ─────────────────────────────────────
-document.addEventListener("keydown", e => {
-  if (e.code === "Space" && sessionActive && !isSpeaking) {
-    e.preventDefault();
-    toggleMic();
-  }
-  if (e.code === "Escape") confirmEnd();
-});
+function confirmEnd(){if(!active)return;if(confirm("End this session? Your progress will be saved."))endSession();}
+document.addEventListener("keydown",e=>{if(e.code==="Space"&&active&&!speaking&&mode==="voice"){e.preventDefault();toggleMic();}if(e.code==="Escape")confirmEnd();});
 </script>
 </body>
 </html>
