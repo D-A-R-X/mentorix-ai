@@ -502,32 +502,46 @@
     }
 
     async function loadDashboard(){
-      const stored=localStorage.getItem("mentorix_last_result");
-      if(!stored){
-        document.getElementById("mainPage").innerHTML=`
-          <div class="empty-state">
-            <div class="empty-icon">🧠</div>
-            <div class="empty-title">No scan yet</div>
-            <div class="empty-sub">Complete your Career Intelligence Scan to unlock your personalized dashboard.</div>
-            <a class="empty-btn" href="assessment.html">Start Scan →</a>
-          </div>`;
-        return;
+  let stored = localStorage.getItem("mentorix_last_result");
+
+  if(!stored){
+    try{
+      const res = await fetch(`${API}/user/latest-scan`, {headers: authHeaders()});
+      if(res.ok){
+        const data = await res.json();
+        if(data && data.risk_level){
+          stored = JSON.stringify(data);
+          localStorage.setItem("mentorix_last_result", stored);
+        }
       }
-      try{
-        const result=JSON.parse(stored);
-        const progressStats=await loadCourseProgress();
-        renderDashboard(result,progressStats);
-      }catch(e){
-        console.error("dashboard error:",e);
-        document.getElementById("mainPage").innerHTML=`
-          <div class="empty-state">
-            <div class="empty-icon">⚠️</div>
-            <div class="empty-title">Something went wrong</div>
-            <div class="empty-sub">Could not load your dashboard. Try running a new scan.</div>
-            <a class="empty-btn" href="assessment.html">Start Scan →</a>
-          </div>`;
-      }
-    }
+    }catch(e){ console.error("fetch latest scan failed", e); }
+  }
+
+  if(!stored){
+    document.getElementById("mainPage").innerHTML=`
+      <div class="empty-state">
+        <div class="empty-icon">🧠</div>
+        <div class="empty-title">No scan yet</div>
+        <div class="empty-sub">Complete your Career Intelligence Scan to unlock your personalized dashboard.</div>
+        <a class="empty-btn" href="assessment.html">Start Scan →</a>
+      </div>`;
+    return;
+  }
+  try{
+    const result=JSON.parse(stored);
+    const progressStats=await loadCourseProgress();
+    renderDashboard(result,progressStats);
+  }catch(e){
+    console.error("dashboard error:",e);
+    document.getElementById("mainPage").innerHTML=`
+      <div class="empty-state">
+        <div class="empty-icon">⚠️</div>
+        <div class="empty-title">Something went wrong</div>
+        <div class="empty-sub">Could not load your dashboard. Try running a new scan.</div>
+        <a class="empty-btn" href="assessment.html">Start Scan →</a>
+      </div>`;
+  }
+}
 
     loadDashboard();
   </script>
