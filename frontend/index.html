@@ -161,6 +161,248 @@
     @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
   </style>
 </head>
+<!-- ═══════════════════════════════════════════════════════════════
+     ADD this entire block just before </body> in index.html
+════════════════════════════════════════════════════════════════ -->
+
+<!-- Chatbot Button -->
+<button class="chat-fab" id="chatFab" onclick="toggleChat()" title="Ask Mentorix">
+  <span id="chatFabIcon">💬</span>
+</button>
+
+<!-- Chatbot Panel -->
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-header">
+    <div class="chat-header-info">
+      <div class="chat-avatar">M</div>
+      <div>
+        <div class="chat-title">Mentorix Guide</div>
+        <div class="chat-subtitle">Ask me anything about your career scan</div>
+      </div>
+    </div>
+    <button class="chat-close" onclick="toggleChat()">✕</button>
+  </div>
+  <div class="chat-messages" id="chatMessages">
+    <div class="chat-msg bot">
+      <div class="chat-bubble">
+        Hey! I'm your Mentorix guide. I can help you understand your scan results, explain what your scores mean, or suggest what to focus on next. What would you like to know?
+      </div>
+    </div>
+  </div>
+  <div class="chat-input-row">
+    <input class="chat-input" id="chatInput" type="text" placeholder="Ask about your results..."
+      onkeydown="if(event.key==='Enter')sendChat()">
+    <button class="chat-send" onclick="sendChat()">→</button>
+  </div>
+</div>
+
+<style>
+/* ── Chatbot ─────────────────────────────────────────────────── */
+.chat-fab{
+  position:fixed;bottom:28px;right:28px;z-index:200;
+  width:52px;height:52px;border-radius:50%;
+  background:var(--purple);border:none;cursor:pointer;
+  font-size:22px;box-shadow:0 4px 20px rgba(124,77,255,0.45);
+  transition:transform 0.2s,box-shadow 0.2s;
+  display:flex;align-items:center;justify-content:center;
+}
+.chat-fab:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(124,77,255,0.6)}
+
+.chat-panel{
+  position:fixed;bottom:92px;right:28px;z-index:200;
+  width:340px;max-height:500px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:18px;display:flex;flex-direction:column;
+  box-shadow:0 16px 48px rgba(0,0,0,0.4);
+  transform:scale(0.92) translateY(10px);opacity:0;
+  pointer-events:none;transition:all 0.22s cubic-bezier(0.4,0,0.2,1);
+  overflow:hidden;
+}
+.chat-panel.open{transform:scale(1) translateY(0);opacity:1;pointer-events:all}
+
+.chat-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;border-bottom:1px solid var(--border);
+  background:linear-gradient(135deg,var(--surface) 0%,#1a1040 100%);
+}
+.chat-header-info{display:flex;align-items:center;gap:10px}
+.chat-avatar{
+  width:34px;height:34px;border-radius:10px;
+  background:var(--purple);display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:#fff;
+  box-shadow:0 0 12px rgba(124,77,255,0.4);
+}
+.chat-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--white)}
+.chat-subtitle{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.chat-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;transition:color 0.15s}
+.chat-close:hover{color:var(--white)}
+
+.chat-messages{
+  flex:1;overflow-y:auto;padding:14px;
+  display:flex;flex-direction:column;gap:10px;
+  scrollbar-width:thin;scrollbar-color:var(--border) transparent;
+}
+.chat-msg{display:flex}
+.chat-msg.user{justify-content:flex-end}
+.chat-bubble{
+  max-width:82%;padding:10px 14px;border-radius:12px;
+  font-size:13px;line-height:1.6;font-weight:300;
+}
+.chat-msg.bot .chat-bubble{
+  background:var(--surface2);border:1px solid var(--border);
+  color:var(--text);border-bottom-left-radius:4px;
+}
+.chat-msg.user .chat-bubble{
+  background:var(--purple);color:#fff;
+  border-bottom-right-radius:4px;
+}
+.chat-typing .chat-bubble{color:var(--muted);font-style:italic}
+
+.chat-input-row{
+  display:flex;gap:8px;padding:12px;
+  border-top:1px solid var(--border);
+}
+.chat-input{
+  flex:1;background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;padding:9px 13px;font-size:13px;
+  color:var(--white);font-family:'DM Sans',sans-serif;outline:none;
+  transition:border-color 0.18s;
+}
+.chat-input:focus{border-color:var(--purple)}
+.chat-input::placeholder{color:var(--muted)}
+.chat-send{
+  width:36px;height:36px;border-radius:8px;
+  background:var(--purple);border:none;cursor:pointer;
+  color:#fff;font-size:16px;transition:background 0.18s;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.chat-send:hover{background:var(--purple-dim)}
+
+@media(max-width:400px){
+  .chat-panel{width:calc(100vw - 32px);right:16px}
+  .chat-fab{right:16px;bottom:16px}
+}
+</style>
+
+<script>
+let chatOpen = false;
+let chatHistory = [];
+
+function toggleChat() {
+  chatOpen = !chatOpen;
+  document.getElementById("chatPanel").classList.toggle("open", chatOpen);
+  document.getElementById("chatFabIcon").textContent = chatOpen ? "✕" : "💬";
+  if (chatOpen) document.getElementById("chatInput").focus();
+}
+
+function getChatContext() {
+  const d = JSON.parse(localStorage.getItem("mentorix_last_result") || "{}");
+  if (!d.risk_level) return "The user has not completed a scan yet.";
+
+  const scores = d.assessment_scores || {};
+  const scoreText = Object.entries(scores)
+    .map(([k, s]) => `${k}: ${s.normalized || 0}/5`).join(", ");
+  const rec = d.recommendation || {};
+
+  return `User's Mentorix scan data:
+- Risk Level: ${d.risk_level}
+- Stability: ${d.stability_index ? (d.stability_index * 100).toFixed(1) + "%" : "unknown"}
+- Trend: ${d.trend || "unknown"}
+- Recommended Track: ${(rec.track || "unknown").replace(/_/g, " ")}
+- Career Direction: ${d.career_direction || "unknown"}
+- Domain Scores: ${scoreText || "not available"}
+- Sessions completed: ${(d.history || []).length}
+- AI Explanation: ${d.ai_explanation || "not available"}`;
+}
+
+async function sendChat() {
+  const input = document.getElementById("chatInput");
+  const msg   = input.value.trim();
+  if (!msg) return;
+
+  input.value = "";
+  appendMessage("user", msg);
+  chatHistory.push({ role: "user", content: msg });
+
+  // Typing indicator
+  const typingId = appendMessage("bot", "...", true);
+
+  try {
+    const context = getChatContext();
+    const systemPrompt = `You are Mentorix Guide, an in-app AI assistant for the Mentorix career intelligence platform.
+
+Your job:
+- Help users understand their Career Intelligence Scan results
+- Explain what their scores, stability index, risk level, and recommended track mean
+- Suggest what to focus on next based on their data
+- Answer questions about how Mentorix works
+
+Rules:
+- ONLY answer questions related to Mentorix, career guidance, or the user's scan data
+- If asked anything unrelated (coding help, general knowledge, etc.) politely decline and redirect to career topics
+- Keep answers short — 2-4 sentences max
+- Be warm, direct, and specific to the user's actual data
+- Never make up data — only reference what's in the context
+
+${context}`;
+
+    const res = await fetch("${API}", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${localStorage.getItem("mentorix_token")}`
+      },
+      body: JSON.stringify({ message: msg, history: chatHistory.slice(-6) })
+    });
+
+    // Use Groq directly via backend proxy
+    const reply = await fetchChatReply(msg, systemPrompt);
+    removeMessage(typingId);
+    appendMessage("bot", reply);
+    chatHistory.push({ role: "assistant", content: reply });
+
+  } catch(e) {
+    removeMessage(typingId);
+    appendMessage("bot", "Sorry, I couldn't connect right now. Try again in a moment.");
+  }
+}
+
+async function fetchChatReply(userMsg, systemPrompt) {
+  const res = await fetch(`${API}/chat`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${localStorage.getItem("mentorix_token")}`
+    },
+    body: JSON.stringify({
+      message: userMsg,
+      system:  systemPrompt,
+      history: chatHistory.slice(-6)
+    })
+  });
+  if (!res.ok) throw new Error("Chat failed");
+  const data = await res.json();
+  return data.reply || "I couldn't generate a response. Try again.";
+}
+
+let msgCounter = 0;
+function appendMessage(role, text, isTyping = false) {
+  const id  = `msg-${++msgCounter}`;
+  const box = document.getElementById("chatMessages");
+  const div = document.createElement("div");
+  div.className = `chat-msg ${role}${isTyping ? " chat-typing" : ""}`;
+  div.id = id;
+  div.innerHTML = `<div class="chat-bubble">${text.replace(/\n/g, "<br>")}</div>`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  return id;
+}
+
+function removeMessage(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+</script>
 <body>
   <div class="ambient">
     <div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div>
@@ -281,7 +523,17 @@
 
         <!-- Row 1: Snapshot + AI Explanation -->
         <div class="dash-grid">
-
+          <div class="card col12" style="animation-delay:0.18s">
+    <div class="card-label">Behavioral History <span style="font-size:9px;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Sans',sans-serif">— stability across all sessions</span></div>
+    <div style="display:flex;gap:8px;margin-bottom:16px" id="chartToggle">
+      <button class="toggle-btn active" id="stabilityChartBtn" onclick="switchChart('stability')">Stability</button>
+      <button class="toggle-btn" id="trackChartBtn" onclick="switchChart('track')">Track History</button>
+    </div>
+    <canvas id="historyChart" height="90"></canvas>
+    <div id="noHistoryMsg" style="display:none;text-align:center;padding:32px 0;font-size:13px;color:var(--muted)">
+      Complete 2+ scans to see your behavioral history.
+    </div>
+  </div>
           <div class="card col4" style="animation-delay:0.05s">
             <div class="card-label">Career Snapshot</div>
             <div class="track-name">${trackLabel}</div>
@@ -362,6 +614,7 @@
         if(f)f.style.width=(result.stability_index*100).toFixed(1)+"%";
       });
       initRadar(scores);
+      initHistoryChart(history);
       checkPerceptionGap(scores,inputs);
     }
 
@@ -550,6 +803,167 @@
 }
 
     loadDashboard();
+let historyChartInstance = null;
+
+function initHistoryChart(history) {
+  const canvas = document.getElementById("historyChart");
+  const noMsg  = document.getElementById("noHistoryMsg");
+  if (!canvas) return;
+
+  if (!history || history.length < 2) {
+    canvas.style.display = "none";
+    if (noMsg) noMsg.style.display = "block";
+    return;
+  }
+
+  canvas.style.display = "block";
+  if (noMsg) noMsg.style.display = "none";
+
+  const reversed = [...history].reverse();
+  const labels   = reversed.map((h, i) => {
+    const d = h.created_at ? new Date(h.created_at) : null;
+    return d ? d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : `Scan ${i + 1}`;
+  });
+  const stabilityData = reversed.map(h => parseFloat((h.stability_score * 100).toFixed(1)));
+
+  if (historyChartInstance) historyChartInstance.destroy();
+
+  historyChartInstance = new Chart(canvas, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        label: "Stability %",
+        data: stabilityData,
+        borderColor: "#7c4dff",
+        backgroundColor: "rgba(124,77,255,0.08)",
+        pointBackgroundColor: "#7c4dff",
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        borderWidth: 2,
+        tension: 0.4,
+        fill: true,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` Stability: ${ctx.raw}%`
+          },
+          backgroundColor: "#1a1530",
+          borderColor: "rgba(124,77,255,0.3)",
+          borderWidth: 1,
+          titleColor: "#d4cee8",
+          bodyColor: "#7a748e",
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: "rgba(124,77,255,0.06)" },
+          ticks: { color: "#7a748e", font: { family: "JetBrains Mono", size: 10 } }
+        },
+        y: {
+          min: 0, max: 100,
+          grid: { color: "rgba(124,77,255,0.06)" },
+          ticks: {
+            color: "#7a748e",
+            font: { family: "JetBrains Mono", size: 10 },
+            callback: v => v + "%"
+          }
+        }
+      }
+    }
+  });
+}
+
+function switchChart(type) {
+  document.getElementById("stabilityChartBtn").classList.toggle("active", type === "stability");
+  document.getElementById("trackChartBtn").classList.toggle("active",    type === "track");
+
+  const history  = JSON.parse(localStorage.getItem("mentorix_last_result") || "{}").history || [];
+  const canvas   = document.getElementById("historyChart");
+  if (!canvas || history.length < 2) return;
+
+  const reversed = [...history].reverse();
+  const labels   = reversed.map((h, i) => {
+    const d = h.created_at ? new Date(h.created_at) : null;
+    return d ? d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : `Scan ${i + 1}`;
+  });
+
+  if (historyChartInstance) historyChartInstance.destroy();
+
+  if (type === "stability") {
+    initHistoryChart(history);
+    return;
+  }
+
+  // Track history — show track as colored points
+  const trackColors = {
+    software_track:    "#7c4dff",
+    core_track:        "#00e5b4",
+    management_track:  "#ffb347",
+    foundation_track:  "#ff5f6d",
+  };
+  const trackLabels = {
+    software_track:    "Software",
+    core_track:        "Core Eng",
+    management_track:  "Management",
+    foundation_track:  "Foundation",
+  };
+  const tracks    = reversed.map(h => h.track || "unknown");
+  const stability = reversed.map(h => parseFloat((h.stability_score * 100).toFixed(1)));
+  const colors    = tracks.map(t => trackColors[t] || "#7a748e");
+
+  historyChartInstance = new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        label: "Stability %",
+        data: stability,
+        backgroundColor: colors,
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: ctx => labels[ctx[0].dataIndex],
+            label: ctx => ` ${trackLabels[tracks[ctx.dataIndex]] || tracks[ctx.dataIndex]} — ${ctx.raw}%`
+          },
+          backgroundColor: "#1a1530",
+          borderColor: "rgba(124,77,255,0.3)",
+          borderWidth: 1,
+          titleColor: "#d4cee8",
+          bodyColor: "#7a748e",
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: "rgba(124,77,255,0.06)" },
+          ticks: { color: "#7a748e", font: { family: "JetBrains Mono", size: 10 } }
+        },
+        y: {
+          min: 0, max: 100,
+          grid: { color: "rgba(124,77,255,0.06)" },
+          ticks: {
+            color: "#7a748e",
+            font: { family: "JetBrains Mono", size: 10 },
+            callback: v => v + "%"
+          }
+        }
+      }
+    }
+  });
+}
+
   </script>
 </body>
 </html>

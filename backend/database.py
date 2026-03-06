@@ -77,6 +77,9 @@ def migrate_db():
     migrations = [
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS picture TEXT",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider TEXT NOT NULL DEFAULT 'email'",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS department TEXT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS year TEXT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS semester TEXT",
         "ALTER TABLE course_completions ADD COLUMN IF NOT EXISTS provider TEXT",
         "ALTER TABLE course_completions ADD COLUMN IF NOT EXISTS track TEXT",
         "ALTER TABLE assessments ADD COLUMN IF NOT EXISTS scan_result TEXT",  # ← ADD THIS
