@@ -850,6 +850,8 @@
 
     async function submitAssessment() {
       showStep("step-loading");
+      document.querySelector(".loading-title") && 
+      (document.querySelector(".loading-title").textContent = "Analyzing your behavioral patterns...");
       const status   = document.getElementById("profileStatus").value;
       const cgpa     = parseFloat(document.getElementById("profileCgpa").value) || 0;
       const backlogs = parseInt(document.getElementById("profileBacklogs").value) || 0;

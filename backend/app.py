@@ -520,8 +520,15 @@ async def submit_assessment(
         "latency_analysis":  latency_analysis,
     }
 
-    # Generate AI explanation (async, non-blocking fallback)
-    ai_explanation = await generate_explanation(result_for_explanation)
+    # Run explanation in background — don't block the response
+    import asyncio
+    ai_explanation = None
+    try:
+        ai_explanation = await asyncio.wait_for(
+            generate_explanation(result_for_explanation), timeout=8.0
+        )
+    except asyncio.TimeoutError:
+        logger.warning("Groq explanation timed out — returning result without explanation")
     weekly_tasks = parse_tasks_from_explanation(ai_explanation or "")
     full_result = {
         "risk_level": risk, "stability_score": round(stability_index, 2),
