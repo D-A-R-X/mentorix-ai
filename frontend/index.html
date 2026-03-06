@@ -762,6 +762,48 @@ function removeMessage(id) {
       return t;
     }
 
+
+    function renderSessionsDashboard(sessions){
+      const s=sessions[0],isHR=s.mode==="hr_interview",sc=s.scores||{},ov=s.overall_score||0;
+      const date=s.created_at?new Date(s.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}):"Recent";
+      const cats={tech:"Technical",comm:"Communication",crit:"Critical Thinking",pres:"Pressure",lead:"Leadership"};
+      const col=v=>v>=70?"#059669":v>=50?"#d97706":"#dc2626";
+      const scHTML=isHR&&Object.keys(sc).length?
+        `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:20px">`+
+        Object.entries(cats).map(([k,l])=>{const v=Math.round(sc[k]||0);return`<div style="background:rgba(13,11,24,0.6);border:1px solid #1a1030;border-radius:12px;padding:14px;text-align:center"><div style="font-size:24px;font-weight:800;color:${col(v)};font-family:'Syne',sans-serif">${v}</div><div style="font-size:10px;color:#6b7280;margin-top:3px">${l}</div></div>`;}).join("")+`</div>`:"";
+      const prevHTML=sessions.length>1?
+        `<div style="font-family:'Syne',sans-serif;font-size:11px;color:#6b7280;letter-spacing:1px;margin-bottom:10px">PREVIOUS SESSIONS</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">`+
+        sessions.slice(1).map(ps=>`<div style="background:rgba(13,11,24,0.4);border:1px solid #1a1030;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px">
+          <div style="font-size:18px">${ps.mode==="hr_interview"?"⚔️":"🎙️"}</div>
+          <div style="flex:1"><div style="font-size:13px;color:#c8c2e0">${ps.mode==="hr_interview"?"HR Interview":"Voice Session"}</div>
+          <div style="font-size:11px;color:#6b7280">${ps.created_at?new Date(ps.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short"}):""}  ·  ${ps.exchange_count||0} exchanges</div></div>
+          ${ps.overall_score?`<div style="font-weight:700;font-family:'Syne',sans-serif;color:${col(ps.overall_score)}">${ps.overall_score}<span style="font-size:10px;color:#6b7280">/100</span></div>`:""}
+        </div>`).join("")+`</div>`:"";
+      document.getElementById("mainPage").innerHTML=`
+        <div style="max-width:780px;margin:0 auto;padding:24px 16px">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;flex-wrap:wrap">
+            <div style="font-size:32px">${isHR?"⚔️":"🎙️"}</div>
+            <div style="flex:1">
+              <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:#f0ecff">${isHR?"HR Mode Interview":"Voice Session"}</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:3px">${date} · ${s.exchange_count||0} exchanges · ${s.tab_warnings||0} tab violations</div>
+            </div>
+            ${ov?`<div style="text-align:center;padding:12px 20px;border:1px solid #1a1030;border-radius:12px;background:rgba(13,11,24,0.6)"><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:34px;color:${col(ov)}">${ov}</div><div style="font-size:10px;color:#6b7280;letter-spacing:1px">OVERALL</div></div>`:""}
+          </div>
+          ${scHTML}
+          <div style="background:rgba(13,11,24,0.6);border:1px solid #1a1030;border-radius:14px;padding:20px;margin-bottom:20px">
+            <div style="font-family:'Syne',sans-serif;font-weight:600;font-size:11px;color:#6b7280;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">${isHR?"Interview Report":"Session Summary"}</div>
+            <div style="font-size:14px;color:#c8c2e0;line-height:1.85;white-space:pre-wrap">${s.summary||"No summary available."}</div>
+          </div>
+          ${prevHTML}
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <a href="voice.html" style="padding:10px 18px;border-radius:10px;background:rgba(124,77,255,0.12);border:1px solid rgba(124,77,255,0.25);color:#b08dff;font-size:13px;text-decoration:none;font-family:'Syne',sans-serif;font-weight:600">🎙 New Voice Session</a>
+            <a href="hr-mode.html" style="padding:10px 18px;border-radius:10px;background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.25);color:#e74c3c;font-size:13px;text-decoration:none;font-family:'Syne',sans-serif;font-weight:600">⚔ Retry HR Mode</a>
+            <a href="assessment.html" style="padding:10px 18px;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid #1a1030;color:#6b7280;font-size:13px;text-decoration:none;font-family:'Syne',sans-serif">📋 Written Scan</a>
+          </div>
+        </div>`;
+    }
+
     async function loadDashboard(){
   let stored = localStorage.getItem("mentorix_last_result");
 
@@ -779,12 +821,20 @@ function removeMessage(id) {
   }
 
   if(!stored){
+    try{
+      const sr=await fetch(`${API}/user/sessions`,{headers:authHeaders()});
+      if(sr.ok){const sd=await sr.json();if(sd.sessions&&sd.sessions.length>0){renderSessionsDashboard(sd.sessions);return;}}
+    }catch(e){}
     document.getElementById("mainPage").innerHTML=`
       <div class="empty-state">
         <div class="empty-icon">🧠</div>
-        <div class="empty-title">No scan yet</div>
-        <div class="empty-sub">Complete your Career Intelligence Scan to unlock your personalized dashboard.</div>
-        <a class="empty-btn" href="assessment.html">Start Scan →</a>
+        <div class="empty-title">Ready when you are</div>
+        <div class="empty-sub">Start with any session to unlock your personalised dashboard.</div>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:16px">
+          <a class="empty-btn" href="voice.html" style="background:rgba(124,77,255,0.15);border:1px solid rgba(124,77,255,0.3);color:#b08dff">🎙 Voice Session</a>
+          <a class="empty-btn" href="hr-mode.html" style="background:rgba(192,57,43,0.12);border:1px solid rgba(192,57,43,0.3);color:#e74c3c">⚔ HR Mode</a>
+          <a class="empty-btn" href="assessment.html">📋 Written Scan</a>
+        </div>
       </div>`;
     return;
   }
