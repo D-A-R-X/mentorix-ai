@@ -618,13 +618,22 @@
 </section>
 
 <!-- FOOTER -->
-<footer>
-  <div style="display:flex;align-items:center;gap:10px">
-    <div style="width:24px;height:24px;background:var(--purple);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-style:italic;font-size:13px;color:#fff">M</div>
-    <span>Mentorix AI</span>
+<footer style="flex-direction:column;gap:16px;padding:32px 40px;text-align:center">
+  <div style="display:flex;align-items:center;justify-content:center;gap:10px">
+    <div style="width:28px;height:28px;background:var(--purple);border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-style:italic;font-size:14px;color:#fff;font-weight:700">M</div>
+    <span style="font-family:'DM Sans',sans-serif;font-weight:500;color:var(--white)">Mentorix AI</span>
+    <span style="color:var(--muted);font-size:12px">by</span>
+    <a href="https://portfolio-npzu.vercel.app" target="_blank" rel="noopener" style="color:var(--purple);text-decoration:none;font-size:12px;font-family:'JetBrains Mono',monospace">CRONIX</a>
   </div>
-  <span>Behavioral Career Intelligence · Free forever</span>
-  <a href="login.html" style="color:var(--purple);text-decoration:none">Start assessment →</a>
+  <div style="display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap">
+    <a href="login.html" style="color:var(--muted);text-decoration:none;font-size:12px;transition:color 0.2s" onmouseover="this.style.color='var(--purple)'" onmouseout="this.style.color='var(--muted)'">Get Started</a>
+    <a href="login.html" style="color:var(--muted);text-decoration:none;font-size:12px;transition:color 0.2s" onmouseover="this.style.color='var(--purple)'" onmouseout="this.style.color='var(--muted)'">Voice Session</a>
+    <a href="login.html" style="color:var(--muted);text-decoration:none;font-size:12px;transition:color 0.2s" onmouseover="this.style.color='var(--purple)'" onmouseout="this.style.color='var(--muted)'">HR Mode</a>
+    <a href="https://portfolio-npzu.vercel.app" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:none;font-size:12px;transition:color 0.2s" onmouseover="this.style.color='var(--purple)'" onmouseout="this.style.color='var(--muted)'">About Founder</a>
+  </div>
+  <div style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace">
+    &copy; 2025 CRONIX. All rights reserved. &nbsp;·&nbsp; Mentorix AI is a product of CRONIX.
+  </div>
 </footer>
 
 <script>
