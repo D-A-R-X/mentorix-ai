@@ -68,7 +68,7 @@
     .end-btn-sec:hover{border-color:var(--border2);color:var(--white)}
 
     /* ── MAIN SESSION ── */
-    .hr-wrap{position:relative;z-index:1;height:100vh;display:flex;flex-direction:column}
+    .hr-wrap{position:relative;z-index:1;height:calc(100vh - 26px);display:flex;flex-direction:column}
 
     /* Header */
     .hr-header{display:flex;align-items:center;justify-content:space-between;padding:12px 22px;border-bottom:1px solid var(--border);flex-shrink:0;background:rgba(6,5,14,0.85);backdrop-filter:blur(12px)}
@@ -257,7 +257,7 @@
       </div>
       <div class="hr-timer" id="hrTimer">00:00</div>
       <div class="hr-prog">
-        <span id="hrProgTxt">Q 0 / 10</span>
+        <span id="hrProgTxt">Q 0</span>
         <div class="hr-prog-bar-wrap"><div class="hr-prog-fill" id="hrProgFill"></div></div>
       </div>
     </div>
@@ -335,7 +335,7 @@
 
 <div class="cronix-bar">
   <span>&copy; 2025 CRONIX &mdash; All rights reserved</span>
-  <a href="https://portfolio-npzu.vercel.app" target="_blank" rel="noopener">Built by CRONIX</a>
+  <span style="font-family:var(--font-m);font-size:9px;color:rgba(110,104,136,0.45)">Mentorix AI is a CRONIX product</span>
 </div>
 
 <script>
@@ -351,7 +351,7 @@ let active=false,listening=false,speaking=false,tabViol=0,qNum=0,convo=[],rec=nu
 let audioCtx=null,analyser=null,micStream=null,camStream=null,raf=null,aiLv=0;
 let hrMode="voice",sessionStart=null,timerInterval=null,silenceTimer=null;
 let scores={tech:null,comm:null,crit:null,pres:null,lead:null};
-const MAX_Q=10,MAX_VIOL=3;
+const MAX_VIOL=3; // No hard question limit — AI controls session end via [[END_INTERVIEW]]
 
 const hrDot=document.getElementById("hrDot"),hrStatus=document.getElementById("hrStatus");
 const hrAv=document.getElementById("hrAv"),hrChat=document.getElementById("hrChat");
@@ -367,10 +367,35 @@ document.addEventListener("visibilitychange",()=>{
   if(!active||document.visibilityState==="visible")return;
   tabViol++;violCount.textContent=tabViol;
   document.getElementById("violMsg").textContent="Tab switch — violation "+tabViol+" of "+MAX_VIOL;
-  violBar.classList.add("show");setTimeout(()=>violBar.classList.remove("show"),4000);
-  updateScore("pres",Math.max(0,(scores.pres||50)-10));
+  violBar.classList.add("show");setTimeout(()=>violBar.classList.remove("show"),5000);
+  updateScore("pres",Math.max(0,(scores.pres||50)-12));
   if(tabViol>=MAX_VIOL)speak("I've noted "+MAX_VIOL+" tab violations. This reflects poorly on your professionalism. Let's continue, but this will impact your final score.");
 });
+
+// Also catch window blur (Alt+Tab, switching apps, Windows key)
+window.addEventListener("blur",()=>{
+  if(!active)return;
+  tabViol++;violCount.textContent=tabViol;
+  document.getElementById("violMsg").textContent="Window lost focus — violation "+tabViol+" of "+MAX_VIOL;
+  violBar.classList.add("show");setTimeout(()=>violBar.classList.remove("show"),5000);
+  updateScore("pres",Math.max(0,(scores.pres||50)-12));
+  if(tabViol>=MAX_VIOL)speak("You've lost focus from this window "+MAX_VIOL+" times. This has been recorded.");
+});
+
+function handleCameraOff(){
+  if(!active)return;
+  document.getElementById("camStatus").textContent="● CAM OFF";
+  document.getElementById("camStatus").style.color="var(--red)";
+  const feed=document.getElementById("camFeed");
+  if(feed)feed.style.outline="2px solid var(--red)";
+  // Log as violation
+  tabViol++;violCount.textContent=tabViol;
+  document.getElementById("violMsg").textContent="Camera turned off — violation "+tabViol;
+  violBar.classList.add("show");setTimeout(()=>violBar.classList.remove("show"),5000);
+  updateScore("pres",Math.max(0,(scores.pres||50)-15));
+  speak("Camera has been disabled. Please re-enable your camera to continue the interview.");
+}
+
 
 async function initCamera(){
   try{
@@ -380,6 +405,10 @@ async function initCamera(){
     document.getElementById("camStatus").textContent="● REC";
     document.getElementById("lPCam").textContent="✓ Granted";document.getElementById("lPCam").style.color="var(--teal)";
     vid.onloadedmetadata=()=>startPostureAnalysis(vid);
+    // Detect if user turns off camera (track ends)
+    camStream.getVideoTracks().forEach(track=>{
+      track.addEventListener("ended",()=>handleCameraOff());
+    });
     return true;
   }catch(e){
     const feed=document.getElementById("camFeed");
@@ -501,7 +530,7 @@ function startTimer(){
   timerInterval=setInterval(()=>{const s=Math.floor((Date.now()-sessionStart)/1000),m=Math.floor(s/60),sec=s%60;document.getElementById("hrTimer").textContent=String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0");},1000);
 }
 
-function updateProgress(){document.getElementById("hrProgTxt").textContent=`Q ${qNum} / ${MAX_Q}`;document.getElementById("hrProgFill").style.width=(qNum/MAX_Q*100)+"%";}
+function updateProgress(){document.getElementById("hrProgTxt").textContent=`Q ${qNum}`;document.getElementById("hrProgFill").style.width=Math.min((qNum/15)*100,95)+"%";}
 
 async function initSession(){
   document.getElementById("landStartBtn").disabled=true;document.getElementById("landStartBtn").textContent="INITIALIZING...";
@@ -536,13 +565,13 @@ async function handleResponse(text){
   addMsg("user",text);convo.push({role:"user",content:text});
   hrMicBtn.className="hr-micbtn off";hrTypeInp.disabled=true;hrSendBtn.disabled=true;
   hrDot.className="hr-dot";hrStatus.textContent="EVALUATING...";
-  qNum=Math.min(qNum+1,MAX_Q);updateProgress();
+  qNum++;updateProgress();
   const tid=addMsg("ai","",true);
   try{
     const reply=await getHRReply(text);removeMsg(tid);
     convo.push({role:"assistant",content:reply});
     parseScores(reply,text);
-    const isEnd=reply.includes("[[END_INTERVIEW]]")||qNum>=MAX_Q;
+    const isEnd=reply.includes("[[END_INTERVIEW]]");
     const clean=reply.replace("[[END_INTERVIEW]]","").trim();
     addMsg("ai",clean);
     if(isEnd)speak(clean,()=>endSession());else speak(clean,enableHRInput);
@@ -565,7 +594,7 @@ async function getHRReply(msg){
   const dq={CSE:"data structures, algorithms, OOP, database design, system design, networks, OS",IT:"networking, cybersecurity, database management, web development, cloud computing",AIDS:"machine learning, data preprocessing, model evaluation, Python, statistics",AIML:"neural networks, deep learning, NLP, computer vision, PyTorch/TensorFlow",ECE:"digital electronics, microcontrollers, signal processing, communication systems, VLSI",EEE:"power systems, electrical machines, control systems, power electronics",MECH:"thermodynamics, fluid mechanics, manufacturing, CAD, machine design",CIVIL:"structural analysis, construction materials, geotechnical engineering"};
   const techAreas=dq[DEPT.toUpperCase()]||"core technical concepts of your field";
   const exchangeNum=convo.filter(m=>m.role==="user").length;
-  const sys=`You are Aria, a Senior HR Executive conducting a strict formal interview. Interviewing ${UNAME}, Year ${YEAR} ${DEPT} student.\n\nTECHNICAL AREAS: ${techAreas}\n\nPERSONALITY:\n- Cold, professional, no small talk\n- Challenge vague answers: "That's too vague. Be specific."\n- Follow up on weak answers\n- Occasional "..." before next question\n- Only briefly acknowledge truly good answers\n\nSTRUCTURE (exchange ${exchangeNum+1} of ${MAX_Q}):\n- Q1-2: Background and motivation\n- Q3-5: Core technical questions for ${DEPT}\n- Q6-7: Problem solving scenario\n- Q8-9: Leadership, teamwork, failure\n- Q10: Final pressure question + close with [[END_INTERVIEW]]\n\nRULES:\n- ONE question per response\n- Max 3 sentences + question\n- Never warm or encouraging\n- On Q10: brief cold verdict, then [[END_INTERVIEW]]`;
+  const sys=`You are Aria, a Senior HR Executive conducting a strict formal interview. Interviewing ${UNAME}, Year ${YEAR} ${DEPT} student.\n\nTECHNICAL AREAS: ${techAreas}\n\nPERSONALITY:\n- Cold, professional, no small talk\n- Challenge vague answers: "That's too vague. Be specific."\n- Follow up on weak answers\n- Occasional "..." before next question\n- Only briefly acknowledge truly good answers\n\nSTRUCTURE:\n- Start with background and motivation (2-3 questions)\n- Move to core technical questions for ${DEPT} (3-5 questions)\n- Problem solving scenarios (2-3 questions)\n- Leadership, teamwork, failure (2 questions)\n- End with a pressure question, cold verdict, then [[END_INTERVIEW]]\n\nRULES:\n- ONE question per response\n- Max 3 sentences + question\n- Never warm or encouraging\n- You decide when the interview is complete based on thorough coverage\n- When you've assessed all areas fully, give brief cold verdict then [[END_INTERVIEW]]`;
   const res=await fetch(`${API}/chat`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${TOKEN}`},body:JSON.stringify({message:msg,system:sys,history:convo.slice(-12)})});
   if(!res.ok)throw new Error("API");
   const d=await res.json();return d.reply||"Elaborate on that. I need more detail.";

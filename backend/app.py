@@ -708,14 +708,27 @@ async def save_voice_session(
               data.tab_warnings, data.exchange_count,
               _json.dumps(data.scores), data.overall, data.mode))
         conn.commit(); cur.close(); conn.close()
-        # Fire honor event
-        event = "hr_session_complete" if data.mode == "hr_interview" else "voice_session_complete"
-        tab_penalty = "hr_tab_violation" if data.mode == "hr_interview" else "tab_switch_voice"
-        add_honor_event(current_user, event, f"{data.exchange_count} exchanges")
-        if data.tab_warnings > 0:
-            for _ in range(min(data.tab_warnings, 3)):
-                add_honor_event(current_user, tab_penalty, "tab switch during session")
-        conn.commit(); cur.close(); conn.close()
+        # ── Honor score: AI-score-driven ─────────────────────────────────────
+        exchanges = data.exchange_count or 0
+        overall   = data.overall or 0
+        tab_warn  = data.tab_warnings or 0
+        if data.mode == "hr_interview":
+            if exchanges < 4:
+                add_honor_event(current_user, "early_session_exit",
+                                f"only {exchanges} exchanges in HR", override_delta=-6)
+            else:
+                d = +10 if overall >= 80 else (+6 if overall >= 65 else (+3 if overall >= 50 else -2))
+                add_honor_event(current_user, "hr_session_complete",
+                                f"overall={overall} exchanges={exchanges}", override_delta=d)
+            for _ in range(min(tab_warn, 3)):
+                add_honor_event(current_user, "hr_tab_violation", "tab switch during HR")
+        else:
+            if exchanges >= 3:
+                d = +6 if overall >= 70 else +2
+                add_honor_event(current_user, "voice_session_complete",
+                                f"overall={overall}", override_delta=d)
+            for _ in range(min(tab_warn, 3)):
+                add_honor_event(current_user, "tab_switch_voice", "tab switch during voice")
         return {"message": "Voice session saved."}
     except Exception as e:
         logger.warning(f"voice save failed: {e}")
@@ -761,17 +774,20 @@ async def get_user_sessions(current_user: str = Depends(get_current_user)):
 
 # ── Honor Score System ────────────────────────────────────
 HONOR_RULES = {
-    "voice_session_complete": +8,
-    "hr_session_complete":    +12,
+    # Static events
     "course_marked_done":     +3,
     "scan_complete":          +5,
     "stability_improvement":  +5,
     "streak_30_days":         +3,
     "tab_switch_assessment":  -5,
     "tab_switch_voice":       -3,
-    "early_session_exit":     -2,
+    "early_session_exit":     -4,
     "low_scan_quality":       -5,
-    "hr_tab_violation":       -4,
+    "hr_tab_violation":       -5,
+    "camera_off_violation":   -7,
+    # Dynamic — override_delta passed at call site
+    "voice_session_complete": 0,
+    "hr_session_complete":    0,
 }
 
 def get_honor_score(email: str) -> int:
@@ -782,12 +798,13 @@ def get_honor_score(email: str) -> int:
         return row[0] if row else 100
     except: return 100
 
-def add_honor_event(email: str, event_type: str, note: str = "") -> dict:
-    delta = HONOR_RULES.get(event_type, 0)
+def add_honor_event(email: str, event_type: str, note: str = "",
+                    override_delta: Optional[int] = None) -> dict:
+    delta = override_delta if override_delta is not None else HONOR_RULES.get(event_type, 0)
     if delta == 0: return {"score": get_honor_score(email), "delta": 0}
     try:
         current = get_honor_score(email)
-        new_score = max(0, min(100, current + delta))
+        new_score = max(0, min(200, current + delta))
         conn = get_connection(); cur = conn.cursor()
         cur.execute("""
             INSERT INTO honor_events (email, event_type, delta, running_score, note, created_at)
@@ -910,6 +927,17 @@ Rules:
         return {"courses": [], "track": ""}
 
 
+# ── is_suspended column migration ──────────────────────────────────────────
+def _migrate_suspended():
+    try:
+        conn = get_connection(); cur = conn.cursor()
+        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN DEFAULT FALSE")
+        conn.commit(); cur.close(); conn.close()
+    except Exception as e:
+        logger.warning(f"migrate is_suspended: {e}")
+try: _migrate_suspended()
+except: pass
+
 # ══════════════════════════════════════════════════════════════════════════════
 # ADMIN ENDPOINTS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1017,13 +1045,14 @@ def admin_get_users(admin: str = Depends(require_admin)):
         cur.execute("""
             SELECT u.id, u.name, u.email, u.department, u.year, u.semester,
                    u.auth_provider, u.created_at,
-                   COUNT(DISTINCT vs.id)       AS session_count,
-                   COALESCE(SUM(he.delta), 0)  AS honor_score
+                   COALESCE(u.is_suspended, FALSE) AS is_suspended,
+                   COUNT(DISTINCT vs.id)           AS session_count,
+                   COALESCE(SUM(he.delta), 0)      AS honor_score
             FROM users u
             LEFT JOIN voice_sessions vs ON vs.email = u.email
             LEFT JOIN honor_events   he ON he.email = u.email
             GROUP BY u.id, u.name, u.email, u.department, u.year,
-                     u.semester, u.auth_provider, u.created_at
+                     u.semester, u.auth_provider, u.created_at, u.is_suspended
             ORDER BY u.created_at DESC
         """)
         cols = [d[0] for d in (cur.description or [])]
@@ -1053,6 +1082,26 @@ def admin_delete_user(user_id: int, admin: str = Depends(require_admin)):
         cur.execute("DELETE FROM users           WHERE id    = %s", (user_id,))
         conn.commit()
         return {"ok": True, "deleted_email": email}
+    finally:
+        cur.close(); conn.close()
+
+
+# ── /admin/users/{id}/suspend ────────────────────────────────────────────────
+class SuspendPatch(BaseModel):
+    suspended: bool
+
+@app.patch("/admin/users/{user_id}/suspend")
+def admin_suspend_user(user_id: int, data: SuspendPatch, admin: str = Depends(require_admin)):
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        cur.execute("UPDATE users SET is_suspended=%s WHERE id=%s RETURNING email",
+                    (data.suspended, user_id))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found.")
+        conn.commit()
+        logger.info(f"User {row[0]} {'suspended' if data.suspended else 'reinstated'} by admin")
+        return {"ok": True, "email": row[0], "suspended": data.suspended}
     finally:
         cur.close(); conn.close()
 
