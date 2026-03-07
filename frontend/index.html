@@ -429,6 +429,7 @@ function removeMessage(id) {
         <div class="user-chip"><div class="user-dot"></div><span id="userLabel">–</span></div>
         <a class="nav-pill" href="voice.html">🎙 Voice Session</a>
         <a class="nav-pill" href="hr-mode.html">⚔ HR Mode</a>
+        <div class="nav-pill" id="honorPill" style="cursor:default;border-color:rgba(124,77,255,0.2)" title="Honor Score">⭐ <span id="honorNav">--</span></div>
         
         <button class="nav-pill cta" onclick="logout()">Sign Out</button>
       </nav>
@@ -869,11 +870,71 @@ function removeMessage(id) {
           </div>
           ${tasksHTML}
           ${prevHTML}
-          <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <div id="honorCard" style="margin-bottom:0"></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:20px">
             <a href="voice.html" style="padding:10px 18px;border-radius:10px;background:rgba(124,77,255,0.12);border:1px solid rgba(124,77,255,0.25);color:#b08dff;font-size:13px;text-decoration:none;font-family:'Syne',sans-serif;font-weight:600">🎙 New Voice Session</a>
             <a href="hr-mode.html" style="padding:10px 18px;border-radius:10px;background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.25);color:#e74c3c;font-size:13px;text-decoration:none;font-family:'Syne',sans-serif;font-weight:600">⚔ Retry HR Mode</a>
           </div>
         </div>`;
+      loadHonorScore();
+    }
+
+
+    async function loadHonorScore(){
+      try{
+        const res=await fetch(`${API}/user/honor`,{headers:authHeaders()});
+        if(!res.ok) return;
+        const data=await res.json();
+        const score=data.score||100;
+        const events=data.events||[];
+        // Update nav pill
+        const hn=document.getElementById("honorNav");
+        if(hn) hn.textContent=score;
+        const pill=document.getElementById("honorPill");
+        if(pill) pill.style.color=score>=80?"#059669":score>=50?"#d97706":"#dc2626";
+        // Inject honor card into dashboard if mainPage exists
+        const mp=document.getElementById("honorCard");
+        if(!mp) return;
+        const col=score>=80?"#059669":score>=50?"#d97706":"#dc2626";
+        const label=score>=80?"EXCELLENT":score>=50?"GOOD STANDING":"NEEDS WORK";
+        const eventLabels={
+          voice_session_complete:"Voice Session Complete",
+          hr_session_complete:"HR Interview Complete",
+          course_marked_done:"Course Completed",
+          scan_complete:"Written Scan Complete",
+          tab_switch_voice:"Tab Switch (Voice)",
+          tab_switch_assessment:"Tab Switch (Assessment)",
+          hr_tab_violation:"Tab Violation (HR Mode)",
+          early_session_exit:"Early Session Exit",
+          low_scan_quality:"Low Scan Quality",
+          stability_improvement:"Stability Improved",
+          streak_30_days:"30-Day Streak"
+        };
+        mp.innerHTML=`
+          <div style="background:rgba(13,11,24,0.6);border:1px solid #1a1030;border-radius:14px;padding:20px;margin-bottom:20px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+              <div style="font-family:'Syne',sans-serif;font-weight:600;font-size:11px;color:#6b7280;letter-spacing:1px;text-transform:uppercase">⭐ Honor Score</div>
+              <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:28px;color:${col}">${score}<span style="font-size:12px;color:#6b7280;font-weight:400">/100</span></div>
+            </div>
+            <div style="height:6px;background:#1a1030;border-radius:3px;margin-bottom:8px">
+              <div style="height:100%;width:${score}%;background:${col};border-radius:3px;transition:width 1s"></div>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${col};margin-bottom:${events.length?"16px":"0"}">${label}</div>
+            ${events.length?`<div style="font-family:'Syne',sans-serif;font-size:10px;color:#6b7280;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Recent Activity</div>
+            <div style="display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto">
+            ${events.slice(0,10).map(e=>{
+              const d=e.delta>0?"+"+e.delta:e.delta;
+              const dc=e.delta>0?"#059669":"#dc2626";
+              const dt=e.created_at?new Date(e.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short"}):"";
+              return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(26,16,48,0.4)">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:${dc};min-width:30px">${d}</div>
+                <div style="font-size:12px;color:#c8c2e0;flex:1">${eventLabels[e.event_type]||e.event_type}</div>
+                <div style="font-size:10px;color:#6b7280">${dt}</div>
+              </div>`;
+            }).join("")}
+            </div>`:""}
+          </div>`;
+      }catch(e){console.error("honor load failed",e);}
     }
 
     async function loadDashboard(){
@@ -927,6 +988,7 @@ function removeMessage(id) {
 }
 
     loadDashboard();
+    loadHonorScore();
 let historyChartInstance = null;
 
 function initHistoryChart(history) {
