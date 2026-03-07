@@ -148,6 +148,8 @@
     .action-btn:hover{border-color:var(--purple);color:var(--purple);background:var(--purple-glow)}
     .action-btn.danger:hover{border-color:var(--red);color:var(--red);background:rgba(231,76,60,0.05)}
     .action-btn.success:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,229,180,0.05)}
+    .action-btn.warn{border-color:rgba(255,160,0,0.3);color:rgba(255,160,0,0.8)}
+    .action-btn.warn:hover{border-color:rgba(255,160,0,0.7);color:rgb(255,160,0);background:rgba(255,160,0,0.05)}
 
     /* ── Search/Filter bar ── */
     .filter-bar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
@@ -851,8 +853,9 @@ function renderUsers(data){
       <td>${sessions}</td>
       <td style="color:var(--muted)">${joined}</td>
       <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent)">${u.honor_score||100}</span></td>
-      <td style="display:flex;gap:6px">
+      <td style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="action-btn" onclick="viewUser('${u.email}')">View</button>
+        <button class="action-btn ${u.suspended?'':'warn'}" id="susp-${u.id}" onclick="toggleSuspend('${u.id}','${u.email}',${!!u.suspended})">${u.suspended?'✓ Grant Access':'⊘ Suspend'}</button>
         <button class="action-btn danger" onclick="confirmDelete('user','${u.email}','Are you sure you want to delete user ${u.email} and all their data?')">Delete</button>
       </td>
     </tr>`;
@@ -867,6 +870,26 @@ function filterUsers(){
 function viewUser(email){
   const s = allSessions.filter(s=>s.email===email);
   alert(`User: ${email}\nSessions: ${s.length}\nHR Sessions: ${s.filter(x=>x.mode==="hr_interview").length}\nVoice Sessions: ${s.filter(x=>x.mode!=="hr_interview").length}`);
+}
+
+async function toggleSuspend(userId, email, isSuspended){
+  const action = isSuspended ? "grant" : "suspend";
+  const msg = isSuspended
+    ? `Grant access to ${email}?`
+    : `Suspend ${email}? They will be locked out immediately.`;
+  if(!confirm(msg)) return;
+  const h = {"Content-Type":"application/json","Authorization":`Bearer ${localStorage.getItem("mentorix_token")}`};
+  try{
+    const r = await fetch(`${API}/admin/users/${userId}/suspend`,{method:"PATCH",headers:h,body:JSON.stringify({suspended:!isSuspended})});
+    if(r.ok){
+      const u = allUsers.find(u=>u.id==userId);
+      if(u) u.suspended = !isSuspended;
+      renderUsers();
+      showToast(isSuspended ? `Access granted to ${email}` : `${email} suspended`);
+    } else {
+      showToast("Action failed — check console","error");
+    }
+  }catch(e){ showToast("Network error","error"); }
 }
 
 function exportUsers(){
@@ -983,7 +1006,7 @@ function renderAnalytics(){
   document.getElementById("improvingList").innerHTML = `<div style="color:var(--muted)">Analysis requires 3+ sessions per user.</div>`;
 
   // Dept course stats
-  const depts=["CSE","ECE","MECH","AIDS","AIML","IT","EEE","CIVIL"];
+  const depts=["CSE","IT","ECE","EEE","MECH","CIVIL","AIDS","AIML","Food Technology","Biotechnology"];
   document.getElementById("deptCourseStats").innerHTML = depts.map(d=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center"><div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--white)">${d}</div><div style="font-size:10px;color:var(--accent);margin-top:3px">AI Dynamic</div></div>`).join("");
   document.getElementById("deptCoverage").innerHTML=`<div style="color:var(--text);line-height:1.8">All ${depts.length} departments covered by AI-generated course recommendations. Courses are generated per-session based on weak areas, department, and career goals. No manual catalog required.</div>`;
 }
