@@ -3,316 +3,339 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mentorix — HR Mode</title>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <title>Mentorix AI — HR Interview Mode</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;400;500;600;700;800&family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{
-      --bg:#0a0a0a;--surface:#111111;--surface2:#161616;
-      --border:#2a2a2a;--border2:#333;
-      --red:#c0392b;--red2:#e74c3c;--red-glow:rgba(192,57,43,0.15);
-      --white:#f5f5f5;--muted:#666;--text:#aaa;
-      --green:#27ae60;--yellow:#f39c12;
+      --ink:#06050e;--surface:#0e0c1a;--surface2:#161328;--surface3:#1e1a33;
+      --border:rgba(255,255,255,0.07);--border2:rgba(124,77,255,0.2);
+      --violet:#7c4dff;--violet-soft:rgba(124,77,255,0.1);
+      --red:#e74c3c;--red2:#c0392b;--red-soft:rgba(231,76,60,0.1);
+      --teal:#00e5b4;--yellow:#f4d03f;--rose:#ff4d6d;
+      --white:#f4f0ff;--text:#c0bbd8;--muted:#6e6888;
+      --font-d:'Bricolage Grotesque',sans-serif;--font-m:'DM Mono',monospace;--font-s:'Instrument Serif',serif;
     }
-    html,body{height:100%;overflow:hidden;}
-    style{
-background:var(--bg);
-font-family:'IBM Plex Sans',sans-serif;
-color:var(--text);
-user-select:none}
-    /* ── Scanlines overlay ── */
-    body::after{content:'';position:fixed;inset:0;z-index:999;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px)}
+    html,body{height:100%;overflow:hidden;background:var(--ink);font-family:var(--font-d);color:var(--text);user-select:none;-webkit-font-smoothing:antialiased}
 
-    /* ── Landing page ── */
-    .landing{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:0;padding:40px 40px 60px;transition:opacity 0.6s,transform 0.6s;overflow-y:auto}
-    .landing.gone{opacity:0;transform:scale(0.98);pointer-events:none}
+    /* ── LANDING ── */
+    .landing{position:fixed;inset:0;z-index:100;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:40px;transition:opacity 0.4s,transform 0.4s}
+    .landing.gone{opacity:0;transform:scale(1.015);pointer-events:none}
+    .land-brand{display:flex;align-items:center;gap:11px}
+    .land-mark{width:38px;height:38px;border-radius:10px;background:var(--red);display:flex;align-items:center;justify-content:center;font-family:var(--font-s);font-style:italic;font-size:20px;color:#fff;box-shadow:0 0 24px rgba(231,76,60,0.4)}
+    .land-bname{font-weight:700;font-size:17px;color:var(--white)}
+    .land-bname em{font-style:normal;color:var(--red)}
+    .land-badge{font-family:var(--font-m);font-size:10px;color:var(--red);background:var(--red-soft);border:1px solid rgba(231,76,60,0.25);padding:4px 12px;border-radius:4px;letter-spacing:2px;text-transform:uppercase}
+    .land-title{font-weight:800;font-size:clamp(26px,5vw,44px);color:var(--white);text-align:center;letter-spacing:-1.2px;line-height:1.1}
+    .land-title em{font-style:italic;font-family:var(--font-s);color:var(--red);font-weight:400}
+    .land-sub{font-size:15px;color:var(--muted);text-align:center;max-width:480px;line-height:1.7;font-weight:300}
+    .land-pillars{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;max-width:600px}
+    .pillar{padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:12px;text-align:center;min-width:130px;flex:1}
+    .pillar-title{font-family:var(--font-m);font-size:9px;color:var(--red);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+    .pillar-desc{font-size:12px;color:var(--muted);font-weight:300;line-height:1.5}
+    .land-perms{display:flex;flex-direction:column;gap:7px;width:100%;max-width:340px}
+    .land-perm{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:9px;border:1px solid var(--border);background:var(--surface);font-size:13px;color:var(--text)}
+    .land-perm-st{margin-left:auto;font-family:var(--font-m);font-size:10px;color:var(--muted)}
+    .land-start-btn{padding:14px 52px;border-radius:12px;background:var(--red);color:#fff;border:none;cursor:pointer;font-family:var(--font-d);font-weight:700;font-size:16px;box-shadow:0 8px 28px rgba(231,76,60,0.35);transition:all 0.2s;letter-spacing:-0.3px}
+    .land-start-btn:hover{background:var(--red2);transform:translateY(-2px);box-shadow:0 12px 36px rgba(231,76,60,0.45)}
+    .land-start-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none;box-shadow:none}
+    .land-note{font-family:var(--font-m);font-size:10px;color:var(--muted);text-align:center;line-height:2}
 
-    .land-badge{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red2);border:1px solid var(--red);padding:5px 14px;border-radius:2px;letter-spacing:2px;margin-bottom:20px;margin-top:20px}
-    .land-title{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:clamp(32px,6vw,64px);color:var(--white);letter-spacing:-1px;line-height:1.1;text-align:center;margin-bottom:16px}
-    .land-title span{color:var(--red2)}
-    .land-sub{font-size:15px;color:var(--muted);text-align:center;max-width:520px;line-height:1.8;font-weight:300;margin-bottom:24px}
+    /* ── VIOLATION BAR ── */
+    .viol-bar{position:fixed;top:0;left:0;right:0;z-index:200;background:rgba(231,76,60,0.1);border-bottom:1px solid rgba(231,76,60,0.3);backdrop-filter:blur(8px);padding:9px 24px;display:flex;align-items:center;justify-content:center;gap:10px;font-family:var(--font-m);font-size:11px;color:var(--red);transform:translateY(-100%);transition:transform 0.3s ease}
+    .viol-bar.show{transform:translateY(0)}
+    .viol-badge{background:var(--red);color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
 
-    .land-pillars{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;width:100%;max-width:720px;margin-bottom:24px}
-    .pillar{padding:16px 18px;border:1px solid var(--border);border-left:3px solid var(--red);background:var(--surface);font-size:12px}
-    .pillar-title{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--white);margin-bottom:4px;letter-spacing:0.5px}
-    .pillar-desc{font-size:11px;color:var(--muted);line-height:1.5}
+    /* ── END OVERLAY ── */
+    .end-ov{position:fixed;inset:0;z-index:100;background:rgba(6,5,14,0.96);backdrop-filter:blur(20px);display:none;flex-direction:column;align-items:center;padding:40px;overflow-y:auto}
+    .end-ov.show{display:flex}
+    .end-inner{display:flex;flex-direction:column;align-items:center;gap:16px;max-width:580px;width:100%;margin:auto}
+    .end-badge{font-family:var(--font-m);font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:4px;background:var(--red-soft);border:1px solid rgba(231,76,60,0.25);color:var(--red)}
+    .end-title{font-weight:800;font-size:28px;color:var(--white);letter-spacing:-0.8px}
+    .end-verdict{font-family:var(--font-m);font-size:13px;font-weight:700;letter-spacing:1.5px}
+    .end-scorecard{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%}
+    .esc-item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;min-width:80px;flex:1}
+    .esc-num{font-weight:800;font-size:22px;letter-spacing:-0.5px}
+    .esc-num.green{color:var(--teal)}.esc-num.yellow{color:var(--yellow)}.esc-num.red{color:var(--red)}
+    .esc-label{font-family:var(--font-m);font-size:8px;color:var(--muted);letter-spacing:1px;text-align:center}
+    .end-report{max-width:540px;width:100%;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;font-family:var(--font-m);font-size:12px;line-height:1.9;color:var(--text);white-space:pre-wrap;max-height:200px;overflow-y:auto}
+    .end-report::-webkit-scrollbar{width:3px}.end-report::-webkit-scrollbar-thumb{background:rgba(231,76,60,0.3);border-radius:2px}
+    .end-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+    .end-btn-pri{padding:12px 32px;border-radius:10px;background:var(--violet);color:#fff;border:none;cursor:pointer;font-family:var(--font-d);font-weight:700;font-size:14px;transition:all 0.2s;box-shadow:0 4px 16px rgba(124,77,255,0.3)}
+    .end-btn-pri:hover{background:#5530cc;transform:translateY(-1px)}
+    .end-btn-sec{padding:12px 32px;border-radius:10px;background:transparent;color:var(--muted);border:1px solid var(--border);cursor:pointer;font-size:14px;font-family:var(--font-d);transition:all 0.2s}
+    .end-btn-sec:hover{border-color:var(--border2);color:var(--white)}
 
-    .land-warn{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red);border:1px solid rgba(192,57,43,0.3);padding:12px 20px;max-width:500px;text-align:center;line-height:1.8;margin-bottom:24px;background:var(--red-glow)}
+    /* ── MAIN SESSION ── */
+    .hr-wrap{position:relative;z-index:1;height:100vh;display:flex;flex-direction:column}
 
-    .land-start{padding:14px 48px;background:var(--red);color:var(--white);border:none;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:14px;letter-spacing:1px;transition:all 0.2s}
-    .land-start:hover{background:var(--red2);box-shadow:0 0 24px rgba(231,76,60,0.4)}
-    .land-start:disabled{opacity:0.4;cursor:not-allowed}
-
-    /* ── Main session UI ── */
-    .hr-wrap{position:relative;z-index:1;height:100vh;display:flex;flex-direction:column;padding:0}
-
-    /* ── Header ── */
-    .hr-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface)}
-    .hr-logo{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:14px;color:var(--white);letter-spacing:1px}
-    .hr-logo span{color:var(--red2)}
-    .hr-meta{display:flex;align-items:center;gap:16px}
-    .hr-status{display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
-    .hr-dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
-    .hr-dot.rec{background:var(--red2);box-shadow:0 0 8px var(--red2);animation:blink 1s ease infinite}
+    /* Header */
+    .hr-header{display:flex;align-items:center;justify-content:space-between;padding:12px 22px;border-bottom:1px solid var(--border);flex-shrink:0;background:rgba(6,5,14,0.85);backdrop-filter:blur(12px)}
+    .hr-brand{display:flex;align-items:center;gap:9px}
+    .hr-mark-sm{width:27px;height:27px;border-radius:7px;background:var(--red);display:flex;align-items:center;justify-content:center;font-family:var(--font-s);font-style:italic;font-size:14px;color:#fff}
+    .hr-bname{font-family:var(--font-m);font-weight:700;font-size:12px;color:var(--white);letter-spacing:0.5px}
+    .hr-bname em{font-style:normal;color:var(--red)}
+    .hr-meta{display:flex;align-items:center;gap:14px}
+    .hr-status-pill{display:flex;align-items:center;gap:6px;font-family:var(--font-m);font-size:10px;color:var(--muted);padding:4px 10px;border-radius:99px;background:var(--surface);border:1px solid var(--border)}
+    .hr-dot{width:6px;height:6px;border-radius:50%;background:var(--muted)}
+    .hr-dot.rec{background:var(--red);box-shadow:0 0 6px var(--red);animation:blink 1s ease infinite}
     .hr-dot.ai{background:var(--yellow);box-shadow:0 0 6px var(--yellow)}
     @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
-    .hr-timer{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)}
-    .hr-end{padding:6px 14px;border:1px solid var(--border2);background:transparent;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;transition:all 0.2s;letter-spacing:0.5px}
-    .hr-end:hover{border-color:var(--red);color:var(--red)}
+    .hr-timer{font-family:var(--font-m);font-size:11px;color:var(--muted)}
+    .hr-prog{display:flex;align-items:center;gap:8px;font-family:var(--font-m);font-size:10px;color:var(--muted)}
+    .hr-prog-bar-wrap{width:80px;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+    .hr-prog-fill{height:100%;background:var(--red);border-radius:2px;width:0;transition:width 0.5s ease}
+    .hr-end-btn{padding:6px 14px;border-radius:7px;border:1px solid rgba(231,76,60,0.25);background:transparent;cursor:pointer;font-family:var(--font-m);font-size:10px;color:var(--red);transition:all 0.2s;letter-spacing:0.5px}
+    .hr-end-btn:hover{background:var(--red-soft);border-color:var(--red)}
 
-    /* ── Main content ── */
-    .hr-content{flex:1;display:grid;grid-template-columns:220px 1fr;gap:0;min-height:0;overflow:hidden}
+    /* Content grid */
+    .hr-content{flex:1;display:grid;grid-template-columns:210px 1fr;min-height:0;overflow:hidden}
 
-    /* ── Left panel — camera + score ── */
+    /* Left sidebar */
     .hr-left{border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--surface);overflow:hidden}
 
-    .cam-section{flex-shrink:0;padding:14px;border-bottom:1px solid var(--border)}
-    .cam-label{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}
-    .cam-feed{width:100%;aspect-ratio:4/3;background:#000;border:1px solid var(--border2);position:relative;overflow:hidden}
+    /* Camera */
+    .cam-section{flex-shrink:0;padding:12px;border-bottom:1px solid var(--border)}
+    .cam-label{font-family:var(--font-m);font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:7px}
+    .cam-feed{width:100%;aspect-ratio:4/3;background:#000;border:1px solid rgba(231,76,60,0.2);position:relative;overflow:hidden;border-radius:6px}
     #camVideo{width:100%;height:100%;object-fit:cover;display:block;transform:scaleX(-1)}
     .cam-overlay{position:absolute;inset:0;pointer-events:none}
-    .cam-corner{position:absolute;width:12px;height:12px;border-color:var(--red);border-style:solid}
+    .cam-corner{position:absolute;width:10px;height:10px;border-color:var(--red);border-style:solid}
     .cam-corner.tl{top:4px;left:4px;border-width:2px 0 0 2px}
     .cam-corner.tr{top:4px;right:4px;border-width:2px 2px 0 0}
     .cam-corner.bl{bottom:4px;left:4px;border-width:0 0 2px 2px}
     .cam-corner.br{bottom:4px;right:4px;border-width:0 2px 2px 0}
-    .cam-status{position:absolute;bottom:6px;left:6px;font-family:'IBM Plex Mono',monospace;font-size:9px;background:rgba(0,0,0,0.8);padding:2px 6px;color:var(--red2)}
-    .cam-denied{display:flex;align-items:center;justify-content:center;height:100%;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);text-align:center;padding:8px}
+    .cam-status{position:absolute;bottom:5px;left:5px;font-family:var(--font-m);font-size:8px;background:rgba(0,0,0,0.8);padding:2px 6px;color:var(--red);border-radius:2px;letter-spacing:1px}
+    .cam-denied{display:flex;align-items:center;justify-content:center;height:100%;font-family:var(--font-m);font-size:9px;color:var(--muted);text-align:center;padding:8px;line-height:1.8}
 
-    /* Posture indicators */
-    .posture-section{padding:12px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
-    .posture-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
-    .posture-label{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px}
-    .posture-val{font-family:'IBM Plex Mono',monospace;font-size:9px}
-    .posture-val.good{color:var(--green)}
-    .posture-val.warn{color:var(--yellow)}
-    .posture-val.bad{color:var(--red2)}
-    .posture-bar{height:2px;background:var(--border);margin-bottom:8px;border-radius:1px}
+    /* Posture */
+    .posture-section{padding:10px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+    .posture-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+    .posture-label{font-family:var(--font-m);font-size:8px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+    .posture-val{font-family:var(--font-m);font-size:8px;font-weight:700}
+    .posture-val.good{color:var(--teal)}.posture-val.warn{color:var(--yellow)}.posture-val.bad{color:var(--red)}
+    .posture-bar{height:2px;background:var(--border);border-radius:1px;margin-bottom:7px}
     .posture-fill{height:100%;border-radius:1px;transition:width 0.5s,background 0.5s}
 
     /* Score panel */
-    .score-section{flex:1;padding:12px 14px;overflow-y:auto}
-    .score-section::-webkit-scrollbar{width:2px}
-    .score-section::-webkit-scrollbar-thumb{background:var(--border2)}
-    .score-title{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px}
+    .score-section{flex:1;padding:12px;overflow-y:auto}
+    .score-section::-webkit-scrollbar{width:2px}.score-section::-webkit-scrollbar-thumb{background:rgba(231,76,60,0.2);border-radius:1px}
+    .score-title{font-family:var(--font-m);font-size:8px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px}
     .score-item{margin-bottom:10px}
     .score-row{display:flex;justify-content:space-between;margin-bottom:3px}
-    .score-name{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text)}
-    .score-num{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--white)}
+    .score-name{font-family:var(--font-m);font-size:9px;color:var(--text)}
+    .score-num{font-family:var(--font-m);font-size:9px;color:var(--white)}
     .score-bar{height:2px;background:var(--border);border-radius:1px}
-    .score-fill{height:100%;background:var(--red);border-radius:1px;transition:width 0.8s cubic-bezier(0.4,0,0.2,1)}
-    .score-fill.mid{background:var(--yellow)}
-    .score-fill.high{background:var(--green)}
+    .score-fill{height:100%;background:var(--red);border-radius:1px;transition:width 0.8s ease}
+    .score-fill.mid{background:var(--yellow)}.score-fill.high{background:var(--teal)}
 
-    /* ── Right panel — spectrum + chat ── */
-    .hr-right{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+    /* Right — chat area */
+    .hr-right{display:flex;flex-direction:column;min-height:0}
 
-    /* Spectrum */
-    .hr-spec{flex-shrink:0;padding:12px 16px 8px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;align-items:center;gap:8px}
-    .hr-avatar{display:flex;align-items:center;gap:12px}
-    .hr-av-core{width:44px;height:44px;background:var(--surface2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:16px;color:var(--white);flex-shrink:0;transition:border-color 0.3s,box-shadow 0.3s}
-    .hr-av-core.speaking{border-color:var(--red2);box-shadow:0 0 16px rgba(231,76,60,0.3);animation:hrav 0.6s ease infinite alternate}
-    @keyframes hrav{from{transform:scale(1)}to{transform:scale(1.03)}}
-    .hr-av-info{display:flex;flex-direction:column;gap:2px}
-    .hr-av-name{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--white);font-weight:500}
-    .hr-av-role{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:0.5px}
-    #hrCanvas{width:100%;max-width:600px;height:56px;display:block}
-
-    /* Progress */
-    .hr-progress{display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)}
-    .hr-prog-bar{flex:1;height:2px;background:var(--border)}
-    .hr-prog-fill{height:100%;background:var(--red);transition:width 0.5s}
+    /* AI row */
+    .hr-ai-row{flex-shrink:0;padding:12px 18px 8px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:rgba(6,5,14,0.4)}
+    .hr-av-wrap{position:relative;width:46px;height:46px}
+    .hr-av-ring{position:absolute;inset:-5px;border-radius:50%;border:1px solid rgba(231,76,60,0.18);animation:rspin 12s linear infinite}
+    @keyframes rspin{to{transform:rotate(360deg)}}
+    .hr-av{width:46px;height:46px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#e74c3c,#7b241c);display:flex;align-items:center;justify-content:center;font-family:var(--font-m);font-size:13px;font-weight:700;color:#fff;box-shadow:0 0 20px rgba(231,76,60,0.25);transition:box-shadow 0.3s;position:relative;z-index:1}
+    .hr-av.speaking{box-shadow:0 0 40px rgba(231,76,60,0.55),0 0 80px rgba(231,76,60,0.15);animation:avpulse 0.7s ease infinite alternate}
+    @keyframes avpulse{from{transform:scale(1)}to{transform:scale(1.05)}}
+    .hr-ai-info{flex:1}
+    .hr-ai-name{font-weight:700;font-size:14px;color:var(--white);letter-spacing:-0.2px}
+    .hr-ai-role{font-family:var(--font-m);font-size:10px;color:var(--muted);margin-top:1px}
+    #hrCanvas{height:36px;display:block}
 
     /* Chat */
-    .hr-chat{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth;min-height:0}
-    .hr-chat::-webkit-scrollbar{width:3px}
-    .hr-chat::-webkit-scrollbar-thumb{background:var(--border2)}
-
-    .hc-row{display:flex;gap:10px;animation:mIn 0.25s ease}
-    @keyframes mIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .hr-chat{flex:1;overflow-y:auto;padding:12px 18px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth;min-height:0}
+    .hr-chat::-webkit-scrollbar{width:3px}.hr-chat::-webkit-scrollbar-thumb{background:rgba(231,76,60,0.2);border-radius:2px}
+    .hc-row{display:flex;gap:9px;animation:mfade 0.3s ease both}
+    @keyframes mfade{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
     .hc-row.user{flex-direction:row-reverse}
-    .hc-av{width:26px;height:26px;background:var(--surface2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);flex-shrink:0}
-    .hc-av.uav{color:var(--white);border-color:var(--border2)}
-    .hc-bubble{max-width:75%;padding:10px 14px;font-size:13px;line-height:1.65;font-weight:300;border:1px solid var(--border)}
-    .hc-row.ai .hc-bubble{background:var(--surface);color:var(--white);border-left:2px solid var(--red);border-top:none;border-right:none;border-bottom:none;padding-left:12px}
-    .hc-row.user .hc-bubble{background:var(--surface2);color:var(--text);border-right:2px solid var(--border2);border-top:none;border-left:none;border-bottom:none;padding-right:12px}
+    .hc-av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;font-family:var(--font-d)}
+    .hc-av:not(.uav){background:radial-gradient(circle at 35% 35%,#e74c3c,#7b241c);color:#fff;font-family:var(--font-m);font-size:10px}
+    .hc-av.uav{background:rgba(124,77,255,0.1);border:1px solid rgba(124,77,255,0.22);color:var(--violet)}
+    .hc-bubble{max-width:74%;padding:9px 13px;border-radius:13px;font-size:13px;line-height:1.7;font-weight:300}
+    .hc-row.ai .hc-bubble{background:rgba(231,76,60,0.07);border:1px solid rgba(231,76,60,0.14);color:var(--white);border-top-left-radius:4px}
+    .hc-row.user .hc-bubble{background:var(--violet-soft);border:1px solid rgba(124,77,255,0.14);color:var(--text);border-top-right-radius:4px}
     .hc-typing{display:flex;gap:4px;align-items:center;padding:2px 0}
-    .hc-typing span{width:4px;height:4px;background:var(--red2);animation:db 1s ease infinite}
-    .hc-typing span:nth-child(2){animation-delay:0.15s}.hc-typing span:nth-child(3){animation-delay:0.3s}
-    @keyframes db{0%,100%{opacity:0.2;transform:scale(0.8)}50%{opacity:1;transform:scale(1)}}
-
-    /* Violation banner */
-    .viol-bar{position:fixed;top:0;left:0;right:0;z-index:200;background:rgba(192,57,43,0.95);padding:10px 20px;display:flex;align-items:center;justify-content:center;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#fff;transform:translateY(-100%);transition:transform 0.3s}
-    .viol-bar.show{transform:translateY(0)}
-    .viol-count{background:#fff;color:var(--red);width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+    .hc-typing span{width:4px;height:4px;border-radius:50%;background:var(--red);animation:tb 1.2s ease infinite}
+    .hc-typing span:nth-child(2){animation-delay:0.2s}.hc-typing span:nth-child(3){animation-delay:0.4s}
+    @keyframes tb{0%,100%{opacity:0.3;transform:scale(0.8)}50%{opacity:1;transform:scale(1)}}
 
     /* Input */
-    .hr-input-row{flex-shrink:0;padding:10px 16px 14px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end;background:var(--surface)}
-    .hr-mode-toggle{display:flex;gap:4px;flex-shrink:0}
-    .hmbtn{padding:5px 9px;border:1px solid var(--border);background:transparent;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);transition:all 0.2s}
-    .hmbtn.active{border-color:var(--red);color:var(--red2)}
-    .hr-tinput{flex:1;padding:10px 13px;border:1px solid var(--border);background:var(--surface2);color:var(--white);font-size:13px;font-family:'IBM Plex Sans',sans-serif;outline:none;transition:border-color 0.2s;resize:none;height:42px;max-height:100px;line-height:1.5;user-select:text}
-    .hr-tinput:focus{border-color:var(--red)}
-    .hr-tinput::placeholder{color:var(--muted)}
-    .hr-tinput:disabled{opacity:0.3;cursor:not-allowed}
-    .hr-micbtn{width:42px;height:42px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all 0.2s;flex-shrink:0}
-    .hr-micbtn:hover{border-color:var(--red2)}
-    .hr-micbtn.active{border-color:var(--red2);background:rgba(192,57,43,0.15);animation:micr 1.2s ease infinite}
+    .hr-input-row{flex-shrink:0;padding:10px 18px 12px;display:flex;gap:7px;align-items:flex-end;border-top:1px solid var(--border);background:rgba(6,5,14,0.6);backdrop-filter:blur(8px)}
+    .hmbtn{padding:7px 10px;border-radius:7px;border:1px solid var(--border);background:transparent;cursor:pointer;font-family:var(--font-m);font-size:10px;color:var(--muted);transition:all 0.18s}
+    .hmbtn.active{border-color:rgba(231,76,60,0.4);color:var(--red);background:var(--red-soft)}
+    .hr-textarea{flex:1;padding:10px 13px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--white);font-size:13px;font-family:var(--font-d);outline:none;transition:border-color 0.2s;resize:none;height:42px;max-height:100px;line-height:1.5;user-select:text}
+    .hr-textarea:focus{border-color:rgba(231,76,60,0.35)}
+    .hr-textarea::placeholder{color:var(--muted)}
+    .hr-textarea:disabled{opacity:0.4;cursor:not-allowed}
+    .hr-micbtn{width:42px;height:42px;border-radius:9px;border:1px solid rgba(231,76,60,0.2);background:var(--red-soft);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all 0.2s;flex-shrink:0}
+    .hr-micbtn:hover{border-color:var(--red);background:rgba(231,76,60,0.15)}
+    .hr-micbtn.active{border-color:var(--red);background:rgba(231,76,60,0.18);animation:micring 1.2s ease infinite}
     .hr-micbtn.off{opacity:0.3;cursor:not-allowed}
-    @keyframes micr{0%,100%{box-shadow:0 0 0 0 rgba(192,57,43,0.4)}50%{box-shadow:0 0 0 8px rgba(192,57,43,0.05)}}
-    .hr-sbtn{width:42px;height:42px;background:var(--red);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff;transition:all 0.2s;flex-shrink:0}
-    .hr-sbtn:hover{background:var(--red2)}
-    .hr-sbtn:disabled{opacity:0.3;cursor:not-allowed}
+    @keyframes micring{0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,0.3)}50%{box-shadow:0 0 0 8px rgba(231,76,60,0.05)}}
+    .hr-sendbtn{width:42px;height:42px;border-radius:9px;background:var(--red);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all 0.2s;flex-shrink:0;box-shadow:0 4px 14px rgba(231,76,60,0.3)}
+    .hr-sendbtn:hover{background:var(--red2);transform:scale(1.05)}
+    .hr-sendbtn:disabled{opacity:0.35;cursor:not-allowed;transform:none;box-shadow:none}
 
-    /* ── End overlay ── */
-    .end-ov{position:fixed;inset:0;z-index:100;background:rgba(10,10,10,0.97);display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:40px;overflow-y:auto}
-    .end-ov.show{display:flex}
-    .end-header{text-align:center}
-    .end-badge{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:12px}
-    .end-title{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:28px;color:var(--white)}
-    .end-score-card{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%;max-width:600px}
-    .esc-item{padding:16px;border:1px solid var(--border);background:var(--surface);text-align:center}
-    .esc-num{font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:600;color:var(--white);margin-bottom:4px}
-    .esc-num.red{color:var(--red2)}.esc-num.yellow{color:var(--yellow)}.esc-num.green{color:var(--green)}
-    .esc-label{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px}
-    .end-report{width:100%;max-width:600px;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--red);padding:20px;font-size:13px;line-height:1.9;color:var(--text);white-space:pre-wrap;max-height:220px;overflow-y:auto;font-family:'IBM Plex Sans',sans-serif}
-    .end-acts{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
-    .end-pri{padding:11px 28px;background:var(--red);color:#fff;border:none;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:1px;transition:all 0.2s}
-    .end-pri:hover{background:var(--red2)}
-    .end-sec{padding:11px 28px;background:transparent;color:var(--muted);border:1px solid var(--border);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:12px;transition:all 0.2s}
-    .end-sec:hover{border-color:var(--red);color:var(--white)}
+    /* Copyright */
+    .cronix-bar{position:fixed;bottom:0;left:0;right:0;z-index:50;background:rgba(6,5,14,0.9);border-top:1px solid var(--border);padding:4px 20px;display:flex;align-items:center;justify-content:space-between;pointer-events:none}
+    .cronix-bar a{pointer-events:all}
+    .cronix-bar span,.cronix-bar a{font-family:var(--font-m);font-size:9px;color:rgba(110,104,136,0.45);text-decoration:none}
+    .cronix-bar a:hover{color:var(--violet)}
 
-    @media(max-width:640px){.hr-content{grid-template-columns:1fr}.hr-left{display:none}}
+    @media(max-width:700px){
+      .hr-content{grid-template-columns:1fr}
+      .hr-left{display:none}
+    }
   </style>
 </head>
+<script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments);};</script>
+<script defer src="/_vercel/insights/script.js"></script>
 <body>
 
-<!-- Violation banner -->
-<div class="viol-bar" id="violBar">
-  <span>⚠ VIOLATION DETECTED</span>
-  <div class="viol-count" id="violCount">1</div>
-  <span id="violMsg">Tab switch detected</span>
-</div>
-
-<!-- Landing page -->
+<!-- LANDING -->
 <div class="landing" id="landing">
-  <div class="land-badge">RESTRICTED ACCESS — INTERVIEW SIMULATION</div>
-  <div class="land-title">HR <span>Mode</span></div>
-  <div class="land-sub">A strict, unforgiving AI interview simulation designed to expose your weaknesses, test your knowledge under pressure, and tell you exactly where you stand — before a real HR does.</div>
-
+  <div class="land-brand">
+    <div class="land-mark">M</div>
+    <div class="land-bname">Mentorix <em>AI</em></div>
+  </div>
+  <div class="land-badge">HR INTERVIEW SIMULATION</div>
+  <div class="land-title">Face the <em>real</em> interview.<br>Before it matters.</div>
+  <div class="land-sub">Aria, Senior HR Executive, will conduct a formal interview. 10 questions. 5 scoring categories. No second chances. Your performance is analysed and saved to your dashboard.</div>
   <div class="land-pillars">
-    <div class="pillar"><div class="pillar-title">TECHNICAL DEPTH</div><div class="pillar-desc">Department-specific questions — CSE, ECE, Mech, Bio, Food Tech and more</div></div>
-    <div class="pillar"><div class="pillar-title">PRESSURE HANDLING</div><div class="pillar-desc">Silence, follow-ups, and challenging your answers like a real interviewer</div></div>
-    <div class="pillar"><div class="pillar-title">COMMUNICATION</div><div class="pillar-desc">Confidence, clarity, and how well you articulate complex ideas</div></div>
-    <div class="pillar"><div class="pillar-title">POSTURE ANALYSIS</div><div class="pillar-desc">Camera monitoring for eye contact, posture, and professional presence</div></div>
-    <div class="pillar"><div class="pillar-title">CRITICAL THINKING</div><div class="pillar-desc">Problem solving scenarios and edge cases relevant to your field</div></div>
-    <div class="pillar"><div class="pillar-title">FULL REPORT</div><div class="pillar-desc">Score card + detailed weakness analysis saved to your dashboard</div></div>
+    <div class="pillar"><div class="pillar-title">TECHNICAL</div><div class="pillar-desc">Domain-specific questions for your department</div></div>
+    <div class="pillar"><div class="pillar-title">COMMUNICATION</div><div class="pillar-desc">Clarity, confidence, articulation scored</div></div>
+    <div class="pillar"><div class="pillar-title">PRESSURE</div><div class="pillar-desc">Tab switch, vague answers, challenges</div></div>
+    <div class="pillar"><div class="pillar-title">FULL REPORT</div><div class="pillar-desc">Detailed analysis saved to dashboard</div></div>
   </div>
-
-  <div class="land-warn">⚠ WARNING: This is not a supportive experience.<br>The AI will challenge, interrupt, and push you.<br>Camera and microphone will be monitored throughout.<br>Tab switching will be recorded as a violation.</div>
-
-  <button class="land-start" id="landStartBtn" onclick="initSession()">ENTER HR MODE →</button>
+  <div class="land-perms">
+    <div class="land-perm">🎙 Microphone — for voice answers<span class="land-perm-st" id="lPMic">Required</span></div>
+    <div class="land-perm">📹 Camera — for posture monitoring<span class="land-perm-st" id="lPCam">Required</span></div>
+    <div class="land-perm">🔒 Tab activity — anti-cheat active<span class="land-perm-st" style="color:var(--teal)">Active</span></div>
+  </div>
+  <button class="land-start-btn" id="landStartBtn" onclick="initSession()">Begin Interview →</button>
+  <div class="land-note">10 questions · 15–20 minutes · Chrome or Edge recommended<br>Space bar = toggle mic · Esc = end session</div>
 </div>
 
-<!-- End overlay -->
+<!-- VIOLATION BAR -->
+<div class="viol-bar" id="violBar">
+  <span id="violMsg">Tab switch — violation 1 of 3</span>
+  <div class="viol-badge" id="violCount">1</div>
+  <span>— noted in your report</span>
+</div>
+
+<!-- END OVERLAY -->
 <div class="end-ov" id="endOv">
-  <div class="end-header">
-    <div class="end-badge">SESSION COMPLETE — ANALYSIS REPORT</div>
-    <div class="end-title" id="endVerdict">INTERVIEW COMPLETE</div>
-  </div>
-  <div class="end-score-card" id="endScoreCard"></div>
-  <div class="end-report" id="endReport">Generating your analysis...</div>
-  <div class="end-acts">
-    <button class="end-pri" onclick="window.location.href='index.html'">VIEW DASHBOARD →</button>
-    <button class="end-sec" onclick="window.location.reload()">RETRY</button>
+  <div class="end-inner">
+    <div class="end-badge">INTERVIEW COMPLETE</div>
+    <div class="end-title">Assessment Report</div>
+    <div class="end-verdict" id="endVerdict">EVALUATING...</div>
+    <div class="end-scorecard" id="endScoreCard"></div>
+    <div class="end-report" id="endReport">Generating your report...</div>
+    <div class="end-actions">
+      <button class="end-btn-pri" onclick="window.location.href='index.html'">View Dashboard →</button>
+      <button class="end-btn-sec" onclick="window.location.reload()">New Session</button>
+    </div>
   </div>
 </div>
 
-<!-- Main session UI -->
+<!-- MAIN SESSION -->
 <div class="hr-wrap">
+  <!-- Header -->
   <div class="hr-header">
-    <div class="hr-logo">MENTORIX <span>// HR MODE</span></div>
-    <div class="hr-meta">
-      <div class="hr-status"><div class="hr-dot" id="hrDot"></div><span id="hrStatus">STANDBY</span></div>
-      <div class="hr-timer" id="hrTimer">00:00</div>
+    <div class="hr-brand">
+      <div class="hr-mark-sm">M</div>
+      <div class="hr-bname">Mentorix <em>AI</em> · HR Mode</div>
     </div>
-    <button class="hr-end" onclick="confirmEnd()">TERMINATE SESSION</button>
+    <div class="hr-meta">
+      <div class="hr-status-pill">
+        <div class="hr-dot" id="hrDot"></div>
+        <span id="hrStatus">STANDBY</span>
+      </div>
+      <div class="hr-timer" id="hrTimer">00:00</div>
+      <div class="hr-prog">
+        <span id="hrProgTxt">Q 0 / 10</span>
+        <div class="hr-prog-bar-wrap"><div class="hr-prog-fill" id="hrProgFill"></div></div>
+      </div>
+    </div>
+    <button class="hr-end-btn" onclick="confirmEnd()">Terminate</button>
   </div>
 
+  <!-- Content -->
   <div class="hr-content">
-    <!-- Left panel -->
+    <!-- Left: Camera + scores -->
     <div class="hr-left">
       <div class="cam-section">
-        <div class="cam-label">CANDIDATE FEED</div>
+        <div class="cam-label">Live Feed</div>
         <div class="cam-feed" id="camFeed">
           <video id="camVideo" autoplay muted playsinline></video>
           <div class="cam-overlay">
-            <div class="cam-corner tl"></div>
-            <div class="cam-corner tr"></div>
-            <div class="cam-corner bl"></div>
-            <div class="cam-corner br"></div>
+            <div class="cam-corner tl"></div><div class="cam-corner tr"></div>
+            <div class="cam-corner bl"></div><div class="cam-corner br"></div>
           </div>
-          <div class="cam-status" id="camStatus">INITIALIZING</div>
-          <div class="cam-denied" id="camDenied" style="display:none">CAMERA<br>ACCESS DENIED<br><br>Posture monitoring<br>disabled</div>
+          <div class="cam-status" id="camStatus">AWAITING</div>
         </div>
       </div>
 
       <div class="posture-section">
-        <div class="cam-label">BEHAVIOUR ANALYSIS</div>
-        <div class="posture-row"><span class="posture-label">EYE CONTACT</span><span class="posture-val good" id="eyeVal">GOOD</span></div>
-        <div class="posture-bar"><div class="posture-fill" id="eyeBar" style="width:80%;background:var(--green)"></div></div>
-        <div class="posture-row"><span class="posture-label">POSTURE</span><span class="posture-val good" id="postureVal">UPRIGHT</span></div>
-        <div class="posture-bar"><div class="posture-fill" id="postureBar" style="width:75%;background:var(--green)"></div></div>
-        <div class="posture-row"><span class="posture-label">CONFIDENCE</span><span class="posture-val warn" id="confVal">MODERATE</span></div>
-        <div class="posture-bar"><div class="posture-fill" id="confBar" style="width:55%;background:var(--yellow)"></div></div>
+        <div class="posture-row"><div class="posture-label">Eye Contact</div><div class="posture-val" id="eyeVal">—</div></div>
+        <div class="posture-bar"><div class="posture-fill" id="eyeBar" style="width:0"></div></div>
+        <div class="posture-row"><div class="posture-label">Posture</div><div class="posture-val" id="postureVal">—</div></div>
+        <div class="posture-bar"><div class="posture-fill" id="postureBar" style="width:0"></div></div>
+        <div class="posture-row"><div class="posture-label">Confidence</div><div class="posture-val" id="confVal">—</div></div>
+        <div class="posture-bar"><div class="posture-fill" id="confBar" style="width:0"></div></div>
       </div>
 
       <div class="score-section">
-        <div class="score-title">LIVE SCORES</div>
-        <div id="liveScores">
-          <div class="score-item"><div class="score-row"><span class="score-name">TECHNICAL</span><span class="score-num" id="sc-tech">--</span></div><div class="score-bar"><div class="score-fill" id="sb-tech" style="width:0%"></div></div></div>
-          <div class="score-item"><div class="score-row"><span class="score-name">COMMUNICATION</span><span class="score-num" id="sc-comm">--</span></div><div class="score-bar"><div class="score-fill" id="sb-comm" style="width:0%"></div></div></div>
-          <div class="score-item"><div class="score-row"><span class="score-name">CRITICAL THINKING</span><span class="score-num" id="sc-crit">--</span></div><div class="score-bar"><div class="score-fill" id="sb-crit" style="width:0%"></div></div></div>
-          <div class="score-item"><div class="score-row"><span class="score-name">PRESSURE</span><span class="score-num" id="sc-pres">--</span></div><div class="score-bar"><div class="score-fill" id="sb-pres" style="width:0%"></div></div></div>
-          <div class="score-item"><div class="score-row"><span class="score-name">LEADERSHIP</span><span class="score-num" id="sc-lead">--</span></div><div class="score-bar"><div class="score-fill" id="sb-lead" style="width:0%"></div></div></div>
-        </div>
+        <div class="score-title">Live Scores</div>
+        <div class="score-item"><div class="score-row"><span class="score-name">Technical</span><span class="score-num" id="sc-tech">—</span></div><div class="score-bar"><div class="score-fill" id="sb-tech" style="width:0"></div></div></div>
+        <div class="score-item"><div class="score-row"><span class="score-name">Communication</span><span class="score-num" id="sc-comm">—</span></div><div class="score-bar"><div class="score-fill" id="sb-comm" style="width:0"></div></div></div>
+        <div class="score-item"><div class="score-row"><span class="score-name">Critical Thinking</span><span class="score-num" id="sc-crit">—</span></div><div class="score-bar"><div class="score-fill" id="sb-crit" style="width:0"></div></div></div>
+        <div class="score-item"><div class="score-row"><span class="score-name">Pressure</span><span class="score-num" id="sc-pres">—</span></div><div class="score-bar"><div class="score-fill" id="sb-pres" style="width:0"></div></div></div>
+        <div class="score-item"><div class="score-row"><span class="score-name">Leadership</span><span class="score-num" id="sc-lead">—</span></div><div class="score-bar"><div class="score-fill" id="sb-lead" style="width:0"></div></div></div>
       </div>
     </div>
 
-    <!-- Right panel -->
+    <!-- Right: Chat -->
     <div class="hr-right">
-      <div class="hr-spec">
-        <div class="hr-avatar">
-          <div class="hr-av-core" id="hrAv">HR</div>
-          <div class="hr-av-info">
-            <div class="hr-av-name">ARIA</div>
-            <div class="hr-av-role">SENIOR HR EXECUTIVE — AI</div>
-          </div>
+      <div class="hr-ai-row">
+        <div class="hr-av-wrap">
+          <div class="hr-av-ring"></div>
+          <div class="hr-av" id="hrAv">AR</div>
         </div>
-        <canvas id="hrCanvas"></canvas>
-        <div class="hr-progress">
-          <span id="hrProgTxt">Q 0 / 10</span>
-          <div class="hr-prog-bar"><div class="hr-prog-fill" id="hrProgFill" style="width:0%"></div></div>
+        <div class="hr-ai-info">
+          <div class="hr-ai-name">Aria</div>
+          <div class="hr-ai-role">Senior HR Executive · Mentorix AI</div>
         </div>
+        <canvas id="hrCanvas" style="width:180px"></canvas>
       </div>
 
       <div class="hr-chat" id="hrChat">
-        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px;opacity:0.3;pointer-events:none">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">SESSION NOT STARTED</div>
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;opacity:0.3;gap:6px;pointer-events:none">
+          <div style="font-size:22px">⚔</div>
+          <div style="font-family:var(--font-m);font-size:10px;color:var(--muted)">Interview initialising...</div>
         </div>
       </div>
 
       <div class="hr-input-row">
-        <div class="hr-mode-toggle">
+        <div style="display:flex;gap:4px">
           <button class="hmbtn active" id="hrModeV" onclick="setHRMode('voice')">🎙</button>
           <button class="hmbtn" id="hrModeT" onclick="setHRMode('type')">⌨</button>
         </div>
-        <textarea class="hr-tinput" id="hrTypeInp" placeholder="Respond to the interviewer..." disabled rows="1" onkeydown="hrTypeKey(event)" oninput="hrAutoR(this)"></textarea>
-        <button class="hr-micbtn off" id="hrMicBtn" onclick="toggleHRMic()">🎙️</button>
-        <button class="hr-sbtn" id="hrSendBtn" onclick="hrSendTyped()" disabled>➤</button>
+        <textarea class="hr-textarea" id="hrTypeInp" placeholder="Answer here, or use 🎙 voice..." disabled rows="1" onkeydown="hrTypeKey(event)" oninput="hrAutoR(this)"></textarea>
+        <button class="hr-micbtn off" id="hrMicBtn" onclick="toggleHRMic()">🎙</button>
+        <button class="hr-sendbtn" id="hrSendBtn" onclick="hrSendTyped()" disabled title="Send">➤</button>
       </div>
     </div>
   </div>
+</div>
+
+<div class="cronix-bar">
+  <span>&copy; 2025 CRONIX &mdash; All rights reserved</span>
+  <a href="https://portfolio-npzu.vercel.app" target="_blank" rel="noopener">Built by CRONIX</a>
 </div>
 
 <script>
@@ -322,16 +345,14 @@ const UNAME=localStorage.getItem("mentorix_name")||"Candidate";
 const PROFILE=JSON.parse(localStorage.getItem("mentorix_profile")||"{}");
 const DEPT=PROFILE.dept||"CSE";
 const YEAR=PROFILE.year||"3";
-if(!TOKEN) window.location.href="login.html";
+if(!TOKEN)window.location.href="login.html";
 
-// ── State ─────────────────────────────────────────────────
 let active=false,listening=false,speaking=false,tabViol=0,qNum=0,convo=[],rec=null;
 let audioCtx=null,analyser=null,micStream=null,camStream=null,raf=null,aiLv=0;
 let hrMode="voice",sessionStart=null,timerInterval=null,silenceTimer=null;
-let scores={tech:null,comm:null,crit:null,pres:null,lead:null},scoreCount={tech:0,comm:0,crit:0,pres:0,lead:0};
+let scores={tech:null,comm:null,crit:null,pres:null,lead:null};
 const MAX_Q=10,MAX_VIOL=3;
 
-// ── DOM ───────────────────────────────────────────────────
 const hrDot=document.getElementById("hrDot"),hrStatus=document.getElementById("hrStatus");
 const hrAv=document.getElementById("hrAv"),hrChat=document.getElementById("hrChat");
 const hrMicBtn=document.getElementById("hrMicBtn"),hrSendBtn=document.getElementById("hrSendBtn");
@@ -339,133 +360,89 @@ const hrTypeInp=document.getElementById("hrTypeInp");
 const violBar=document.getElementById("violBar"),violCount=document.getElementById("violCount");
 const canvas=document.getElementById("hrCanvas"),cx=canvas.getContext("2d",{willReadFrequently:true});
 
-// ── Canvas ────────────────────────────────────────────────
 function resizeCvs(){canvas.width=canvas.offsetWidth*devicePixelRatio;canvas.height=canvas.offsetHeight*devicePixelRatio;cx.scale(devicePixelRatio,devicePixelRatio);}
 window.addEventListener("resize",resizeCvs);
 
-// ── Tab detection ─────────────────────────────────────────
 document.addEventListener("visibilitychange",()=>{
   if(!active||document.visibilityState==="visible")return;
   tabViol++;violCount.textContent=tabViol;
   document.getElementById("violMsg").textContent="Tab switch — violation "+tabViol+" of "+MAX_VIOL;
   violBar.classList.add("show");setTimeout(()=>violBar.classList.remove("show"),4000);
   updateScore("pres",Math.max(0,(scores.pres||50)-10));
-  if(tabViol>=MAX_VIOL){speak("I've noted "+MAX_VIOL+" tab violations. This reflects poorly on your professionalism. Let's continue, but this will impact your final score.");}
+  if(tabViol>=MAX_VIOL)speak("I've noted "+MAX_VIOL+" tab violations. This reflects poorly on your professionalism. Let's continue, but this will impact your final score.");
 });
 
-// ── Camera ────────────────────────────────────────────────
 async function initCamera(){
   try{
     camStream=await navigator.mediaDevices.getUserMedia({video:{width:220,height:165,facingMode:"user"},audio:false});
-    const vid=document.getElementById("camVideo");
-    vid.srcObject=camStream;
+    const vid=document.getElementById("camVideo");vid.srcObject=camStream;
     await vid.play().catch(()=>{});
     document.getElementById("camStatus").textContent="● REC";
-    // Wait for video to be ready before analysing
+    document.getElementById("lPCam").textContent="✓ Granted";document.getElementById("lPCam").style.color="var(--teal)";
     vid.onloadedmetadata=()=>startPostureAnalysis(vid);
     return true;
   }catch(e){
-    console.warn("Camera:",e.name,e.message);
     const feed=document.getElementById("camFeed");
-    if(feed) feed.innerHTML='<div class="cam-denied">CAMERA<br>ACCESS DENIED<br><br>Posture monitoring<br>disabled</div>';
+    if(feed)feed.innerHTML='<div class="cam-denied">CAMERA<br>ACCESS DENIED<br><br>Posture monitoring<br>disabled</div>';
+    document.getElementById("lPCam").textContent="✗ Denied";
     return false;
   }
 }
 
-// ── Posture analysis (lightweight, no ML library) ─────────
 function startPostureAnalysis(vid){
-  const postCanvas=document.createElement("canvas");postCanvas.width=110;postCanvas.height=82;
-  const pCtx=postCanvas.getContext("2d",{willReadFrequently:true});
+  const pc=document.createElement("canvas");pc.width=110;pc.height=82;
+  const pCtx=pc.getContext("2d",{willReadFrequently:true});
   let prevBrightness=0,stableFrames=0;
-
   setInterval(()=>{
     if(!active)return;
     try{
       pCtx.drawImage(vid,0,0,110,82);
       const data=pCtx.getImageData(0,0,110,82).data;
-      let brightness=0,faceZone=0;
-      for(let i=0;i<data.length;i+=4){
-        brightness+=(data[i]+data[i+1]+data[i+2])/3;
-      }
+      let brightness=0;for(let i=0;i<data.length;i+=4)brightness+=(data[i]+data[i+1]+data[i+2])/3;
       brightness/=(data.length/4);
-
-      // Upper third brightness = face present and looking at screen
       const upper=pCtx.getImageData(20,5,70,25).data;
-      for(let i=0;i<upper.length;i+=4) faceZone+=(upper[i]+upper[i+1]+upper[i+2])/3;
+      let faceZone=0;for(let i=0;i<upper.length;i+=4)faceZone+=(upper[i]+upper[i+1]+upper[i+2])/3;
       faceZone/=(upper.length/4);
-
-      // Heuristic: if upper zone is bright and stable = good eye contact
       const delta=Math.abs(brightness-prevBrightness);
-      if(delta<8) stableFrames=Math.min(stableFrames+1,30);
-      else stableFrames=Math.max(stableFrames-2,0);
+      if(delta<8)stableFrames=Math.min(stableFrames+1,30);else stableFrames=Math.max(stableFrames-2,0);
       prevBrightness=brightness;
-
       const eyePct=Math.min(100,Math.round(40+stableFrames*2));
       const posturePct=brightness>30&&brightness<220?Math.min(100,Math.round(50+stableFrames*1.5)):30;
       const confPct=Math.round((eyePct+posturePct)/2);
-
-      setPosture("eye",eyePct);
-      setPosture("posture",posturePct);
-      setPosture("conf",confPct);
+      setPosture("eye",eyePct);setPosture("posture",posturePct);setPosture("conf",confPct);
     }catch(e){}
   },1200);
 }
 
 function setPosture(key,pct){
-  const vals={eye:["eyeVal","eyeBar"],posture:["postureVal","postureBar"],conf:["confVal","confBar"]};
-  const [vid,bid]=vals[key];
-  const el=document.getElementById(vid),bar=document.getElementById(bid);
-  if(!el||!bar)return;
-  if(pct>=70){el.textContent=key==="eye"?"GOOD":key==="posture"?"UPRIGHT":"CONFIDENT";el.className="posture-val good";bar.style.background="var(--green)";}
+  const map={eye:["eyeVal","eyeBar"],posture:["postureVal","postureBar"],conf:["confVal","confBar"]};
+  const [vid,bid]=map[key];
+  const el=document.getElementById(vid),bar=document.getElementById(bid);if(!el||!bar)return;
+  if(pct>=70){el.textContent=key==="eye"?"GOOD":key==="posture"?"UPRIGHT":"CONFIDENT";el.className="posture-val good";bar.style.background="var(--teal)";}
   else if(pct>=45){el.textContent=key==="eye"?"DRIFTING":key==="posture"?"SLOUCHING":"MODERATE";el.className="posture-val warn";bar.style.background="var(--yellow)";}
-  else{el.textContent=key==="eye"?"POOR":key==="posture"?"POOR":"LOW";el.className="posture-val bad";bar.style.background="var(--red2)";}
+  else{el.textContent=key==="eye"?"POOR":"POOR";el.className="posture-val bad";bar.style.background="var(--red)";}
   bar.style.width=pct+"%";
 }
 
-// ── Voice (deep authoritative women's) ───────────────────
-function getBestHRVoice(){
-  const vv=window.speechSynthesis.getVoices();
-  // Prefer deep/authoritative female voices
-  return vv.find(v=>v.name==="Google UK English Female")||
-         vv.find(v=>v.name.includes("Zira"))||
-         vv.find(v=>v.name.includes("Helena"))||
-         vv.find(v=>v.name.includes("Moira"))||
-         vv.find(v=>v.name.toLowerCase().includes("female")&&v.lang.startsWith("en"))||
-         vv.find(v=>v.lang==="en-GB")||
-         vv.find(v=>v.lang.startsWith("en"));
-}
+function getBestHRVoice(){const vv=window.speechSynthesis.getVoices();return vv.find(v=>v.name==="Google UK English Female")||vv.find(v=>v.name.includes("Zira"))||vv.find(v=>v.name.includes("Moira"))||vv.find(v=>v.lang==="en-GB")||vv.find(v=>v.lang.startsWith("en"));}
 
 function speak(text,cb){
   window.speechSynthesis.cancel();speaking=true;
   hrAv.classList.add("speaking");hrDot.className="hr-dot ai";hrStatus.textContent="ARIA SPEAKING";
   hrMicBtn.className="hr-micbtn off";hrTypeInp.disabled=true;hrSendBtn.disabled=true;
   let lv=0,dir=1;const iv=setInterval(()=>{lv+=dir*0.06;if(lv>=1)dir=-1;if(lv<=0)dir=1;aiLv=lv;},50);
-  const u=new SpeechSynthesisUtterance(text);
-  u.rate=0.82;u.pitch=0.9;u.volume=1.0; // Slower, lower pitch = authoritative
+  const u=new SpeechSynthesisUtterance(text);u.rate=0.82;u.pitch=0.9;u.volume=1.0;
   const go=()=>{const v=getBestHRVoice();if(v)u.voice=v;u.onend=()=>{clearInterval(iv);aiLv=0;speaking=false;hrAv.classList.remove("speaking");hrDot.className="hr-dot";hrStatus.textContent="STANDBY";if(cb)cb();};window.speechSynthesis.speak(u);};
   window.speechSynthesis.getVoices().length>0?go():(window.speechSynthesis.onvoiceschanged=go);
 }
 
-// ── STT ───────────────────────────────────────────────────
 function startListening(){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){alert("Voice recognition not available. Switch to typing mode.");return;}
   rec=new SR();rec.continuous=true;rec.interimResults=true;rec.lang="en-US";rec.maxAlternatives=3;
   rec.onstart=()=>{listening=true;hrMicBtn.className="hr-micbtn active";hrDot.className="hr-dot rec";hrStatus.textContent="RECORDING";};
   let fullTranscript="";
-  rec.onresult=(e)=>{
-    let interim="";
-    for(let i=e.resultIndex;i<e.results.length;i++){
-      if(e.results[i].isFinal) fullTranscript+=e.results[i][0].transcript+" ";
-      else interim+=e.results[i][0].transcript;
-    }
-    hrTypeInp.value=(fullTranscript+interim).trim();
-    clearTimeout(silenceTimer);
-    if(fullTranscript.trim()) silenceTimer=setTimeout(()=>{
-      const txt=fullTranscript.trim();fullTranscript="";
-      handleResponse(txt);
-    },2000);
-  };
+  rec.onresult=(e)=>{let interim="";for(let i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal)fullTranscript+=e.results[i][0].transcript+" ";else interim+=e.results[i][0].transcript;}hrTypeInp.value=(fullTranscript+interim).trim();clearTimeout(silenceTimer);if(fullTranscript.trim())silenceTimer=setTimeout(()=>{const txt=fullTranscript.trim();fullTranscript="";handleResponse(txt);},2000);};
   rec.onerror=(e)=>{if(e.error!=="no-speech")console.warn(e.error);};
   rec.onend=()=>{listening=false;hrMicBtn.className="hr-micbtn";hrDot.className="hr-dot";hrStatus.textContent="STANDBY";hrTypeInp.value="";};
   rec.start();
@@ -476,17 +453,12 @@ function setHRMode(m){
   hrMode=m;
   document.getElementById("hrModeV").className="hmbtn"+(m==="voice"?" active":"");
   document.getElementById("hrModeT").className="hmbtn"+(m==="type"?" active":"");
-  if(!speaking&&active){
-    hrTypeInp.disabled=(m==="voice");hrSendBtn.disabled=(m==="voice");
-    hrMicBtn.className="hr-micbtn"+(m==="voice"?"":"  off");
-    if(m==="type"){hrTypeInp.disabled=false;hrSendBtn.disabled=false;hrTypeInp.focus();}
-  }
+  if(!speaking&&active){hrTypeInp.disabled=(m==="voice");hrSendBtn.disabled=(m==="voice");hrMicBtn.className="hr-micbtn"+(m==="voice"?"":"  off");if(m==="type"){hrTypeInp.disabled=false;hrSendBtn.disabled=false;hrTypeInp.focus();}}
 }
 function hrTypeKey(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();hrSendTyped();}}
 function hrSendTyped(){const txt=hrTypeInp.value.trim();if(!txt||speaking)return;hrTypeInp.value="";hrTypeInp.style.height="auto";handleResponse(txt);}
 function hrAutoR(el){el.style.height="auto";el.style.height=Math.min(el.scrollHeight,100)+"px";}
 
-// ── Spectrum ──────────────────────────────────────────────
 const N=48;
 function drawSpec(){
   raf=requestAnimationFrame(drawSpec);
@@ -495,31 +467,25 @@ function drawSpec(){
   if(analyser&&listening)analyser.getByteFrequencyData(data);
   const bw=W/N-0.6;
   for(let i=0;i<N;i++){
-    let uv=(data[i]||0)/255;
-    let av=speaking?aiLv*(0.2+0.8*Math.sin(Date.now()/70+i*0.5)**2):0;
-    let v=Math.max(uv,av);const bh=v*H*0.85,x=i*(bw+0.6),y=(H-bh)/2;
-    // Red for AI, grey for user
-    const col=speaking?`rgba(192,57,43,${0.15+v*0.85})`:`rgba(100,100,100,${0.15+v*0.85})`;
-    cx.fillStyle=col;cx.fillRect(x,y,bw,bh);
+    let uv=(data[i]||0)/255,av=speaking?aiLv*(0.2+0.8*Math.sin(Date.now()/70+i*0.5)**2):0,v=Math.max(uv,av);
+    const bh=v*H*0.82,x=i*(bw+0.6),y=(H-bh)/2;
+    cx.fillStyle=speaking?`rgba(231,76,60,${0.15+v*0.85})`:`rgba(100,100,110,${0.15+v*0.85})`;
+    cx.fillRect(x,y,bw,bh);
   }
 }
 
-// ── Score update ──────────────────────────────────────────
 function updateScore(key,val){
   scores[key]=val;
   const el=document.getElementById("sc-"+key),bar=document.getElementById("sb-"+key);
-  if(el)el.textContent=val!==null?Math.round(val)+"/100":"--";
+  if(el)el.textContent=val!==null?Math.round(val)+"/100":"—";
   if(bar){bar.style.width=(val||0)+"%";bar.className="score-fill"+((val||0)>=70?" high":(val||0)>=45?" mid":"");}
 }
 
-// ── Messages ──────────────────────────────────────────────
 let msgId=0;
 function addMsg(role,text,isTyping=false){
-  // Remove empty state
-  const emp=hrChat.querySelector("div[style*='opacity:0.3']");if(emp)emp.remove();
+  const empEl=hrChat.querySelector("div[style*='opacity:0.3']");if(empEl)empEl.remove();
   const row=document.createElement("div");row.className=`hc-row ${role}`;
-  const av=document.createElement("div");av.className=`hc-av${role==="user"?" uav":""}`;
-  av.textContent=role==="ai"?"HR":UNAME[0].toUpperCase();
+  const av=document.createElement("div");av.className="hc-av"+(role==="user"?" uav":"");av.textContent=role==="ai"?"AR":UNAME[0].toUpperCase();
   const bub=document.createElement("div");bub.className="hc-bubble";
   if(isTyping)bub.innerHTML='<div class="hc-typing"><span></span><span></span><span></span></div>';
   else bub.textContent=text;
@@ -530,73 +496,41 @@ function addMsg(role,text,isTyping=false){
 }
 function removeMsg(id){const el=hrChat.querySelector(`[data-id="${id}"]`);if(el)el.remove();}
 
-// ── Timer ─────────────────────────────────────────────────
 function startTimer(){
   sessionStart=Date.now();
-  timerInterval=setInterval(()=>{
-    const s=Math.floor((Date.now()-sessionStart)/1000);
-    const m=Math.floor(s/60),sec=s%60;
-    document.getElementById("hrTimer").textContent=String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0");
-  },1000);
+  timerInterval=setInterval(()=>{const s=Math.floor((Date.now()-sessionStart)/1000),m=Math.floor(s/60),sec=s%60;document.getElementById("hrTimer").textContent=String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0");},1000);
 }
 
-// ── Session init ──────────────────────────────────────────
-async function initSession(){
-  document.getElementById("landStartBtn").disabled=true;
-  document.getElementById("landStartBtn").textContent="INITIALIZING...";
+function updateProgress(){document.getElementById("hrProgTxt").textContent=`Q ${qNum} / ${MAX_Q}`;document.getElementById("hrProgFill").style.width=(qNum/MAX_Q*100)+"%";}
 
-  // Request mic
+async function initSession(){
+  document.getElementById("landStartBtn").disabled=true;document.getElementById("landStartBtn").textContent="INITIALIZING...";
   let micOk=false;
   try{
     micStream=await navigator.mediaDevices.getUserMedia({audio:true});
     audioCtx=new(window.AudioContext||window.webkitAudioContext)();
     analyser=audioCtx.createAnalyser();analyser.fftSize=256;
     audioCtx.createMediaStreamSource(micStream).connect(analyser);
+    document.getElementById("lPMic").textContent="✓ Granted";document.getElementById("lPMic").style.color="var(--teal)";
     micOk=true;
-  }catch(e){
-    console.warn("Mic denied:",e.message);
-    setHRMode("type");
-  }
-
-  // Request camera (independent of mic)
+  }catch(e){setHRMode("type");}
   await initCamera();
-
-  // Enable mic button only if mic was granted
-  if(micOk) hrMicBtn.className="hr-micbtn";
-
-  // Hide landing
+  if(micOk)hrMicBtn.className="hr-micbtn";
   document.getElementById("landing").classList.add("gone");
-  resizeCvs();drawSpec();
-  active=true;startTimer();
+  resizeCvs();drawSpec();active=true;startTimer();
   hrDot.className="hr-dot rec";hrStatus.textContent="SESSION ACTIVE";
-
-  // Opening — strict, professional
   setTimeout(()=>{
-    const dept=DEPT.toUpperCase();
-    const opening=`Good day. I'm Aria, Senior HR Executive. This is a formal interview simulation. I will be assessing your technical knowledge in ${dept}, your communication, problem solving ability, and how you perform under pressure. There are no second chances in this session. Answer clearly and concisely. Let's begin. Tell me about yourself — your background, your department, and why you chose ${dept}.`;
+    const opening=`Good day. I'm Aria, Senior HR Executive. This is a formal interview simulation. I will be assessing your technical knowledge in ${DEPT.toUpperCase()}, your communication, problem solving ability, and how you perform under pressure. There are no second chances in this session. Answer clearly and concisely. Let's begin. Tell me about yourself — your background, your department, and why you chose ${DEPT.toUpperCase()}.`;
     addMsg("ai",opening);speak(opening,()=>{enableHRInput();qNum=1;updateProgress();});
   },400);
 }
 
-function updateProgress(){
-  document.getElementById("hrProgTxt").textContent=`Q ${qNum} / ${MAX_Q}`;
-  document.getElementById("hrProgFill").style.width=(qNum/MAX_Q*100)+"%";
-}
-
 function enableHRInput(){
   hrDot.className="hr-dot";hrStatus.textContent="AWAITING RESPONSE";
-  if(hrMode==="voice"){
-    hrMicBtn.className=micStream?"hr-micbtn":"hr-micbtn off";
-    hrTypeInp.disabled=false; // always allow typing as fallback
-  } else {
-    hrMicBtn.className="hr-micbtn off";
-    hrTypeInp.disabled=false;
-    hrSendBtn.disabled=false;
-    hrTypeInp.focus();
-  }
+  if(hrMode==="voice"){hrMicBtn.className=micStream?"hr-micbtn":"hr-micbtn off";hrTypeInp.disabled=false;}
+  else{hrMicBtn.className="hr-micbtn off";hrTypeInp.disabled=false;hrSendBtn.disabled=false;hrTypeInp.focus();}
 }
 
-// ── Handle response ───────────────────────────────────────
 async function handleResponse(text){
   if(!text||text.length<2)return;
   addMsg("user",text);convo.push({role:"user",content:text});
@@ -607,7 +541,6 @@ async function handleResponse(text){
   try{
     const reply=await getHRReply(text);removeMsg(tid);
     convo.push({role:"assistant",content:reply});
-    // Parse score updates from reply
     parseScores(reply,text);
     const isEnd=reply.includes("[[END_INTERVIEW]]")||qNum>=MAX_Q;
     const clean=reply.replace("[[END_INTERVIEW]]","").trim();
@@ -616,176 +549,57 @@ async function handleResponse(text){
   }catch(e){removeMsg(tid);const fb="Your connection seems unstable. Please repeat your answer.";addMsg("ai",fb);speak(fb,enableHRInput);}
 }
 
-// ── Score parsing heuristic ───────────────────────────────
 function parseScores(aiReply,userAnswer){
-  const lower=userAnswer.toLowerCase();
-  const replyLower=aiReply.toLowerCase();
-  const wordCount=userAnswer.split(" ").length;
-  const hasDetail=wordCount>20;
-  const isVague=wordCount<8;
+  const wordCount=userAnswer.split(" ").length,hasDetail=wordCount>20,isVague=wordCount<8;
   const isConfident=!/i think|maybe|not sure|i guess|probably/i.test(userAnswer);
-  const isChallenged=replyLower.includes("incorrect")||replyLower.includes("wrong")||replyLower.includes("that's not");
-  const isCorrect=replyLower.includes("correct")||replyLower.includes("good point")||replyLower.includes("well");
-
-  // Technical
-  const techQ=qNum<=4;
-  if(techQ){
-    const base=scores.tech!==null?scores.tech:50;
-    scores.tech=Math.min(100,Math.max(0,base+(isCorrect?8:0)+(isChallenged?-6:0)+(hasDetail?4:0)+(isVague?-4:0)));
-    updateScore("tech",scores.tech);
-  }
-  // Communication
-  const commScore=Math.min(100,Math.max(0,(scores.comm!==null?scores.comm:50)+(hasDetail?5:0)+(isVague?-5:0)+(isConfident?4:0)));
-  updateScore("comm",commScore);scores.comm=commScore;
-  // Pressure
-  const presScore=Math.min(100,Math.max(0,(scores.pres!==null?scores.pres:60)+(isChallenged&&!isVague?5:0)+(isChallenged&&isVague?-5:0)));
-  updateScore("pres",presScore);scores.pres=presScore;
-  // Critical thinking
-  if(qNum>4){const critScore=Math.min(100,Math.max(0,(scores.crit!==null?scores.crit:50)+(isCorrect?7:0)+(hasDetail?5:0)+(isVague?-6:0)));updateScore("crit",critScore);scores.crit=critScore;}
-  // Leadership
-  if(qNum>6){const leadScore=Math.min(100,Math.max(0,(scores.lead!==null?scores.lead:50)+(hasDetail?6:0)+(isConfident?5:0)+(isVague?-4:0)));updateScore("lead",leadScore);scores.lead=leadScore;}
+  const isChallenged=/(incorrect|wrong|that's not)/i.test(aiReply);
+  const isCorrect=/(correct|good point|well done|exactly)/i.test(aiReply);
+  if(qNum<=4){const base=scores.tech!==null?scores.tech:50;scores.tech=Math.min(100,Math.max(0,base+(isCorrect?8:0)+(isChallenged?-6:0)+(hasDetail?4:0)+(isVague?-4:0)));updateScore("tech",scores.tech);}
+  const cs=Math.min(100,Math.max(0,(scores.comm!==null?scores.comm:50)+(hasDetail?5:0)+(isVague?-5:0)+(isConfident?4:0)));updateScore("comm",cs);scores.comm=cs;
+  const ps=Math.min(100,Math.max(0,(scores.pres!==null?scores.pres:60)+(isChallenged&&!isVague?5:0)+(isChallenged&&isVague?-5:0)));updateScore("pres",ps);scores.pres=ps;
+  if(qNum>4){const cr=Math.min(100,Math.max(0,(scores.crit!==null?scores.crit:50)+(isCorrect?7:0)+(hasDetail?5:0)+(isVague?-6:0)));updateScore("crit",cr);scores.crit=cr;}
+  if(qNum>6){const lr=Math.min(100,Math.max(0,(scores.lead!==null?scores.lead:50)+(hasDetail?6:0)+(isConfident?5:0)+(isVague?-4:0)));updateScore("lead",lr);scores.lead=lr;}
 }
 
-// ── HR AI ─────────────────────────────────────────────────
 async function getHRReply(msg){
-  const deptQuestions={
-    CSE:"data structures, algorithms, OOP concepts, database design, system design, networks, OS concepts, web technologies",
-    IT:"networking, cybersecurity, database management, web development, cloud computing",
-    AIDS:"machine learning algorithms, data preprocessing, model evaluation, Python, statistics",
-    AIML:"neural networks, deep learning, NLP, computer vision, PyTorch/TensorFlow",
-    ECE:"digital electronics, microcontrollers, signal processing, communication systems, VLSI",
-    EEE:"power systems, electrical machines, control systems, power electronics",
-    MECH:"thermodynamics, fluid mechanics, manufacturing processes, CAD, machine design",
-    CIVIL:"structural analysis, construction materials, geotechnical engineering, surveying",
-    CHEM:"chemical processes, thermodynamics, reaction engineering, process control",
-    BIO:"molecular biology, genetics, biochemistry, biotechnology applications",
-    FOOD:"food processing, preservation techniques, food safety, nutrition science"
-  };
-  const techAreas=deptQuestions[DEPT.toUpperCase()]||"core technical concepts of your field";
+  const dq={CSE:"data structures, algorithms, OOP, database design, system design, networks, OS",IT:"networking, cybersecurity, database management, web development, cloud computing",AIDS:"machine learning, data preprocessing, model evaluation, Python, statistics",AIML:"neural networks, deep learning, NLP, computer vision, PyTorch/TensorFlow",ECE:"digital electronics, microcontrollers, signal processing, communication systems, VLSI",EEE:"power systems, electrical machines, control systems, power electronics",MECH:"thermodynamics, fluid mechanics, manufacturing, CAD, machine design",CIVIL:"structural analysis, construction materials, geotechnical engineering"};
+  const techAreas=dq[DEPT.toUpperCase()]||"core technical concepts of your field";
   const exchangeNum=convo.filter(m=>m.role==="user").length;
-
-  const sys=`You are Aria, a Senior HR Executive conducting a strict formal interview. You are interviewing ${UNAME}, a Year ${YEAR} ${DEPT} student.
-
-TECHNICAL AREAS TO COVER: ${techAreas}
-
-YOUR PERSONALITY:
-- Cold, professional, no small talk
-- You challenge vague answers: "That's too vague. Be specific."
-- You follow up on weak answers: "You said X. Explain exactly how."
-- You don't praise easily — only acknowledge truly good answers briefly
-- You maintain pressure throughout
-- Occasional silence/pause implied with "..." before asking next question
-
-INTERVIEW STRUCTURE (${exchangeNum+1} of ${MAX_Q}):
-- Q1-2: Background and motivation (already started)
-- Q3-5: Core technical questions specific to ${DEPT}
-- Q6-7: Problem solving scenario in ${DEPT} context
-- Q8-9: Leadership, teamwork, handling failure
-- Q10: Final pressure question + close with [[END_INTERVIEW]]
-
-RULES:
-- ONE question per response
-- If answer is weak: challenge it first, then ask follow-up
-- If answer is good: brief acknowledgment, move forward
-- Max 3 sentences + question
-- Never be warm or encouraging — this is a real interview
-- On question 10: give a brief cold verdict on their performance, then add [[END_INTERVIEW]]
-
-Exchange ${exchangeNum+1} of ${MAX_Q}.`;
-
+  const sys=`You are Aria, a Senior HR Executive conducting a strict formal interview. Interviewing ${UNAME}, Year ${YEAR} ${DEPT} student.\n\nTECHNICAL AREAS: ${techAreas}\n\nPERSONALITY:\n- Cold, professional, no small talk\n- Challenge vague answers: "That's too vague. Be specific."\n- Follow up on weak answers\n- Occasional "..." before next question\n- Only briefly acknowledge truly good answers\n\nSTRUCTURE (exchange ${exchangeNum+1} of ${MAX_Q}):\n- Q1-2: Background and motivation\n- Q3-5: Core technical questions for ${DEPT}\n- Q6-7: Problem solving scenario\n- Q8-9: Leadership, teamwork, failure\n- Q10: Final pressure question + close with [[END_INTERVIEW]]\n\nRULES:\n- ONE question per response\n- Max 3 sentences + question\n- Never warm or encouraging\n- On Q10: brief cold verdict, then [[END_INTERVIEW]]`;
   const res=await fetch(`${API}/chat`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${TOKEN}`},body:JSON.stringify({message:msg,system:sys,history:convo.slice(-12)})});
   if(!res.ok)throw new Error("API");
   const d=await res.json();return d.reply||"Elaborate on that. I need more detail.";
 }
 
-// ── End session ───────────────────────────────────────────
 async function endSession(){
   active=false;stopListening();window.speechSynthesis.cancel();
   if(raf)cancelAnimationFrame(raf);if(timerInterval)clearInterval(timerInterval);
   if(camStream)camStream.getTracks().forEach(t=>t.stop());
-
   document.getElementById("endOv").classList.add("show");
-
-  // Calculate overall score
   const scoreVals=Object.values(scores).filter(s=>s!==null&&s>0);
   const overall=scoreVals.length?Math.round(scoreVals.reduce((a,b)=>a+b,0)/scoreVals.length):50;
-  const duration=sessionStart?Math.floor((Date.now()-sessionStart)/1000):0;
-
-  // Verdict
   const verdict=overall>=75?"STRONG CANDIDATE":overall>=55?"AVERAGE CANDIDATE":"NEEDS IMPROVEMENT";
-  document.getElementById("endVerdict").textContent=verdict;
-  document.getElementById("endVerdict").style.color=overall>=75?"var(--green)":overall>=55?"var(--yellow)":"var(--red2)";
-
-  // Score card
+  const vEl=document.getElementById("endVerdict");vEl.textContent=verdict;
+  vEl.style.color=overall>=75?"var(--teal)":overall>=55?"var(--yellow)":"var(--red)";
   const card=document.getElementById("endScoreCard");
-  [
-    {l:"OVERALL",v:overall,c:overall>=70?"green":overall>=50?"yellow":"red"},
-    {l:"TECHNICAL",v:Math.round(scores.tech||0),c:""},
-    {l:"COMMUNICATION",v:Math.round(scores.comm||0),c:""},
-    {l:"CRITICAL THINKING",v:Math.round(scores.crit||0),c:""},
-    {l:"PRESSURE",v:Math.round(scores.pres||0),c:""},
-    {l:"LEADERSHIP",v:Math.round(scores.lead||0),c:""},
-  ].forEach(s=>{
+  [{l:"OVERALL",v:overall},{l:"TECHNICAL",v:Math.round(scores.tech||0)},{l:"COMMUNICATION",v:Math.round(scores.comm||0)},{l:"CRITICAL THINKING",v:Math.round(scores.crit||0)},{l:"PRESSURE",v:Math.round(scores.pres||0)},{l:"LEADERSHIP",v:Math.round(scores.lead||0)}].forEach(s=>{
+    const c=s.v>=70?"green":s.v>=50?"yellow":"red";
     const d=document.createElement("div");d.className="esc-item";
-    const c=s.c||(s.v>=70?"green":s.v>=50?"yellow":"red");
     d.innerHTML=`<div class="esc-num ${c}">${s.v}</div><div class="esc-label">${s.l}</div>`;
     card.appendChild(d);
   });
-
-  // Generate report
   try{
     const transcript=convo.map(m=>`${m.role==="user"?UNAME:"ARIA (HR)"}: ${m.content}`).join("\n");
-    const res=await fetch(`${API}/chat`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${TOKEN}`},body:JSON.stringify({message:"generate report",system:`You are a senior HR analyst. Generate a cold, honest, professional interview assessment report for ${UNAME} (${DEPT}, Year ${YEAR}).
-
-SCORES: Technical: ${Math.round(scores.tech||0)}/100, Communication: ${Math.round(scores.comm||0)}/100, Critical Thinking: ${Math.round(scores.crit||0)}/100, Pressure Handling: ${Math.round(scores.pres||0)}/100, Leadership: ${Math.round(scores.lead||0)}/100, Overall: ${overall}/100
-
-Format EXACTLY:
-VERDICT: [one sentence cold assessment]
-
-STRENGTHS:
-• [strength 1]
-• [strength 2]
-
-CRITICAL WEAKNESSES:
-• [weakness 1 — be specific]
-• [weakness 2 — be specific]
-
-IMPROVEMENT PLAN:
-• [specific action 1]
-• [specific action 2]
-• [specific action 3]
-
-Keep it under 200 words. Be direct, not encouraging.
-
-Interview transcript:
-${transcript}`,history:[]})});
+    const res=await fetch(`${API}/chat`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${TOKEN}`},body:JSON.stringify({message:"generate report",system:`You are a senior HR analyst. Cold, professional assessment report for ${UNAME} (${DEPT}, Year ${YEAR}).\n\nSCORES: Technical: ${Math.round(scores.tech||0)}/100, Communication: ${Math.round(scores.comm||0)}/100, Critical Thinking: ${Math.round(scores.crit||0)}/100, Pressure: ${Math.round(scores.pres||0)}/100, Leadership: ${Math.round(scores.lead||0)}/100, Overall: ${overall}/100\n\nFormat:\nVERDICT: [one cold sentence]\n\nSTRENGTHS:\n• [strength 1]\n• [strength 2]\n\nCRITICAL WEAKNESSES:\n• [weakness 1]\n• [weakness 2]\n\nIMPROVEMENT PLAN:\n• [action 1]\n• [action 2]\n• [action 3]\n\nUnder 200 words. Direct, not encouraging.\n\nTranscript:\n${transcript}`,history:[]})});
     const d=await res.json();
     document.getElementById("endReport").textContent=d.reply||"Report generation failed. Check dashboard.";
-
-    // Save to backend
     await fetch(`${API}/voice/save`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${TOKEN}`},body:JSON.stringify({transcript,summary:`[HR MODE REPORT]\n${d.reply||""}`,tab_warnings:tabViol,exchange_count:convo.filter(m=>m.role==="user").length,scores,overall,mode:"hr_interview"})});
-  }catch(e){document.getElementById("endReport").textContent="Report generation failed. Your session data has been saved.";}
+  }catch(e){document.getElementById("endReport").textContent="Report generation failed. Session data has been saved.";}
 }
 
-function confirmEnd(){
-  if(!active)return;
-  if(confirm("TERMINATE SESSION?\n\nThis will end your interview early and may impact your score.")){
-    endSession();
-  }
-}
+function confirmEnd(){if(!active)return;if(confirm("TERMINATE SESSION?\n\nThis will end your interview early and may impact your score."))endSession();}
 
-document.addEventListener("keydown",e=>{
-  if(e.code==="Space"&&active&&!speaking&&hrMode==="voice"){e.preventDefault();toggleHRMic();}
-  if(e.code==="Escape")confirmEnd();
-});
+document.addEventListener("keydown",e=>{if(e.code==="Space"&&active&&!speaking&&hrMode==="voice"){e.preventDefault();toggleHRMic();}if(e.code==="Escape")confirmEnd();});
 </script>
-
-<!-- CRONIX Copyright -->
-<div style="position:fixed;bottom:0;left:0;right:0;z-index:50;background:rgba(7,6,15,0.95);backdrop-filter:blur(8px);border-top:1px solid rgba(124,77,255,0.08);padding:6px 20px;display:flex;align-items:center;justify-content:space-between;pointer-events:none">
-  <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(107,100,128,0.6);letter-spacing:0.5px">&copy; 2025 CRONIX &mdash; All rights reserved</span>
-  <a href="https://portfolio-npzu.vercel.app" target="_blank" rel="noopener" style="font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(124,77,255,0.5);text-decoration:none;pointer-events:all;letter-spacing:0.5px">Built by CRONIX</a>
-</div>
-
 </body>
-
 </html>
