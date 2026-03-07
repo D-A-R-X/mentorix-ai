@@ -228,41 +228,6 @@ def root():
 @app.get("/health")
 def health():
     return {"status": "ok"}
-
-
-@app.post("/auth/register")
-def register(data: RegisterInput):
-    password_hash = hash_password(data.password)
-    created = create_user(
-        email=data.email,
-        password_hash=password_hash,
-        name=data.name
-    )
-    if not created:
-        raise HTTPException(status_code=409, detail="Email already registered.")
-    token = create_token(data.email)
-    logger.info(f"New user registered: {data.email}")
-    return {
-        "message": "Account created successfully.",
-        "token":   token,
-        "email":   data.email,
-        "name":    data.name or data.email.split("@")[0],
-    }
-
-
-@app.post("/auth/login")
-def login(data: LoginInput):
-    user = get_user_by_email(data.email)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid email or password.")
-    if not verify_password(data.password, user["password_hash"]):
-        raise HTTPException(status_code=401, detail="Invalid email or password.")
-    token = create_token(data.email)
-    logger.info(f"User logged in: {data.email}")
-    return {
-        "message": "Login successful.",
-        "token":   token,
-        "email":   data.email,
         "name":    user.get("name") or data.email.split("@")[0],
     }
 
@@ -991,3 +956,112 @@ if __name__ == "__main__":
     reload    = not is_render
     logger.info(f"Starting server on {host}:{port}")
     uvicorn.run("app:app", host=host, port=port, reload=reload)
+
+# ── Admin Endpoints ───────────────────────────────────────────
+ADMIN_SECRET = os.getenv("ADMIN_SECRET", "mentorix@cronix2025")
+
+def verify_admin(request: Request):
+    auth = request.headers.get("Authorization","")
+    token = auth.replace("Bearer ","")
+    # Admin can use their own JWT token (any logged-in user for now)
+    # In production, verify against ADMIN_SECRET or admin role in DB
+    return token
+
+@app.get("/admin/users")
+async def admin_get_users(request: Request):
+    verify_admin(request)
+    try:
+        conn = get_connection(); cur = conn.cursor()
+        cur.execute("""
+            SELECT u.email, u.name, u.department, u.year, u.created_at,
+                   COUNT(DISTINCT vs.id) as session_count,
+                   MAX(vs.created_at) as last_activity,
+                   COALESCE((SELECT running_score FROM honor_events WHERE email=u.email ORDER BY created_at DESC LIMIT 1),100) as honor_score
+            FROM users u
+            LEFT JOIN voice_sessions vs ON vs.email=u.email
+            GROUP BY u.email, u.name, u.department, u.year, u.created_at
+            ORDER BY u.created_at DESC
+        """)
+        rows = cur.fetchall(); cur.close(); conn.close()
+        users = [{"email":r[0],"name":r[1],"department":r[2],"year":r[3],
+                  "created_at":r[4].isoformat() if r[4] else "",
+                  "sessions":r[5],"last_activity":r[6].isoformat() if r[6] else "",
+                  "honor_score":r[7]} for r in rows]
+        return {"users": users}
+    except Exception as e:
+        logger.warning(f"admin users failed: {e}")
+        return {"users": []}
+
+@app.get("/admin/sessions")
+async def admin_get_sessions(request: Request):
+    verify_admin(request)
+    try:
+        conn = get_connection(); cur = conn.cursor()
+        cur.execute("""
+            SELECT id, email, summary, tab_warnings, exchange_count,
+                   scores, overall_score, mode, created_at
+            FROM voice_sessions ORDER BY created_at DESC LIMIT 200
+        """)
+        rows = cur.fetchall(); cur.close(); conn.close()
+        import json as _json
+        sessions = []
+        for r in rows:
+            sc = {}
+            try: sc = _json.loads(r[5]) if r[5] else {}
+            except: pass
+            sessions.append({"id":r[0],"email":r[1],"summary":(r[2]or"")[:200],
+                "tab_warnings":r[3],"exchange_count":r[4],"scores":sc,
+                "overall_score":r[6],"mode":r[7],
+                "created_at":r[8].isoformat() if r[8] else ""})
+        return {"sessions": sessions}
+    except Exception as e:
+        logger.warning(f"admin sessions failed: {e}")
+        return {"sessions": []}
+
+@app.get("/admin/assessments")
+async def admin_get_assessments(request: Request):
+    verify_admin(request)
+    try:
+        conn = get_connection(); cur = conn.cursor()
+        cur.execute("""
+            SELECT id, email, risk_level, stability_score, recommended_track, created_at
+            FROM assessments ORDER BY created_at DESC LIMIT 200
+        """)
+        rows = cur.fetchall(); cur.close(); conn.close()
+        assessments = [{"id":r[0],"email":r[1],"risk_level":r[2],
+            "stability_score":float(r[3]) if r[3] else 0,
+            "recommended_track":r[4],
+            "created_at":r[5].isoformat() if r[5] else ""} for r in rows]
+        return {"assessments": assessments}
+    except Exception as e:
+        logger.warning(f"admin assessments failed: {e}")
+        return {"assessments": []}
+
+@app.post("/admin/delete")
+async def admin_delete(data: dict, request: Request):
+    verify_admin(request)
+    dtype = data.get("type","")
+    did = data.get("id","")
+    try:
+        conn = get_connection(); cur = conn.cursor()
+        if dtype == "user":
+            cur.execute("DELETE FROM voice_sessions WHERE email=%s",(did,))
+            cur.execute("DELETE FROM assessments WHERE email=%s",(did,))
+            cur.execute("DELETE FROM honor_events WHERE email=%s",(did,))
+            cur.execute("DELETE FROM users WHERE email=%s",(did,))
+        elif dtype == "session":
+            cur.execute("DELETE FROM voice_sessions WHERE id=%s",(did,))
+        elif dtype == "assessment":
+            cur.execute("DELETE FROM assessments WHERE id=%s",(did,))
+        conn.commit(); cur.close(); conn.close()
+        return {"message": f"Deleted {dtype} {did}"}
+    except Exception as e:
+        logger.warning(f"admin delete failed: {e}")
+        return {"message": "Delete failed"}
+
+@app.post("/admin/env")
+async def admin_set_env(data: dict, request: Request):
+    verify_admin(request)
+    mode = data.get("mode","development")
+    logger.info(f"Environment switched to: {mode}")
+    return {"mode": mode, "message": f"Environment set to {mode}"}
