@@ -253,14 +253,16 @@ document.addEventListener("DOMContentLoaded", function() {
         localStorage.setItem("mentorix_token", token);
         localStorage.setItem("mentorix_email", email);
         window.history.replaceState({}, "", "/login.html");
-        const needsNameConfirm = !name
+        // If we already have a confirmed name saved, never show modal again
+        const savedName = localStorage.getItem("mentorix_name");
+        const needsNameConfirm = !savedName && (!name
           || name.trim().length < 4
           || !name.trim().includes(" ")
-          || /[0-9_\-\.@#]/.test(name);
+          || /[0-9_\-\.@#]/.test(name));
         if (needsNameConfirm) {
           showNameModal(name, token);
         } else {
-          localStorage.setItem("mentorix_name", name);
+          localStorage.setItem("mentorix_name", savedName || name);
           redirectAfterLogin(token);
         }
       }
