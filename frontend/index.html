@@ -329,22 +329,33 @@ async function sendChat() {
 
   try {
     const context = getChatContext();
-    const systemPrompt = `You are Mentorix Guide, an in-app AI assistant for the Mentorix career intelligence platform.
+    const systemPrompt = `You are Mentorix Guide, the intelligent in-app assistant for the Mentorix AI career platform. You have full knowledge of the user and the app.
 
-Your job:
-- Help users understand their Career Intelligence Scan results
-- Explain what their scores, stability index, risk level, and recommended track mean
-- Suggest what to focus on next based on their data
-- Answer questions about how Mentorix works
+USER PROFILE:
+- Name: ${localStorage.getItem("mentorix_name")||"User"}
+- Profile: ${localStorage.getItem("mentorix_profile")||"Not set"}
+- Last session: ${localStorage.getItem("mentorix_last_result")?"Written scan completed":"No written scan yet"}
 
-Rules:
-- ONLY answer questions related to Mentorix, career guidance, or the user's scan data
-- If asked anything unrelated (coding help, general knowledge, etc.) politely decline and redirect to career topics
-- Keep answers short — 2-4 sentences max
-- Be warm, direct, and specific to the user's actual data
-- Never make up data — only reference what's in the context
+APP FEATURES YOU GUIDE USERS THROUGH:
+1. Voice Session (voice.html) — AI career conversation, speaks and listens, 15 exchanges, saves summary to dashboard
+2. HR Mode (hr-mode.html) — Strict AI interview simulation, dept-specific technical questions, scores 5 categories, camera posture monitoring
+3. Dashboard (index.html) — Shows session history, HR scores, AI-generated action items with checkboxes, profile card
+4. Onboarding (onboarding.html) — First-time setup where AI collects name, dept, year, semester, CGPA, goal
 
-${context}`;
+HOW TO GUIDE:
+- If user asks "how do I start" → explain Voice Session vs HR Mode and when to use each
+- If user says "my dashboard is empty" → tell them to complete a Voice Session or HR Mode first
+- If user asks about their scores → explain the 5 HR categories (Technical, Communication, Critical Thinking, Pressure, Leadership)
+- If user asks "what should I do next" → read their profile and suggest specific next steps
+- If user asks about courses → tell them course recommendations come after completing a session
+- If user has a technical issue → give specific troubleshooting steps for that feature
+
+STRICT RULES:
+- ONLY answer questions about: Mentorix app features, career guidance, academics, technical subjects, interview preparation, study strategies, department-specific topics (CSE, ECE, Mech, etc.)
+- REFUSE all other topics: entertainment, politics, general knowledge, personal life unrelated to career, coding help unrelated to their field
+- If asked off-topic: "I'm focused on your career and academics. Ask me about your sessions, scores, or career path."
+- Keep responses concise — max 3 sentences unless explaining a feature step by step
+- Be warm but direct — you know this user personally`;
 
     const res = await fetch("${API}", {
       method: "POST",
@@ -763,25 +774,86 @@ function removeMessage(id) {
     }
 
 
-    function renderSessionsDashboard(sessions){
+
+    function toggleTask(sessionDate, idx, total){
+      const key="mentorix_tasks_"+sessionDate;
+      const tasks=JSON.parse(localStorage.getItem(key)||"{}");
+      tasks[idx]=!tasks[idx];
+      localStorage.setItem(key,JSON.stringify(tasks));
+      // Re-render just that row
+      const row=document.getElementById("task-row-"+idx);
+      if(row){
+        const box=row.querySelector("div");
+        const txt=row.querySelectorAll("div")[1];
+        if(box){box.style.background=tasks[idx]?"#059669":"transparent";box.style.borderColor=tasks[idx]?"#059669":"#2a2a3a";box.textContent=tasks[idx]?"✓":"";}
+        if(txt){txt.style.color=tasks[idx]?"#6b7280":"#c8c2e0";txt.style.textDecoration=tasks[idx]?"line-through":"none";}
+      }
+    }
+
+    function toggleTask(sessionDate, idx, total){
+      const key="mentorix_tasks_"+sessionDate;
+      const tasks=JSON.parse(localStorage.getItem(key)||"{}");
+      tasks[idx]=!tasks[idx];
+      localStorage.setItem(key,JSON.stringify(tasks));
+      // Re-render just that row
+      const row=document.getElementById("task-row-"+idx);
+      if(row){
+        const box=row.querySelector("div");
+        const txt=row.querySelectorAll("div")[1];
+        if(box){box.style.background=tasks[idx]?"#059669":"transparent";box.style.borderColor=tasks[idx]?"#059669":"#2a2a3a";box.textContent=tasks[idx]?"✓":"";}
+        if(txt){txt.style.color=tasks[idx]?"#6b7280":"#c8c2e0";txt.style.textDecoration=tasks[idx]?"line-through":"none";}
+      }
+    }
+    function renderSessionsDashboard(sessions, profile){
+      profile = profile || JSON.parse(localStorage.getItem("mentorix_profile")||"{}");
       const s=sessions[0],isHR=s.mode==="hr_interview",sc=s.scores||{},ov=s.overall_score||0;
       const date=s.created_at?new Date(s.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}):"Recent";
       const cats={tech:"Technical",comm:"Communication",crit:"Critical Thinking",pres:"Pressure",lead:"Leadership"};
       const col=v=>v>=70?"#059669":v>=50?"#d97706":"#dc2626";
+
+      // Profile card
+      const profHTML=(profile&&(profile.dept||profile.name))?`
+        <div style="background:rgba(124,77,255,0.05);border:1px solid rgba(124,77,255,0.12);border-radius:14px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="width:44px;height:44px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#a478ff,#4c1d95);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:18px;color:#fff;flex-shrink:0">${(profile.name||"U")[0].toUpperCase()}</div>
+          <div style="flex:1">
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;color:#f0ecff">${profile.name||""}</div>
+            <div style="font-size:12px;color:#6b7280;margin-top:2px">${[profile.dept,profile.year?"Year "+profile.year:"",profile.sem?"Sem "+profile.sem:""].filter(Boolean).join(" · ")}</div>
+          </div>
+          ${profile.goal?`<div style="font-size:12px;color:#7c4dff;background:rgba(124,77,255,0.08);padding:6px 12px;border-radius:8px;border:1px solid rgba(124,77,255,0.15);max-width:220px;line-height:1.5">${profile.goal}</div>`:""}
+        </div>`:"";
+
+      // Score grid for HR
       const scHTML=isHR&&Object.keys(sc).length?
         `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:20px">`+
         Object.entries(cats).map(([k,l])=>{const v=Math.round(sc[k]||0);return`<div style="background:rgba(13,11,24,0.6);border:1px solid #1a1030;border-radius:12px;padding:14px;text-align:center"><div style="font-size:24px;font-weight:800;color:${col(v)};font-family:'Syne',sans-serif">${v}</div><div style="font-size:10px;color:#6b7280;margin-top:3px">${l}</div></div>`;}).join("")+`</div>`:"";
+
+      // AI-generated action items from summary
+      const taskLines=(s.summary||"").split("\n").filter(l=>l.trim().startsWith("→")).map(l=>l.replace(/^→/,"").trim());
+      const savedTasks=JSON.parse(localStorage.getItem("mentorix_tasks_"+(s.created_at||""))||"{}");
+      const tasksHTML=taskLines.length?`
+        <div style="background:rgba(13,11,24,0.6);border:1px solid #1a1030;border-radius:14px;padding:20px;margin-bottom:20px">
+          <div style="font-family:'Syne',sans-serif;font-weight:600;font-size:11px;color:#6b7280;letter-spacing:1px;text-transform:uppercase;margin-bottom:14px">⚡ ACTION ITEMS</div>`+
+          taskLines.map((t,i)=>{const done=savedTasks[i];return`<div id="task-row-${i}" style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid rgba(26,16,48,0.5)">
+            <div onclick="toggleTask('${s.created_at||""}',${i})" style="width:18px;height:18px;border-radius:4px;border:1px solid ${done?"#059669":"#2a2a3a"};background:${done?"#059669":"transparent"};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;margin-top:1px">${done?"✓":""}</div>
+            <div style="font-size:13px;color:${done?"#6b7280":"#c8c2e0"};text-decoration:${done?"line-through":"none"};line-height:1.5">${t}</div>
+          </div>`;}).join("")+`</div>`:"";
+
+      // Previous sessions
       const prevHTML=sessions.length>1?
-        `<div style="font-family:'Syne',sans-serif;font-size:11px;color:#6b7280;letter-spacing:1px;margin-bottom:10px">PREVIOUS SESSIONS</div>
+        `<div style="font-family:'Syne',sans-serif;font-size:11px;color:#6b7280;letter-spacing:1px;margin-bottom:10px;text-transform:uppercase">Previous Sessions</div>
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">`+
         sessions.slice(1).map(ps=>`<div style="background:rgba(13,11,24,0.4);border:1px solid #1a1030;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px">
           <div style="font-size:18px">${ps.mode==="hr_interview"?"⚔️":"🎙️"}</div>
-          <div style="flex:1"><div style="font-size:13px;color:#c8c2e0">${ps.mode==="hr_interview"?"HR Interview":"Voice Session"}</div>
-          <div style="font-size:11px;color:#6b7280">${ps.created_at?new Date(ps.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short"}):""}  ·  ${ps.exchange_count||0} exchanges</div></div>
+          <div style="flex:1">
+            <div style="font-size:13px;color:#c8c2e0">${ps.mode==="hr_interview"?"HR Interview":"Voice Session"}</div>
+            <div style="font-size:11px;color:#6b7280">${ps.created_at?new Date(ps.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short"}):""}  ·  ${ps.exchange_count||0} exchanges</div>
+          </div>
           ${ps.overall_score?`<div style="font-weight:700;font-family:'Syne',sans-serif;color:${col(ps.overall_score)}">${ps.overall_score}<span style="font-size:10px;color:#6b7280">/100</span></div>`:""}
         </div>`).join("")+`</div>`:"";
+
       document.getElementById("mainPage").innerHTML=`
         <div style="max-width:780px;margin:0 auto;padding:24px 16px">
+          ${profHTML}
           <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;flex-wrap:wrap">
             <div style="font-size:32px">${isHR?"⚔️":"🎙️"}</div>
             <div style="flex:1">
@@ -795,11 +867,11 @@ function removeMessage(id) {
             <div style="font-family:'Syne',sans-serif;font-weight:600;font-size:11px;color:#6b7280;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">${isHR?"Interview Report":"Session Summary"}</div>
             <div style="font-size:14px;color:#c8c2e0;line-height:1.85;white-space:pre-wrap">${s.summary||"No summary available."}</div>
           </div>
+          ${tasksHTML}
           ${prevHTML}
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <a href="voice.html" style="padding:10px 18px;border-radius:10px;background:rgba(124,77,255,0.12);border:1px solid rgba(124,77,255,0.25);color:#b08dff;font-size:13px;text-decoration:none;font-family:'Syne',sans-serif;font-weight:600">🎙 New Voice Session</a>
             <a href="hr-mode.html" style="padding:10px 18px;border-radius:10px;background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.25);color:#e74c3c;font-size:13px;text-decoration:none;font-family:'Syne',sans-serif;font-weight:600">⚔ Retry HR Mode</a>
-            
           </div>
         </div>`;
     }
@@ -823,7 +895,7 @@ function removeMessage(id) {
   if(!stored){
     try{
       const sr=await fetch(`${API}/user/sessions`,{headers:authHeaders()});
-      if(sr.ok){const sd=await sr.json();if(sd.sessions&&sd.sessions.length>0){renderSessionsDashboard(sd.sessions);return;}}
+      if(sr.ok){const sd=await sr.json();if(sd.sessions&&sd.sessions.length>0){renderSessionsDashboard(sd.sessions, sd.profile);return;}}
     }catch(e){}
     document.getElementById("mainPage").innerHTML=`
       <div class="empty-state">

@@ -792,24 +792,34 @@ async def save_voice_session(
 async def get_user_sessions(current_user: str = Depends(get_current_user)):
     try:
         conn = get_connection(); cur = conn.cursor()
+        import json as _json
+        # Get sessions
         cur.execute("""
             SELECT summary, tab_warnings, exchange_count, scores, overall_score, mode, created_at
             FROM voice_sessions WHERE email=%s ORDER BY created_at DESC LIMIT 10
         """, (current_user,))
-        rows = cur.fetchall(); cur.close(); conn.close()
-        import json as _json
+        rows = cur.fetchall()
+        # Get user profile
+        cur.execute("SELECT name, department, year, semester FROM users WHERE email=%s", (current_user,))
+        urow = cur.fetchone()
+        cur.close(); conn.close()
+        profile = {"name": urow[0] if urow else "", "dept": urow[1] if urow else "",
+                   "year": urow[2] if urow else "", "sem": urow[3] if urow else ""} if urow else {}
         sessions = []
         for r in rows:
+            sc = {}
+            try: sc = _json.loads(r[3]) if r[3] else {}
+            except: pass
             sessions.append({
                 "summary":        r[0] or "",
                 "tab_warnings":   r[1] or 0,
                 "exchange_count": r[2] or 0,
-                "scores":         _json.loads(r[3]) if r[3] else {},
+                "scores":         sc,
                 "overall_score":  r[4] or 0,
                 "mode":           r[5] or "voice",
                 "created_at":     r[6].isoformat() if r[6] else ""
             })
-        return {"sessions": sessions}
+        return {"sessions": sessions, "profile": profile}
     except Exception as e:
         logger.warning(f"get sessions failed: {e}")
         return {"sessions": []}
