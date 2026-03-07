@@ -316,6 +316,7 @@
     <div class="nav-item" onclick="showPage('users',this)"><span class="nav-icon">👥</span>Users</div>
     <div class="nav-item" onclick="showPage('sessions',this)"><span class="nav-icon">🎙</span>Sessions</div>
     <div class="nav-item" onclick="showPage('assessments',this)"><span class="nav-icon">📋</span>Assessments</div>
+    <div class="nav-item" onclick="showPage('institutions',this)"><span class="nav-icon">🏛</span>Institutions</div>
   </div>
 
   <div class="nav-section">
@@ -601,8 +602,48 @@
       </div>
     </div>
 
+    <!-- ── INSTITUTIONS PAGE ── -->
+    <div class="page" id="page-institutions">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div>
+          <div style="font-size:13px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:6px">DEPLOYMENT MANAGEMENT</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6">Each institution is tracked separately. <span style="color:var(--orange)">DEV</span> = demo/trial access &nbsp;·&nbsp; <span style="color:var(--accent)">PROD</span> = paid live deployment.</div>
+        </div>
+        <button onclick="openAddInstModal()" style="padding:9px 18px;background:var(--purple);border:none;color:#fff;border-radius:8px;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;cursor:pointer">+ Add Institution</button>
+      </div>
+      <div id="instGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">
+        <div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">Loading institutions...</div>
+      </div>
+    </div>
+
   </div><!-- /content -->
 </div><!-- /main -->
+
+<!-- ── ADD INSTITUTION MODAL ── -->
+<div class="modal" id="addInstModal">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-title">Add Institution</div>
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Institution Name</label>
+      <input id="newInstName" placeholder="e.g. College of Engineering, Chennai" style="width:100%;background:var(--surface);border:1px solid rgba(124,77,255,0.2);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--white);font-family:'Inter',sans-serif;outline:none">
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Contact Email</label>
+      <input id="newInstEmail" type="email" placeholder="admin@institution.edu" style="width:100%;background:var(--surface);border:1px solid rgba(124,77,255,0.2);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--white);font-family:'Inter',sans-serif;outline:none">
+    </div>
+    <div style="margin-bottom:20px">
+      <label style="display:block;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Environment</label>
+      <select id="newInstEnv" style="width:100%;background:var(--surface);border:1px solid rgba(124,77,255,0.2);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--white);font-family:'JetBrains Mono',monospace;outline:none;cursor:pointer">
+        <option value="dev">DEV — Demo / Trial</option>
+        <option value="prod">PROD — Live / Paid</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeAddInstModal()">Cancel</button>
+      <button class="modal-confirm" onclick="submitAddInst()">Create</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── DELETE CONFIRM MODAL ── -->
 <div class="modal" id="deleteModal">
@@ -673,22 +714,34 @@ function showPage(id, el){
     overview:"Dashboard Overview", users:"User Management", sessions:"Session Records",
     assessments:"Assessment Records", analytics:"Behavioral Analytics",
     recommendations:"Course Recommendations", mlmodel:"ML Model Monitor",
-    system:"System Status", honor:"Honor Score Ledger"
+    system:"System Status", honor:"Honor Score Ledger", institutions:"Institutions"
   };
   const subs = {
     overview:"System health snapshot · Mentorix AI", users:"Manage and monitor all registered users",
     sessions:"All voice and HR interview sessions", assessments:"Written scan results",
     analytics:"Behavioral pattern insights", recommendations:"AI course engine status",
     mlmodel:"Model performance and LLM status", system:"Backend health and DB status",
-    honor:"User integrity and engagement scores"
+    honor:"User integrity and engagement scores",
+    institutions:"Deployment management — DEV (demo) vs PROD (paid live)"
   };
   document.getElementById("pageTitle").textContent = titles[id]||id;
   document.getElementById("pageSub").textContent = subs[id]||"";
+  if(id==="institutions" && !window._instLoaded) loadInstitutions();
 }
 
 // ── Data Loading ───────────────────────────────────────────
 async function loadAllData(){
   const h = {"Authorization":"Bearer "+adminToken};
+
+  // Load overview stats from real endpoint
+  try{
+    const ov = await fetch(`${API}/admin/overview`, {headers:h});
+    if(ov.ok){
+      const ovd = await ov.json();
+      window._overviewData = ovd;
+    }
+  }catch(e){}
+
   try{
     // Load users
     const ur = await fetch(`${API}/admin/users`, {headers:h});
@@ -726,26 +779,28 @@ function loadUsersFromSessions(){
 
 // ── Overview ────────────────────────────────────────────────
 function renderOverview(){
-  document.getElementById("s-users").textContent = allUsers.length || "--";
+  const ovd = window._overviewData || {};
+  document.getElementById("s-users").textContent = (ovd.total_users ?? allUsers.length) || "--";
   const voice = allSessions.filter(s=>s.mode!=="hr_interview").length;
   const hr = allSessions.filter(s=>s.mode==="hr_interview").length;
-  document.getElementById("s-sessions").textContent = voice||"--";
+  document.getElementById("s-sessions").textContent = ovd.total_sessions ?? (voice||"--");
   document.getElementById("s-hr").textContent = hr||"--";
   document.getElementById("s-assessments").textContent = allAssessments.length||"--";
 
   const today = new Date().toDateString();
   const activeToday = allSessions.filter(s=>s.created_at&&new Date(s.created_at).toDateString()===today).length;
-  document.getElementById("s-active").textContent = activeToday||"0";
+  document.getElementById("s-active").textContent = ovd.new_users_week ?? (activeToday||"0");
 
-  // Recent activity table
-  const recent = [...allSessions].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,8);
+  // Recent activity — prefer real API data
+  const rawRecent = ovd.recent_activity?.length ? ovd.recent_activity : [...allSessions].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,8);
   const tbody = document.getElementById("activityTable");
-  if(!recent.length){ tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No sessions yet</td></tr>`; return; }
-  tbody.innerHTML = recent.map(s=>{
+  if(!rawRecent.length){ tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No sessions yet</td></tr>`; return; }
+  tbody.innerHTML = rawRecent.map(s=>{
     const d = s.created_at ? new Date(s.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : "--";
     const mode = s.mode==="hr_interview"?"⚔️ HR Mode":"🎙 Voice";
+    const name = s.user_name || s.email || "--";
     return `<tr>
-      <td>${s.email||"--"}</td>
+      <td>${name}</td>
       <td>Session Completed</td>
       <td>${mode}</td>
       <td>${s.overall_score?s.overall_score+"/100":"--"}</td>
@@ -988,9 +1043,13 @@ function closeModal(){ document.getElementById("deleteModal").classList.remove("
 async function doDelete(type, id){
   const h = {"Authorization":"Bearer "+adminToken,"Content-Type":"application/json"};
   try{
-    await fetch(`${API}/admin/delete`,{method:"POST",headers:h,body:JSON.stringify({type,id})});
+    let url = "";
+    if(type==="user")    url = `${API}/admin/users/${id}`;
+    if(type==="session") url = `${API}/admin/sessions/${id}`;
+    const r = await fetch(url,{method:"DELETE",headers:h});
+    if(!r.ok){ const e=await r.json(); throw new Error(e.detail||"Delete failed"); }
     await loadAllData();
-  }catch(e){ alert("Delete failed — admin endpoint not yet implemented on backend."); }
+  }catch(e){ alert("Delete failed: "+e.message); }
 }
 
 // ── Env Toggle ───────────────────────────────────────────────
@@ -1036,6 +1095,146 @@ async function testLLM(){
 async function testCourseGen(){
   alert("Testing AI course generation for CSE department with weak technical skills...\n\nThis will call /courses/ai-recommend with test data.");
 }
+
+// ── Institutions ─────────────────────────────────────────────
+let allInstitutions = [];
+
+async function loadInstitutions(){
+  window._instLoaded = true;
+  const h = {"Authorization":"Bearer "+adminToken};
+  try{
+    const r = await fetch(`${API}/admin/institutions`, {headers:h});
+    if(r.ok){
+      allInstitutions = (await r.json()).institutions || [];
+    } else {
+      allInstitutions = [];
+    }
+  }catch(e){ allInstitutions = []; }
+  renderInstitutions();
+}
+
+function renderInstitutions(){
+  const grid = document.getElementById("instGrid");
+  if(!allInstitutions.length){
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px 20px;color:var(--muted);font-size:13px">
+      <div style="font-size:32px;margin-bottom:12px;opacity:0.4">🏛</div>
+      No institutions yet. Add your first deployment client.
+    </div>`;
+    return;
+  }
+  grid.innerHTML = allInstitutions.map(inst => {
+    const isProd = inst.env === "prod";
+    const envColor = isProd ? "var(--accent)" : "var(--orange)";
+    const envBg = isProd ? "rgba(0,229,180,0.1)" : "rgba(243,156,18,0.1)";
+    const envBorder = isProd ? "rgba(0,229,180,0.25)" : "rgba(243,156,18,0.25)";
+    const joined = inst.created_at ? new Date(inst.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}) : "--";
+    return `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:20px" id="inst-card-${inst.id}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--white);margin-bottom:3px">${escHtml(inst.name)}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">${escHtml(inst.contact_email||'No contact email')}</div>
+        </div>
+        <span id="inst-badge-${inst.id}" style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 10px;border-radius:4px;background:${envBg};border:1px solid ${envBorder};color:${envColor};letter-spacing:1px">${inst.env?.toUpperCase()}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+        <strong style="color:var(--orange)">DEV</strong> = demo / trial &nbsp;·&nbsp; <strong style="color:var(--accent)">PROD</strong> = paid live deployment
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:8px">Added ${joined}</div>
+          <div style="display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden" id="inst-toggle-${inst.id}">
+            <button onclick="setInstEnv(${inst.id},'dev')"
+              style="font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 12px;border:none;cursor:pointer;transition:all 0.2s;background:${!isProd?'rgba(243,156,18,0.15)':'transparent'};color:${!isProd?'var(--orange)':'var(--muted)'}">DEV</button>
+            <button onclick="setInstEnv(${inst.id},'prod')"
+              style="font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 12px;border:none;cursor:pointer;transition:all 0.2s;background:${isProd?'rgba(0,229,180,0.15)':'transparent'};color:${isProd?'var(--accent)':'var(--muted)'}">PROD</button>
+          </div>
+        </div>
+        <button onclick="deleteInstitution(${inst.id},'${escHtml(inst.name)}')"
+          style="background:transparent;border:1px solid rgba(231,76,60,0.3);color:var(--red);font-size:11px;font-family:'JetBrains Mono',monospace;padding:5px 12px;border-radius:6px;cursor:pointer">Remove</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+async function setInstEnv(id, env){
+  const h = {"Authorization":"Bearer "+adminToken,"Content-Type":"application/json"};
+  try{
+    const r = await fetch(`${API}/admin/institutions/${id}`,{method:"PATCH",headers:h,body:JSON.stringify({env})});
+    if(r.ok){
+      // Update local data and re-render just this card
+      const inst = allInstitutions.find(i=>i.id===id);
+      if(inst) inst.env = env;
+      renderInstitutions();
+      showToast(`Switched to ${env.toUpperCase()}`);
+    } else {
+      alert("Failed to update environment.");
+    }
+  }catch(e){ alert("Network error."); }
+}
+
+function deleteInstitution(id, name){
+  document.getElementById("deleteModalBody").textContent = `Delete "${name}"? This cannot be undone.`;
+  document.getElementById("deleteConfirmBtn").onclick = async ()=>{
+    const h = {"Authorization":"Bearer "+adminToken};
+    try{
+      const r = await fetch(`${API}/admin/institutions/${id}`,{method:"DELETE",headers:h});
+      if(r.ok){
+        allInstitutions = allInstitutions.filter(i=>i.id!==id);
+        renderInstitutions();
+        closeModal();
+        showToast("Institution removed.");
+      } else { alert("Delete failed."); }
+    }catch(e){ alert("Network error."); }
+  };
+  document.getElementById("deleteModal").classList.add("show");
+}
+
+function openAddInstModal(){
+  document.getElementById("newInstName").value="";
+  document.getElementById("newInstEmail").value="";
+  document.getElementById("newInstEnv").value="dev";
+  document.getElementById("addInstModal").classList.add("show");
+}
+function closeAddInstModal(){ document.getElementById("addInstModal").classList.remove("show"); }
+
+async function submitAddInst(){
+  const name = document.getElementById("newInstName").value.trim();
+  const email = document.getElementById("newInstEmail").value.trim();
+  const env = document.getElementById("newInstEnv").value;
+  if(!name){ alert("Institution name is required."); return; }
+  const h = {"Authorization":"Bearer "+adminToken,"Content-Type":"application/json"};
+  try{
+    const r = await fetch(`${API}/admin/institutions`,{method:"POST",headers:h,body:JSON.stringify({name,contact_email:email||null,env})});
+    if(r.ok){
+      closeAddInstModal();
+      showToast("Institution added.");
+      window._instLoaded = false;
+      loadInstitutions();
+    } else {
+      const e = await r.json();
+      alert("Failed: "+(e.detail||"Unknown error"));
+    }
+  }catch(e){ alert("Network error."); }
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+let _toastTimer;
+function showToast(msg){
+  let t = document.getElementById("adminToast");
+  if(!t){
+    t = document.createElement("div");
+    t.id="adminToast";
+    t.style.cssText="position:fixed;bottom:48px;right:24px;background:#1a1630;border:1px solid rgba(124,77,255,0.4);border-radius:10px;padding:12px 18px;font-size:13px;color:#00e5b4;z-index:9999;transition:all 0.3s;opacity:0;transform:translateY(8px)";
+    document.body.appendChild(t);
+  }
+  t.textContent=msg;
+  t.style.opacity="1"; t.style.transform="translateY(0)";
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>{ t.style.opacity="0"; t.style.transform="translateY(8px)"; },3000);
+}
+
+function escHtml(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 </script>
 </body>
 </html>

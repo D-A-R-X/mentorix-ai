@@ -231,41 +231,7 @@ def health():
     return {"status": "ok"}
 
 
-@app.post("/auth/register")
-def register(data: RegisterInput):
-    password_hash = hash_password(data.password)
-    created = create_user(
-        email=data.email,
-        password_hash=password_hash,
-        name=data.name
-    )
-    if not created:
-        raise HTTPException(status_code=409, detail="Email already registered.")
-    token = create_token(data.email)
-    logger.info(f"New user registered: {data.email}")
-    return {
-        "message": "Account created successfully.",
-        "token":   token,
-        "email":   data.email,
-        "name":    data.name or data.email.split("@")[0],
-    }
-
-
-@app.post("/auth/login")
-def login(data: LoginInput):
-    user = get_user_by_email(data.email)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid email or password.")
-    if not verify_password(data.password, user["password_hash"]):
-        raise HTTPException(status_code=401, detail="Invalid email or password.")
-    token = create_token(data.email)
-    logger.info(f"User logged in: {data.email}")
-    return {
-        "message": "Login successful.",
-        "token":   token,
-        "email":   data.email,
-        "name":    user.get("name") or data.email.split("@")[0],
-    }
+# auth/register and auth/login defined below (async bcrypt versions)
 
 def get_google_redirect_uri(request):
     """Build correct redirect URI based on environment."""
@@ -302,7 +268,7 @@ def google_login(request: Request):
 
 
 @app.get("/auth/google/callback")
-async def google_callback(code: str = None, error: str = None, request: Request = None):
+async def google_callback(code: Optional[str] = None, error: Optional[str] = None, request: Optional[Request] = None):
     from fastapi.responses import RedirectResponse
 
     if error or not code:
@@ -919,7 +885,7 @@ Rules:
             timeout=20
         )
 
-        text = result.strip()
+        text = (result or "").strip()
         if "```" in text:
             text = text.split("```")[1].replace("json","").strip()
         courses = _json.loads(text)
@@ -943,6 +909,372 @@ Rules:
         logger.warning(f"AI course recommend failed: {e}")
         return {"courses": [], "track": ""}
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ADMIN ENDPOINTS
+# ══════════════════════════════════════════════════════════════════════════════
+
+def require_admin(current_user: str = Depends(get_current_user)):
+    """Allow only the admin account."""
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        cur.execute("SELECT name FROM users WHERE email = %s", (current_user,))
+        row = cur.fetchone()
+        name = (row[0] if row else "") or ""
+    finally:
+        cur.close(); conn.close()
+    if current_user != "admin@mentorix.ai" and name.lower() != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required.")
+    return current_user
+
+
+# Bootstrap institutions table
+def _ensure_institutions_table():
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS institutions (
+                id            SERIAL PRIMARY KEY,
+                name          TEXT NOT NULL,
+                contact_email TEXT,
+                env           TEXT DEFAULT 'dev',
+                created_at    TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        conn.commit()
+    finally:
+        cur.close(); conn.close()
+
+try:
+    _ensure_institutions_table()
+except Exception as _ie:
+    logger.warning(f"institutions table init: {_ie}")
+
+
+# ── /admin/overview ───────────────────────────────────────────────────────────
+@app.get("/admin/overview")
+def admin_overview(admin: str = Depends(require_admin)):
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        cur.execute("SELECT COUNT(*) FROM users")
+        total_users = (cur.fetchone() or (0,))[0]
+
+        cur.execute("SELECT COUNT(*) FROM voice_sessions")
+        total_sessions = (cur.fetchone() or (0,))[0]
+
+        cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= NOW() - INTERVAL '7 days'")
+        new_users_week = (cur.fetchone() or (0,))[0]
+
+        cur.execute("SELECT AVG(overall_score) FROM voice_sessions WHERE overall_score IS NOT NULL")
+        r = cur.fetchone()
+        avg_score = round(float(r[0]), 1) if r and r[0] else 0
+
+        cur.execute("""
+            SELECT vs.id, u.name AS user_name, vs.email AS user_email,
+                   vs.mode, vs.created_at, vs.overall_score
+            FROM voice_sessions vs
+            LEFT JOIN users u ON u.email = vs.email
+            ORDER BY vs.created_at DESC LIMIT 10
+        """)
+        cols = [d[0] for d in (cur.description or [])]
+        recent_activity = []
+        for row in cur.fetchall():
+            d = dict(zip(cols, row))
+            if d.get("created_at"): d["created_at"] = d["created_at"].isoformat()
+            recent_activity.append(d)
+
+        cur.execute("""
+            SELECT DATE(created_at) AS day, COUNT(*) AS count
+            FROM users WHERE created_at >= NOW() - INTERVAL '14 days'
+            GROUP BY day ORDER BY day
+        """)
+        registrations_by_day = [{"day": str(r[0]), "count": r[1]} for r in cur.fetchall()]
+
+        cur.execute("""
+            SELECT COALESCE(mode,'voice') AS mode, COUNT(*) AS count
+            FROM voice_sessions GROUP BY mode
+        """)
+        session_type_breakdown = {r[0]: r[1] for r in cur.fetchall()}
+
+        return {
+            "total_users": total_users,
+            "total_sessions": total_sessions,
+            "new_users_week": new_users_week,
+            "avg_score": avg_score,
+            "recent_activity": recent_activity,
+            "registrations_by_day": registrations_by_day,
+            "session_type_breakdown": session_type_breakdown,
+        }
+    finally:
+        cur.close(); conn.close()
+
+
+# ── /admin/users ──────────────────────────────────────────────────────────────
+@app.get("/admin/users")
+def admin_get_users(admin: str = Depends(require_admin)):
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT u.id, u.name, u.email, u.department, u.year, u.semester,
+                   u.auth_provider, u.created_at,
+                   COUNT(DISTINCT vs.id)       AS session_count,
+                   COALESCE(SUM(he.delta), 0)  AS honor_score
+            FROM users u
+            LEFT JOIN voice_sessions vs ON vs.email = u.email
+            LEFT JOIN honor_events   he ON he.email = u.email
+            GROUP BY u.id, u.name, u.email, u.department, u.year,
+                     u.semester, u.auth_provider, u.created_at
+            ORDER BY u.created_at DESC
+        """)
+        cols = [d[0] for d in (cur.description or [])]
+        users = []
+        for row in cur.fetchall():
+            d = dict(zip(cols, row))
+            if d.get("created_at"): d["created_at"] = d["created_at"].isoformat()
+            users.append(d)
+        return {"users": users}
+    finally:
+        cur.close(); conn.close()
+
+
+@app.delete("/admin/users/{user_id}")
+def admin_delete_user(user_id: int, admin: str = Depends(require_admin)):
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        cur.execute("SELECT email FROM users WHERE id = %s", (user_id,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found.")
+        email = row[0]
+        cur.execute("DELETE FROM voice_sessions  WHERE email = %s", (email,))
+        cur.execute("DELETE FROM honor_events    WHERE email = %s", (email,))
+        cur.execute("DELETE FROM assessments     WHERE email = %s", (email,))
+        cur.execute("DELETE FROM course_completions WHERE email = %s", (email,))
+        cur.execute("DELETE FROM users           WHERE id    = %s", (user_id,))
+        conn.commit()
+        return {"ok": True, "deleted_email": email}
+    finally:
+        cur.close(); conn.close()
+
+
+# ── /admin/sessions ───────────────────────────────────────────────────────────
+@app.get("/admin/sessions")
+def admin_get_sessions(admin: str = Depends(require_admin)):
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT vs.id, u.name AS user_name, vs.email AS user_email,
+                   vs.mode, vs.created_at, vs.exchange_count,
+                   vs.overall_score, vs.tab_warnings
+            FROM voice_sessions vs
+            LEFT JOIN users u ON u.email = vs.email
+            ORDER BY vs.created_at DESC
+            LIMIT 500
+        """)
+        cols = [d[0] for d in (cur.description or [])]
+        sessions = []
+        for row in cur.fetchall():
+            d = dict(zip(cols, row))
+            if d.get("created_at"): d["created_at"] = d["created_at"].isoformat()
+            sessions.append(d)
+        return {"sessions": sessions}
+    finally:
+        cur.close(); conn.close()
+
+
+@app.delete("/admin/sessions/{session_id}")
+def admin_delete_session(session_id: int, admin: str = Depends(require_admin)):
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM voice_sessions WHERE id = %s RETURNING id", (session_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Session not found.")
+        conn.commit()
+        return {"ok": True}
+    finally:
+        cur.close(); conn.close()
+
+
+# ── /admin/institutions ───────────────────────────────────────────────────────
+@app.get("/admin/institutions")
+def admin_get_institutions(admin: str = Depends(require_admin)):
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT id, name, contact_email, env, created_at FROM institutions ORDER BY created_at DESC"
+        )
+        cols = [d[0] for d in (cur.description or [])]
+        rows = []
+        for row in cur.fetchall():
+            d = dict(zip(cols, row))
+            if d.get("created_at"): d["created_at"] = d["created_at"].isoformat()
+            rows.append(d)
+        return {"institutions": rows}
+    finally:
+        cur.close(); conn.close()
+
+
+class InstitutionCreate(BaseModel):
+    name: str
+    contact_email: Optional[str] = None
+    env: Optional[str] = "dev"
+
+
+@app.post("/admin/institutions")
+def admin_create_institution(data: InstitutionCreate, admin: str = Depends(require_admin)):
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        cur.execute(
+            "INSERT INTO institutions (name, contact_email, env) VALUES (%s, %s, %s) RETURNING id",
+            (data.name.strip(), data.contact_email or None, data.env or "dev")
+        )
+        new_id = (cur.fetchone() or (None,))[0]
+        conn.commit()
+        return {"ok": True, "id": new_id}
+    finally:
+        cur.close(); conn.close()
+
+
+class InstitutionPatch(BaseModel):
+    env:           Optional[str] = None
+    name:          Optional[str] = None
+    contact_email: Optional[str] = None
+
+
+@app.patch("/admin/institutions/{inst_id}")
+def admin_patch_institution(inst_id: int, data: InstitutionPatch, admin: str = Depends(require_admin)):
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        updates, vals = [], []
+        if data.env is not None:
+            if data.env not in ("dev", "prod"):
+                raise HTTPException(status_code=400, detail="env must be 'dev' or 'prod'")
+            updates.append("env = %s"); vals.append(data.env)
+        if data.name is not None:
+            updates.append("name = %s"); vals.append(data.name.strip())
+        if data.contact_email is not None:
+            updates.append("contact_email = %s"); vals.append(data.contact_email)
+        if not updates:
+            raise HTTPException(status_code=400, detail="No fields to update.")
+        vals.append(inst_id)
+        cur.execute(f"UPDATE institutions SET {', '.join(updates)} WHERE id = %s RETURNING id", vals)
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Institution not found.")
+        conn.commit()
+        return {"ok": True}
+    finally:
+        cur.close(); conn.close()
+
+
+@app.delete("/admin/institutions/{inst_id}")
+def admin_delete_institution(inst_id: int, admin: str = Depends(require_admin)):
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM institutions WHERE id = %s RETURNING id", (inst_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Institution not found.")
+        conn.commit()
+        return {"ok": True}
+    finally:
+        cur.close(); conn.close()
+
+
+# ── /admin/analytics ──────────────────────────────────────────────────────────
+@app.get("/admin/analytics")
+def admin_analytics(admin: str = Depends(require_admin)):
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT
+                COUNT(CASE WHEN overall_score BETWEEN 0  AND 20  THEN 1 END),
+                COUNT(CASE WHEN overall_score BETWEEN 21 AND 40  THEN 1 END),
+                COUNT(CASE WHEN overall_score BETWEEN 41 AND 60  THEN 1 END),
+                COUNT(CASE WHEN overall_score BETWEEN 61 AND 80  THEN 1 END),
+                COUNT(CASE WHEN overall_score BETWEEN 81 AND 100 THEN 1 END)
+            FROM voice_sessions WHERE overall_score IS NOT NULL
+        """)
+        row = cur.fetchone() or (0, 0, 0, 0, 0)
+        score_distribution = [
+            {"range": "0-20",   "count": row[0]},
+            {"range": "21-40",  "count": row[1]},
+            {"range": "41-60",  "count": row[2]},
+            {"range": "61-80",  "count": row[3]},
+            {"range": "81-100", "count": row[4]},
+        ]
+
+        cur.execute("""
+            SELECT u.department,
+                   ROUND(AVG(vs.overall_score)::numeric, 1) AS avg_score,
+                   COUNT(*) AS sessions
+            FROM voice_sessions vs
+            JOIN users u ON u.email = vs.email
+            WHERE u.department IS NOT NULL AND vs.overall_score IS NOT NULL
+            GROUP BY u.department
+        """)
+        dept_breakdown = {
+            r[0]: {"avg_score": float(r[1]) if r[1] else 0, "sessions": r[2]}
+            for r in cur.fetchall()
+        }
+
+        cur.execute("""
+            SELECT DATE(created_at) AS day, COUNT(*) AS sessions
+            FROM voice_sessions WHERE created_at >= NOW() - INTERVAL '28 days'
+            GROUP BY day ORDER BY day
+        """)
+        weekly_activity = [{"day": str(r[0]), "sessions": r[1]} for r in cur.fetchall()]
+
+        cur.execute("""
+            SELECT u.name, u.email, u.department,
+                   COUNT(vs.id) AS session_count,
+                   ROUND(AVG(vs.overall_score)::numeric, 1) AS avg_score
+            FROM users u
+            JOIN voice_sessions vs ON vs.email = u.email
+            GROUP BY u.name, u.email, u.department
+            ORDER BY session_count DESC LIMIT 10
+        """)
+        cols = [d[0] for d in (cur.description or [])]
+        top_users = []
+        for row in cur.fetchall():
+            d = dict(zip(cols, row))
+            if d.get("avg_score"): d["avg_score"] = float(d["avg_score"])
+            top_users.append(d)
+
+        return {
+            "score_distribution": score_distribution,
+            "dept_breakdown":     dept_breakdown,
+            "weekly_activity":    weekly_activity,
+            "top_users":          top_users,
+        }
+    finally:
+        cur.close(); conn.close()
+
+
+# ── /admin/logs ───────────────────────────────────────────────────────────────
+_admin_log_buffer: list = []
+
+class _AdminLogHandler(logging.Handler):
+    _fmt = logging.Formatter()
+
+    def emit(self, record):
+        _admin_log_buffer.append({
+            "time":    self._fmt.formatTime(record),
+            "level":   record.levelname,
+            "message": record.getMessage(),
+        })
+        if len(_admin_log_buffer) > 300:
+            _admin_log_buffer.pop(0)
+
+_alh = _AdminLogHandler()
+_alh.setLevel(logging.INFO)
+logging.getLogger("mentorix-api").addHandler(_alh)
+
+
+@app.get("/admin/logs")
+def admin_logs(admin: str = Depends(require_admin)):
+    return {"logs": list(reversed(_admin_log_buffer))}
+
+
+# ═════════════════════════════════════════════════════════════════════════════
 if __name__ == "__main__":
     import uvicorn
     is_render = os.getenv("RENDER") is not None
