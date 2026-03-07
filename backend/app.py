@@ -782,6 +782,14 @@ async def save_voice_session(
               data.tab_warnings, data.exchange_count,
               _json.dumps(data.scores), data.overall, data.mode))
         conn.commit(); cur.close(); conn.close()
+        # Fire honor event
+        event = "hr_session_complete" if data.mode == "hr_interview" else "voice_session_complete"
+        tab_penalty = "hr_tab_violation" if data.mode == "hr_interview" else "tab_switch_voice"
+        add_honor_event(current_user, event, f"{data.exchange_count} exchanges")
+        if data.tab_warnings > 0:
+            for _ in range(min(data.tab_warnings, 3)):
+                add_honor_event(current_user, tab_penalty, "tab switch during session")
+        conn.commit(); cur.close(); conn.close()
         return {"message": "Voice session saved."}
     except Exception as e:
         logger.warning(f"voice save failed: {e}")
@@ -823,6 +831,70 @@ async def get_user_sessions(current_user: str = Depends(get_current_user)):
     except Exception as e:
         logger.warning(f"get sessions failed: {e}")
         return {"sessions": []}
+
+
+# ── Honor Score System ────────────────────────────────────
+HONOR_RULES = {
+    "voice_session_complete": +8,
+    "hr_session_complete":    +12,
+    "course_marked_done":     +3,
+    "scan_complete":          +5,
+    "stability_improvement":  +5,
+    "streak_30_days":         +3,
+    "tab_switch_assessment":  -5,
+    "tab_switch_voice":       -3,
+    "early_session_exit":     -2,
+    "low_scan_quality":       -5,
+    "hr_tab_violation":       -4,
+}
+
+def get_honor_score(email: str) -> int:
+    try:
+        conn = get_connection(); cur = conn.cursor()
+        cur.execute("SELECT running_score FROM honor_events WHERE email=%s ORDER BY created_at DESC LIMIT 1", (email,))
+        row = cur.fetchone(); cur.close(); conn.close()
+        return row[0] if row else 100
+    except: return 100
+
+def add_honor_event(email: str, event_type: str, note: str = "") -> dict:
+    delta = HONOR_RULES.get(event_type, 0)
+    if delta == 0: return {"score": get_honor_score(email), "delta": 0}
+    try:
+        current = get_honor_score(email)
+        new_score = max(0, min(100, current + delta))
+        conn = get_connection(); cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO honor_events (email, event_type, delta, running_score, note, created_at)
+            VALUES (%s, %s, %s, %s, %s, NOW())
+        """, (email, event_type, delta, new_score, note))
+        conn.commit(); cur.close(); conn.close()
+        return {"score": new_score, "delta": delta}
+    except Exception as e:
+        logger.warning(f"honor event failed: {e}")
+        return {"score": get_honor_score(email), "delta": 0}
+
+@app.get("/user/honor")
+async def get_honor(current_user: str = Depends(get_current_user)):
+    try:
+        conn = get_connection(); cur = conn.cursor()
+        cur.execute("""
+            SELECT event_type, delta, running_score, note, created_at
+            FROM honor_events WHERE email=%s ORDER BY created_at DESC LIMIT 30
+        """, (current_user,))
+        rows = cur.fetchall(); cur.close(); conn.close()
+        score = rows[0][2] if rows else 100
+        events = [{"event_type":r[0],"delta":r[1],"running_score":r[2],"note":r[3],"created_at":r[4].isoformat() if r[4] else ""} for r in rows]
+        return {"score": score, "events": events}
+    except Exception as e:
+        logger.warning(f"honor get failed: {e}")
+        return {"score": 100, "events": []}
+
+@app.post("/user/honor/event")
+async def post_honor_event(data: dict, current_user: str = Depends(get_current_user)):
+    event_type = data.get("event_type","")
+    note       = data.get("note","")
+    result     = add_honor_event(current_user, event_type, note)
+    return result
 
 if __name__ == "__main__":
     import uvicorn

@@ -59,6 +59,17 @@ def init_db():
 """)
 
     cur.execute("""
+        CREATE TABLE IF NOT EXISTS honor_events (
+            id           SERIAL PRIMARY KEY,
+            email        TEXT NOT NULL,
+            event_type   TEXT NOT NULL,
+            delta        INTEGER NOT NULL,
+            running_score INTEGER NOT NULL,
+            note         TEXT,
+            created_at   TIMESTAMP DEFAULT NOW()
+        )
+""")
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS course_completions (
             id           SERIAL PRIMARY KEY,
             email        TEXT NOT NULL,
