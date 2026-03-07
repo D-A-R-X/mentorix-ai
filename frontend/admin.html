@@ -4,1038 +4,1018 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mentorix — Admin Console</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{
-      --bg:#07060f;--surface:#0f0d1c;--surface2:#161228;--surface3:#1c1830;
-      --border:rgba(124,77,255,0.12);--border2:rgba(124,77,255,0.25);
-      --purple:#7c4dff;--purple-dim:#5b35c0;--purple-glow:rgba(124,77,255,0.08);
-      --accent:#00e5b4;--red:#e74c3c;--orange:#f39c12;--green:#27ae60;
-      --white:#f0ecff;--muted:#6b6480;--text:#c4bedd;
+      --bg:#07050f;--surface:#0f0c1c;--surface2:#171330;--surface3:#1e1840;
+      --border:rgba(108,59,206,0.2);--border-light:rgba(108,59,206,0.1);
+      --purple:#7c4dff;--purple-dim:#5b35c0;--purple-glow:rgba(124,77,255,0.15);
+      --accent:#00e5b4;--white:#f0ecff;--muted:#7a748e;--text:#d4cee8;
+      --red:#ff4d6d;--red-bg:rgba(255,77,109,0.08);--red-border:rgba(255,77,109,0.25);
+      --green:#00e5b4;--green-bg:rgba(0,229,180,0.08);--green-border:rgba(0,229,180,0.25);
+      --yellow:#ffb347;--yellow-bg:rgba(255,179,71,0.08);--yellow-border:rgba(255,179,71,0.25);
+      --sidebar:240px;
     }
-    html,body{height:100%;overflow:hidden}
-    body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);display:flex}
+    html,body{min-height:100vh;background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);overflow-x:hidden}
+
+    /* ── Auth gate ── */
+    #authGate{position:fixed;inset:0;z-index:999;background:var(--bg);display:flex;align-items:center;justify-content:center}
+    .auth-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:40px;width:360px;text-align:center}
+    .auth-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:var(--white);margin-bottom:4px}
+    .auth-logo em{font-style:normal;color:var(--purple)}
+    .auth-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:28px}
+    .auth-input{width:100%;padding:11px 15px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--white);font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;margin-bottom:12px;transition:border 0.2s}
+    .auth-input:focus{border-color:var(--purple)}
+    .auth-btn{width:100%;padding:12px;background:var(--purple);color:#fff;border:none;border-radius:10px;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;cursor:pointer;transition:background 0.2s}
+    .auth-btn:hover{background:var(--purple-dim)}
+    .auth-err{color:var(--red);font-size:12px;margin-top:8px;display:none}
+
+    /* ── Layout ── */
+    #app{display:none;min-height:100vh}
+    .layout{display:grid;grid-template-columns:var(--sidebar) 1fr;min-height:100vh}
 
     /* ── Sidebar ── */
-    .sidebar{
-      width:220px;min-width:220px;height:100vh;background:var(--surface);
-      border-right:1px solid var(--border);display:flex;flex-direction:column;
-      padding:0;overflow-y:auto;position:relative;z-index:10;
-    }
-    .sidebar-logo{
-      padding:20px 18px;border-bottom:1px solid var(--border);
-      display:flex;align-items:center;gap:10px;
-    }
-    .logo-mark{
-      width:32px;height:32px;background:var(--purple);border-radius:8px;
-      display:flex;align-items:center;justify-content:center;
-      font-family:'Syne',sans-serif;font-weight:800;font-size:14px;color:#fff;flex-shrink:0;
-    }
-    .logo-text{font-family:'Syne',sans-serif;font-weight:800;font-size:14px;color:var(--white)}
-    .logo-badge{font-size:9px;color:var(--red);font-family:'JetBrains Mono',monospace;
-      background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);
-      padding:1px 5px;border-radius:3px;margin-left:4px}
+    .sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+    .sb-header{padding:20px 18px 16px;border-bottom:1px solid var(--border)}
+    .sb-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:var(--white)}
+    .sb-logo em{font-style:normal;color:var(--purple)}
+    .sb-badge{display:inline-block;margin-top:4px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;background:var(--surface2);padding:3px 8px;border-radius:4px;border:1px solid var(--border)}
+    .sb-nav{padding:12px 10px;flex:1}
+    .sb-section{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;padding:8px 8px 4px;margin-top:8px}
+    .sb-link{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:13px;color:var(--muted);cursor:pointer;transition:all 0.18s;margin-bottom:2px;text-decoration:none}
+    .sb-link:hover{background:var(--surface2);color:var(--white)}
+    .sb-link.active{background:var(--purple-glow);color:var(--white);border:1px solid var(--border)}
+    .sb-link.active::before{display:none}
+    .sb-icon{width:18px;text-align:center;font-size:14px}
+    .sb-footer{padding:14px 18px;border-top:1px solid var(--border)}
+    .sb-admin{display:flex;align-items:center;gap:10px}
+    .sb-av{width:30px;height:30px;border-radius:8px;background:var(--purple);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:13px;color:#fff}
+    .sb-uinfo{flex:1}
+    .sb-uname{font-size:12px;font-weight:500;color:var(--white)}
+    .sb-urole{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted)}
+    .sb-signout{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--red);cursor:pointer;padding:4px 8px;border:1px solid var(--red-border);border-radius:5px;background:transparent;transition:background 0.15s}
+    .sb-signout:hover{background:var(--red-bg)}
 
-    .nav-section{padding:16px 0 8px;border-bottom:1px solid var(--border)}
-    .nav-label{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);
-      letter-spacing:1.5px;text-transform:uppercase;padding:0 18px 8px}
-    .nav-item{
-      display:flex;align-items:center;gap:10px;padding:9px 18px;
-      cursor:pointer;transition:all 0.18s;border-left:2px solid transparent;
-      font-size:13px;color:var(--muted);
-    }
-    .nav-item:hover{background:var(--purple-glow);color:var(--white);border-left-color:rgba(124,77,255,0.3)}
-    .nav-item.active{background:rgba(124,77,255,0.1);color:var(--white);border-left-color:var(--purple)}
-    .nav-icon{font-size:15px;width:20px;text-align:center}
+    /* ── Main content ── */
+    .main{overflow-y:auto;background:var(--bg)}
+    .topbar{padding:16px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:rgba(7,5,15,0.8);backdrop-filter:blur(16px);position:sticky;top:0;z-index:10}
+    .topbar-title{font-family:'Syne',sans-serif;font-weight:700;font-size:17px;color:var(--white)}
+    .topbar-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px}
+    .topbar-actions{display:flex;gap:8px;align-items:center}
+    .tb-btn{padding:7px 16px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;transition:all 0.18s;border:1px solid var(--border);color:var(--muted);background:transparent}
+    .tb-btn:hover{border-color:var(--purple);color:var(--purple)}
+    .tb-btn.primary{background:var(--purple);color:#fff;border-color:var(--purple)}
+    .tb-btn.primary:hover{background:var(--purple-dim)}
 
-    .sidebar-footer{margin-top:auto;padding:16px 18px;border-top:1px solid var(--border)}
-    .admin-user{display:flex;align-items:center;gap:8px}
-    .admin-avatar{width:28px;height:28px;border-radius:50%;background:var(--purple);
-      display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff}
-    .admin-name{font-size:12px;color:var(--text)}
-    .admin-role{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+    .content{padding:28px}
 
-    /* ── Main ── */
-    .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
-    .topbar{
-      padding:14px 28px;border-bottom:1px solid var(--border);
-      display:flex;align-items:center;justify-content:space-between;
-      background:rgba(7,6,15,0.8);backdrop-filter:blur(12px);
-    }
-    .page-title{font-family:'Syne',sans-serif;font-weight:700;font-size:16px;color:var(--white)}
-    .page-sub{font-size:12px;color:var(--muted);margin-top:2px}
-    .topbar-right{display:flex;align-items:center;gap:12px}
-    .env-toggle{
-      display:flex;align-items:center;gap:8px;
-      background:var(--surface2);border:1px solid var(--border);
-      border-radius:8px;padding:6px 12px;cursor:pointer;
-    }
-    .env-label{font-family:'JetBrains Mono',monospace;font-size:11px}
-    .toggle-switch{
-      width:36px;height:18px;background:#1a1030;border-radius:9px;
-      position:relative;cursor:pointer;transition:background 0.3s;border:1px solid var(--border2);
-    }
-    .toggle-switch.on{background:var(--purple)}
-    .toggle-knob{
-      width:12px;height:12px;background:#fff;border-radius:50%;
-      position:absolute;top:2px;left:2px;transition:left 0.3s;
-    }
-    .toggle-switch.on .toggle-knob{left:20px}
-    .logout-btn{
-      font-family:'JetBrains Mono',monospace;font-size:11px;
-      padding:6px 12px;border-radius:6px;border:1px solid rgba(231,76,60,0.3);
-      color:var(--red);background:rgba(231,76,60,0.05);cursor:pointer;
-    }
-    .logout-btn:hover{background:rgba(231,76,60,0.12)}
+    /* ── Tabs ── */
+    .tab-panel{display:none}
+    .tab-panel.active{display:block}
 
-    .content{flex:1;overflow-y:auto;padding:24px 28px}
+    /* ── Stats row ── */
+    .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+    .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px}
+    .stat-val{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--white);line-height:1;margin-bottom:4px}
+    .stat-val.green{color:var(--green)}
+    .stat-val.yellow{color:var(--yellow)}
+    .stat-val.red{color:var(--red)}
+    .stat-val.purple{color:var(--purple)}
+    .stat-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+    .stat-trend{font-family:'JetBrains Mono',monospace;font-size:10px;margin-top:6px}
+    .stat-trend.up{color:var(--green)}
+    .stat-trend.down{color:var(--red)}
 
-    /* ── Cards ── */
-    .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
-    .stat-card{
-      background:var(--surface);border:1px solid var(--border);border-radius:12px;
-      padding:18px;position:relative;overflow:hidden;
-    }
-    .stat-card::before{
-      content:'';position:absolute;top:0;right:0;width:80px;height:80px;
-      border-radius:50%;filter:blur(30px);opacity:0.3;
-    }
-    .stat-card.purple::before{background:var(--purple)}
-    .stat-card.green::before{background:var(--green)}
-    .stat-card.orange::before{background:var(--orange)}
-    .stat-card.red::before{background:var(--red)}
-    .stat-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);
-      letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
-    .stat-val{font-family:'Syne',sans-serif;font-weight:800;font-size:28px;color:var(--white)}
-    .stat-delta{font-size:11px;margin-top:4px}
-    .stat-delta.up{color:var(--accent)}
-    .stat-delta.down{color:var(--red)}
-
-    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
-    .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px}
-    .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px}
-    .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-    .card-title{font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--white)}
-    .card-sub{font-size:11px;color:var(--muted);margin-top:2px}
+    /* ── Card ── */
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:18px}
+    .card-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+    .card-title{font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--purple)}
+    .card-body{padding:0}
 
     /* ── Table ── */
-    .table-wrap{overflow-x:auto}
-    table{width:100%;border-collapse:collapse;font-size:13px}
-    thead tr{border-bottom:1px solid var(--border)}
-    th{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);
-      letter-spacing:1px;text-transform:uppercase;padding:10px 12px;text-align:left;font-weight:400}
-    td{padding:10px 12px;color:var(--text);border-bottom:1px solid rgba(124,77,255,0.05)}
-    tr:hover td{background:var(--purple-glow)}
-    .badge{
-      font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;
-      border-radius:4px;letter-spacing:0.5px;
-    }
-    .badge.low{color:var(--accent);background:rgba(0,229,180,0.1);border:1px solid rgba(0,229,180,0.25)}
-    .badge.medium{color:var(--orange);background:rgba(243,156,18,0.1);border:1px solid rgba(243,156,18,0.25)}
-    .badge.high{color:var(--red);background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.25)}
-    .badge.active{color:var(--accent);background:rgba(0,229,180,0.08);border:1px solid rgba(0,229,180,0.2)}
-    .badge.prod{color:#fff;background:var(--purple);border:1px solid var(--purple)}
-    .badge.dev{color:var(--muted);background:var(--surface2);border:1px solid var(--border)}
+    .data-table{width:100%;border-collapse:collapse}
+    .data-table th{font-family:'JetBrains Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);padding:10px 16px;text-align:left;border-bottom:1px solid var(--border);background:var(--surface2)}
+    .data-table td{padding:12px 16px;font-size:13px;border-bottom:1px solid var(--border-light);vertical-align:middle}
+    .data-table tr:last-child td{border-bottom:none}
+    .data-table tr:hover td{background:rgba(124,77,255,0.04)}
+    .user-name{font-weight:500;color:var(--white)}
+    .user-email{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);margin-top:2px}
+    .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:500}
+    .badge.active{background:var(--green-bg);border:1px solid var(--green-border);color:var(--green)}
+    .badge.inactive{background:rgba(122,116,142,0.1);border:1px solid rgba(122,116,142,0.2);color:var(--muted)}
+    .badge.prod{background:var(--green-bg);border:1px solid var(--green-border);color:var(--green)}
+    .badge.dev{background:var(--yellow-bg);border:1px solid var(--yellow-border);color:var(--yellow)}
+    .badge-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+    .action-btns{display:flex;gap:6px}
+    .act-btn{padding:4px 10px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:9px;cursor:pointer;transition:all 0.15s;border:1px solid var(--border);background:transparent;color:var(--muted)}
+    .act-btn:hover{border-color:var(--purple);color:var(--purple)}
+    .act-btn.danger:hover{border-color:var(--red);color:var(--red)}
 
-    .action-btn{
-      font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 9px;
-      border-radius:5px;border:1px solid var(--border);background:transparent;
-      color:var(--muted);cursor:pointer;transition:all 0.18s;
-    }
-    .action-btn:hover{border-color:var(--purple);color:var(--purple);background:var(--purple-glow)}
-    .action-btn.danger:hover{border-color:var(--red);color:var(--red);background:rgba(231,76,60,0.05)}
-    .action-btn.success:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,229,180,0.05)}
+    /* ── Search / filter bar ── */
+    .filter-bar{display:flex;gap:10px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface2)}
+    .filter-input{flex:1;max-width:280px;padding:7px 13px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--white);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border 0.2s}
+    .filter-input:focus{border-color:var(--purple)}
+    .filter-input::placeholder{color:var(--muted)}
+    .filter-select{padding:7px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:11px;outline:none;cursor:pointer}
+    .filter-count{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-left:auto}
 
-    /* ── Search/Filter bar ── */
-    .filter-bar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
-    .search-input{
-      flex:1;min-width:180px;padding:8px 12px;
-      background:var(--surface2);border:1px solid var(--border);border-radius:8px;
-      color:var(--white);font-size:13px;font-family:'DM Sans',sans-serif;
-    }
-    .search-input:focus{outline:none;border-color:var(--purple)}
-    .filter-select{
-      padding:8px 10px;background:var(--surface2);border:1px solid var(--border);
-      border-radius:8px;color:var(--text);font-size:12px;cursor:pointer;
-    }
-    .filter-select:focus{outline:none}
-    .export-btn{
-      font-family:'JetBrains Mono',monospace;font-size:11px;padding:8px 14px;
-      border-radius:8px;border:1px solid rgba(0,229,180,0.3);color:var(--accent);
-      background:rgba(0,229,180,0.05);cursor:pointer;white-space:nowrap;
-    }
-    .export-btn:hover{background:rgba(0,229,180,0.1)}
+    /* ── Empty state ── */
+    .empty-row td{text-align:center;padding:40px;color:var(--muted);font-size:13px}
 
-    /* ── Status indicators ── */
-    .status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:6px}
-    .status-dot.green{background:var(--green)}
-    .status-dot.red{background:var(--red)}
-    .status-dot.orange{background:var(--orange)}
+    /* ── College card ── */
+    .college-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;padding:20px}
+    .college-card{background:var(--surface2);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color 0.2s}
+    .college-card:hover{border-color:rgba(124,77,255,0.35)}
+    .cc-head{padding:16px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+    .cc-icon{width:40px;height:40px;border-radius:10px;background:var(--purple-glow);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+    .cc-name{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;color:var(--white)}
+    .cc-id{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)}
+    .cc-body{padding:14px 18px}
+    .cc-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:12px}
+    .cc-row-label{color:var(--muted)}
+    .cc-row-val{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--white)}
+    .cc-foot{padding:12px 18px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}
 
-    /* ── System status ── */
-    .sys-row{
-      display:flex;align-items:center;justify-content:space-between;
-      padding:12px 0;border-bottom:1px solid rgba(124,77,255,0.06);
-    }
-    .sys-name{font-size:13px;color:var(--text);display:flex;align-items:center}
-    .sys-val{font-family:'JetBrains Mono',monospace;font-size:12px}
-
-    /* ── ML card ── */
-    .ml-metric{
-      display:flex;align-items:center;justify-content:space-between;
-      padding:10px 0;border-bottom:1px solid rgba(124,77,255,0.06);
-    }
-    .ml-label{font-size:13px;color:var(--text)}
-    .ml-val{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--white)}
-    .ml-btn{
-      font-family:'JetBrains Mono',monospace;font-size:11px;padding:8px 14px;
-      border-radius:8px;border:1px solid var(--border2);color:var(--purple);
-      background:var(--purple-glow);cursor:pointer;margin-top:8px;width:100%;
-    }
-    .ml-btn:hover{background:rgba(124,77,255,0.15)}
+    /* ── Toggle switch ── */
+    .toggle-wrap{display:flex;align-items:center;gap:10px}
+    .toggle-label{font-family:'JetBrains Mono',monospace;font-size:10px}
+    .toggle{position:relative;width:44px;height:24px;cursor:pointer}
+    .toggle input{opacity:0;width:0;height:0;position:absolute}
+    .toggle-slider{position:absolute;inset:0;background:rgba(122,116,142,0.2);border:1px solid var(--border);border-radius:999px;transition:all 0.25s}
+    .toggle-slider::before{content:'';position:absolute;width:18px;height:18px;left:2px;top:2px;background:var(--muted);border-radius:50%;transition:all 0.25s}
+    .toggle input:checked + .toggle-slider{background:rgba(0,229,180,0.2);border-color:rgba(0,229,180,0.4)}
+    .toggle input:checked + .toggle-slider::before{transform:translateX(20px);background:var(--green)}
+    .env-label{font-family:'JetBrains Mono',monospace;font-size:10px}
+    .env-label.dev{color:var(--yellow)}
+    .env-label.prod{color:var(--green)}
 
     /* ── Modal ── */
-    .modal{
-      display:none;position:fixed;inset:0;z-index:200;
-      background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);
-      align-items:center;justify-content:center;
-    }
-    .modal.show{display:flex}
-    .modal-box{
-      background:var(--surface);border:1px solid var(--border2);border-radius:16px;
-      padding:28px;max-width:440px;width:90%;
-    }
-    .modal-title{font-family:'Syne',sans-serif;font-weight:700;font-size:16px;color:var(--white);margin-bottom:8px}
-    .modal-body{font-size:13px;color:var(--text);line-height:1.6;margin-bottom:20px}
-    .modal-actions{display:flex;gap:10px;justify-content:flex-end}
-    .modal-cancel{padding:8px 16px;border-radius:8px;border:1px solid var(--border);
-      color:var(--muted);background:transparent;cursor:pointer;font-size:13px}
-    .modal-confirm{padding:8px 16px;border-radius:8px;border:1px solid rgba(231,76,60,0.4);
-      color:var(--red);background:rgba(231,76,60,0.08);cursor:pointer;font-size:13px}
-    .modal-confirm:hover{background:rgba(231,76,60,0.15)}
+    .modal-bg{position:fixed;inset:0;z-index:500;background:rgba(7,5,15,0.85);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center}
+    .modal-bg.open{display:flex}
+    .modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;width:480px;max-width:calc(100vw - 32px);max-height:90vh;overflow-y:auto}
+    .modal-title{font-family:'Syne',sans-serif;font-weight:700;font-size:17px;color:var(--white);margin-bottom:6px}
+    .modal-sub{font-size:13px;color:var(--muted);margin-bottom:22px}
+    .form-group{margin-bottom:14px}
+    .form-label{font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;display:block}
+    .form-input{width:100%;padding:10px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--white);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border 0.2s}
+    .form-input:focus{border-color:var(--purple)}
+    .form-input::placeholder{color:var(--muted)}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
+    .modal-btn{padding:9px 22px;border-radius:10px;font-family:'Syne',sans-serif;font-weight:600;font-size:13px;cursor:pointer;transition:all 0.18s}
+    .modal-btn.cancel{background:transparent;color:var(--muted);border:1px solid var(--border)}
+    .modal-btn.cancel:hover{border-color:var(--purple);color:var(--white)}
+    .modal-btn.confirm{background:var(--purple);color:#fff;border:1px solid var(--purple)}
+    .modal-btn.confirm:hover{background:var(--purple-dim)}
 
-    /* ── Tabs (pages) ── */
-    .page{display:none}
-    .page.active{display:block}
+    /* ── User detail panel ── */
+    .user-detail{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:18px}
+    .ud-head{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+    .ud-av{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,var(--purple),#b08dff);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:#fff;flex-shrink:0}
+    .ud-info{flex:1}
+    .ud-name{font-family:'Syne',sans-serif;font-weight:700;font-size:17px;color:var(--white)}
+    .ud-email{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)}
+    .ud-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .ud-stat{background:var(--surface2);border:1px solid var(--border-light);border-radius:10px;padding:12px 14px;text-align:center}
+    .ud-stat-val{font-family:'Syne',sans-serif;font-weight:700;font-size:18px;color:var(--white);line-height:1;margin-bottom:3px}
+    .ud-stat-label{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);text-transform:uppercase}
 
-    /* ── Loading ── */
-    .spinner{
-      display:inline-block;width:16px;height:16px;border:2px solid rgba(124,77,255,0.2);
-      border-top-color:var(--purple);border-radius:50%;animation:spin 0.7s linear infinite;
-    }
-    @keyframes spin{to{transform:rotate(360deg)}}
+    /* ── Activity log ── */
+    .log-list{display:flex;flex-direction:column;gap:0}
+    .log-item{display:flex;align-items:flex-start;gap:12px;padding:11px 16px;border-bottom:1px solid var(--border-light);font-size:12px}
+    .log-item:last-child{border-bottom:none}
+    .log-time{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);white-space:nowrap;min-width:90px}
+    .log-event{color:var(--white);flex:1}
+    .log-user{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--purple)}
+    .log-college{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--yellow)}
+    .log-dot{width:6px;height:6px;border-radius:50%;background:var(--purple);flex-shrink:0;margin-top:4px}
+    .log-dot.green{background:var(--green)}
+    .log-dot.red{background:var(--red)}
+    .log-dot.yellow{background:var(--yellow)}
 
-    /* ── Env toggle modal ── */
-    .env-modal{
-      display:none;position:fixed;inset:0;z-index:300;
-      background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);
-      align-items:center;justify-content:center;
-    }
-    .env-modal.show{display:flex}
-    .env-box{
-      background:var(--surface);border:2px solid var(--purple);border-radius:20px;
-      padding:36px;max-width:480px;width:90%;text-align:center;
-    }
-    .env-box h2{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--white);margin-bottom:10px}
-    .env-box p{font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:24px}
-    .env-features{
-      display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:24px;text-align:left;
-    }
-    .env-feat{
-      background:var(--surface2);border:1px solid var(--border);border-radius:8px;
-      padding:10px 12px;font-size:12px;color:var(--text);
-    }
-    .env-feat span{color:var(--accent);font-weight:600}
+    /* Notification */
+    .notif{position:fixed;top:20px;right:20px;z-index:9999;padding:12px 18px;border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--surface);border:1px solid var(--green-border);color:var(--green);transform:translateX(calc(100% + 20px));transition:transform 0.3s;box-shadow:0 8px 24px rgba(0,0,0,0.4)}
+    .notif.show{transform:translateX(0)}
+    .notif.error{border-color:var(--red-border);color:var(--red)}
 
-    /* ── Login page ── */
-    .login-page{
-      position:fixed;inset:0;z-index:500;background:var(--bg);
-      display:flex;align-items:center;justify-content:center;
+    @media(max-width:900px){
+      .layout{grid-template-columns:1fr}
+      .sidebar{display:none}
+      .stats-row{grid-template-columns:1fr 1fr}
     }
-    .login-box{
-      background:var(--surface);border:1px solid var(--border2);border-radius:20px;
-      padding:40px;width:360px;
-    }
-    .login-box h1{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:var(--white);margin-bottom:4px}
-    .login-box p{font-size:13px;color:var(--muted);margin-bottom:24px}
-    .login-input{
-      width:100%;padding:11px 14px;background:var(--surface2);border:1px solid var(--border);
-      border-radius:10px;color:var(--white);font-size:14px;margin-bottom:12px;
-      font-family:'DM Sans',sans-serif;
-    }
-    .login-input:focus{outline:none;border-color:var(--purple)}
-    .login-btn{
-      width:100%;padding:12px;background:var(--purple);border:none;border-radius:10px;
-      color:#fff;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;cursor:pointer;
-    }
-    .login-btn:hover{background:var(--purple-dim)}
-    .login-err{font-size:12px;color:var(--red);margin-top:8px;text-align:center}
   </style>
 </head>
 <body>
 
-<!-- ── LOGIN ── -->
-<div class="login-page" id="loginPage">
-  <div class="login-box">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
-      <div class="logo-mark">M</div>
-      <div>
-        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:var(--white)">Mentorix Admin</div>
-        <div style="font-size:11px;color:var(--muted)">Restricted Access</div>
-      </div>
-    </div>
-    <h1>Sign In</h1>
-    <p>Admin console — authorised personnel only</p>
-    <input class="login-input" type="text" id="adminUser" placeholder="Admin username" autocomplete="off">
-    <input class="login-input" type="password" id="adminPass" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
-    <button class="login-btn" onclick="doLogin()">Access Console</button>
-    <div class="login-err" id="loginErr"></div>
+<!-- Notification -->
+<div class="notif" id="notif"></div>
+
+<!-- Auth Gate -->
+<div id="authGate">
+  <div class="auth-box">
+    <div class="auth-logo">Mentorix <em>AI</em></div>
+    <div class="auth-sub">Admin Console</div>
+    <input class="auth-input" type="text" id="authUser" placeholder="Admin username" autocomplete="username">
+    <input class="auth-input" type="password" id="authPass" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuth()">
+    <button class="auth-btn" onclick="doAuth()">Access Console</button>
+    <div class="auth-err" id="authErr">Invalid credentials</div>
   </div>
 </div>
 
-<!-- ── SIDEBAR ── -->
-<div class="sidebar" id="sidebar">
-  <div class="sidebar-logo">
-    <div class="logo-mark">M</div>
-    <div>
-      <div class="logo-text">Mentorix <span class="logo-badge">ADMIN</span></div>
-      <div style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace" id="envLabel">DEV MODE</div>
-    </div>
-  </div>
+<!-- App -->
+<div id="app">
+  <div class="layout">
 
-  <div class="nav-section">
-    <div class="nav-label">Overview</div>
-    <div class="nav-item active" onclick="showPage('overview',this)"><span class="nav-icon">◉</span>Dashboard</div>
-  </div>
-
-  <div class="nav-section">
-    <div class="nav-label">Management</div>
-    <div class="nav-item" onclick="showPage('users',this)"><span class="nav-icon">👥</span>Users</div>
-    <div class="nav-item" onclick="showPage('sessions',this)"><span class="nav-icon">🎙</span>Sessions</div>
-    <div class="nav-item" onclick="showPage('assessments',this)"><span class="nav-icon">📋</span>Assessments</div>
-  </div>
-
-  <div class="nav-section">
-    <div class="nav-label">Intelligence</div>
-    <div class="nav-item" onclick="showPage('analytics',this)"><span class="nav-icon">📊</span>Behavioral Analytics</div>
-    <div class="nav-item" onclick="showPage('recommendations',this)"><span class="nav-icon">🎯</span>Recommendations</div>
-    <div class="nav-item" onclick="showPage('mlmodel',this)"><span class="nav-icon">🤖</span>ML Model</div>
-  </div>
-
-  <div class="nav-section">
-    <div class="nav-label">System</div>
-    <div class="nav-item" onclick="showPage('system',this)"><span class="nav-icon">⚙️</span>System Status</div>
-    <div class="nav-item" onclick="showPage('honor',this)"><span class="nav-icon">⭐</span>Honor Scores</div>
-  </div>
-
-  <div class="sidebar-footer">
-    <div class="admin-user">
-      <div class="admin-avatar">A</div>
-      <div>
-        <div class="admin-name">Admin</div>
-        <div class="admin-role">CRONIX · Super Admin</div>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sb-header">
+        <div class="sb-logo">Mentorix <em>AI</em></div>
+        <div class="sb-badge">Admin Console</div>
       </div>
-    </div>
+      <nav class="sb-nav">
+        <div class="sb-section">Overview</div>
+        <a class="sb-link active" onclick="switchTab('overview')" data-tab="overview">
+          <span class="sb-icon">📊</span> Overview
+        </a>
+        <div class="sb-section">Users</div>
+        <a class="sb-link" onclick="switchTab('users')" data-tab="users">
+          <span class="sb-icon">👥</span> All Users
+        </a>
+        <a class="sb-link" onclick="switchTab('activity')" data-tab="activity">
+          <span class="sb-icon">📋</span> Activity Log
+        </a>
+        <div class="sb-section">Deployments</div>
+        <a class="sb-link" onclick="switchTab('colleges')" data-tab="colleges">
+          <span class="sb-icon">🏫</span> Colleges
+        </a>
+        <a class="sb-link" onclick="switchTab('deployments')" data-tab="deployments">
+          <span class="sb-icon">🚀</span> Deployments
+        </a>
+        <div class="sb-section">System</div>
+        <a class="sb-link" onclick="switchTab('settings')" data-tab="settings">
+          <span class="sb-icon">⚙</span> System Settings
+        </a>
+      </nav>
+      <div class="sb-footer">
+        <div class="sb-admin">
+          <div class="sb-av">A</div>
+          <div class="sb-uinfo">
+            <div class="sb-uname">Admin</div>
+            <div class="sb-urole">Super Admin</div>
+          </div>
+          <button class="sb-signout" onclick="adminLogout()">Sign Out</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+
+      <!-- ── OVERVIEW ── -->
+      <div id="tab-overview" class="tab-panel active">
+        <div class="topbar">
+          <div>
+            <div class="topbar-title">Overview</div>
+            <div class="topbar-sub" id="overviewDate">Loading...</div>
+          </div>
+          <div class="topbar-actions">
+            <button class="tb-btn" onclick="refreshData()">↻ Refresh</button>
+            <button class="tb-btn primary" onclick="switchTab('colleges');openAddCollegeModal()">+ New Deployment</button>
+          </div>
+        </div>
+        <div class="content">
+          <div class="stats-row" id="overviewStats">
+            <div class="stat-card"><div class="stat-val purple" id="sv-total">–</div><div class="stat-label">Total Users</div></div>
+            <div class="stat-card"><div class="stat-val green" id="sv-active">–</div><div class="stat-label">Active (7d)</div></div>
+            <div class="stat-card"><div class="stat-val yellow" id="sv-colleges">–</div><div class="stat-label">Colleges</div></div>
+            <div class="stat-card"><div class="stat-val" id="sv-sessions">–</div><div class="stat-label">Total Sessions</div></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title">Recent Signups</span>
+              <button class="act-btn" onclick="switchTab('users')">View All →</button>
+            </div>
+            <div class="card-body">
+              <table class="data-table" id="recentUsersTable">
+                <thead><tr>
+                  <th>User</th><th>College</th><th>Joined</th><th>Sessions</th><th>Status</th>
+                </tr></thead>
+                <tbody id="recentUsersTbody">
+                  <tr class="empty-row"><td colspan="5">Loading users...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><span class="card-title">Deployment Status</span></div>
+            <div id="overviewCollegeCards" class="college-grid"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── USERS ── -->
+      <div id="tab-users" class="tab-panel">
+        <div class="topbar">
+          <div>
+            <div class="topbar-title">All Users</div>
+            <div class="topbar-sub">Real users logged into Mentorix</div>
+          </div>
+          <div class="topbar-actions">
+            <button class="tb-btn" onclick="loadUsers()">↻ Refresh</button>
+          </div>
+        </div>
+        <div class="card" style="margin:20px">
+          <div class="filter-bar">
+            <input class="filter-input" type="text" id="userSearch" placeholder="Search by name or email..." oninput="filterUsers()">
+            <select class="filter-select" id="userCollegeFilter" onchange="filterUsers()">
+              <option value="">All Colleges</option>
+            </select>
+            <select class="filter-select" id="userStatusFilter" onchange="filterUsers()">
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            <span class="filter-count" id="userCount">0 users</span>
+          </div>
+          <table class="data-table">
+            <thead><tr>
+              <th>User</th><th>College</th><th>Department</th><th>Joined</th><th>Sessions</th><th>Last Active</th><th>Status</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="usersTbody">
+              <tr class="empty-row"><td colspan="8">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── ACTIVITY LOG ── -->
+      <div id="tab-activity" class="tab-panel">
+        <div class="topbar">
+          <div>
+            <div class="topbar-title">Activity Log</div>
+            <div class="topbar-sub">Real-time system events</div>
+          </div>
+          <div class="topbar-actions">
+            <button class="tb-btn" onclick="loadActivity()">↻ Refresh</button>
+          </div>
+        </div>
+        <div class="content">
+          <div class="card">
+            <div class="card-head"><span class="card-title">Recent Activity</span></div>
+            <div class="log-list" id="activityLog">
+              <div class="log-item"><span class="log-time">–</span><span class="log-event" style="color:var(--muted)">Loading activity...</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── COLLEGES ── -->
+      <div id="tab-colleges" class="tab-panel">
+        <div class="topbar">
+          <div>
+            <div class="topbar-title">College Deployments</div>
+            <div class="topbar-sub">Manage each institution independently</div>
+          </div>
+          <div class="topbar-actions">
+            <button class="tb-btn" onclick="loadColleges()">↻ Refresh</button>
+            <button class="tb-btn primary" onclick="openAddCollegeModal()">+ Add College</button>
+          </div>
+        </div>
+        <div id="collegeGrid" class="college-grid" style="padding:20px">
+          <!-- populated dynamically -->
+        </div>
+      </div>
+
+      <!-- ── DEPLOYMENTS ── -->
+      <div id="tab-deployments" class="tab-panel">
+        <div class="topbar">
+          <div>
+            <div class="topbar-title">Deployment Manager</div>
+            <div class="topbar-sub">Toggle Dev ↔ Production per college</div>
+          </div>
+          <div class="topbar-actions">
+            <button class="tb-btn" onclick="loadColleges()">↻ Refresh</button>
+          </div>
+        </div>
+        <div class="content">
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title">Environment Control</span>
+              <span style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted)">Toggle production independently per institution</span>
+            </div>
+            <table class="data-table">
+              <thead><tr>
+                <th>College</th><th>Region</th><th>Users</th><th>Plan</th><th>Environment</th><th>Deploy Date</th><th>Actions</th>
+              </tr></thead>
+              <tbody id="deployTbody">
+                <tr class="empty-row"><td colspan="7">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><span class="card-title">Environment Guide</span></div>
+            <div style="padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+              <div style="padding:16px;background:var(--yellow-bg);border:1px solid var(--yellow-border);border-radius:12px">
+                <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--yellow);margin-bottom:8px">🛠 Development</div>
+                <div style="font-size:13px;color:var(--muted);line-height:1.7">For demos, testing, and onboarding new institutions. Data may be reset. Full feature access for evaluation purposes. No SLA guarantees.</div>
+              </div>
+              <div style="padding:16px;background:var(--green-bg);border:1px solid var(--green-border);border-radius:12px">
+                <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--green);margin-bottom:8px">✅ Production</div>
+                <div style="font-size:13px;color:var(--muted);line-height:1.7">For paying institutions with active contracts. Data is persistent and backed up. Full SLA, priority support, and all premium features enabled.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SETTINGS ── -->
+      <div id="tab-settings" class="tab-panel">
+        <div class="topbar">
+          <div>
+            <div class="topbar-title">System Settings</div>
+            <div class="topbar-sub">Global configuration</div>
+          </div>
+        </div>
+        <div class="content">
+          <div class="card">
+            <div class="card-head"><span class="card-title">API Configuration</span></div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+              <div class="form-group">
+                <label class="form-label">Backend API URL</label>
+                <input class="form-input" type="text" id="settingApiUrl" placeholder="https://mentorix-ai-backend.onrender.com">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Admin Password (change)</label>
+                <input class="form-input" type="password" id="settingNewPass" placeholder="New admin password">
+              </div>
+              <div>
+                <button class="tb-btn primary" onclick="saveSettings()">Save Settings</button>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><span class="card-title">System Info</span></div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border-light)">
+                <span style="color:var(--muted)">Admin Console Version</span>
+                <span style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--white)">v2.0.0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border-light)">
+                <span style="color:var(--muted)">Backend Status</span>
+                <span id="backendStatus" style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--muted)">Checking...</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0">
+                <span style="color:var(--muted)">Data Source</span>
+                <span style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--white)">Live API + Local Cache</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
   </div>
 </div>
 
-<!-- ── MAIN ── -->
-<div class="main" id="mainArea" style="display:none">
-  <div class="topbar">
-    <div>
-      <div class="page-title" id="pageTitle">Dashboard Overview</div>
-      <div class="page-sub" id="pageSub">System health snapshot · Mentorix AI</div>
-    </div>
-    <div class="topbar-right">
-      <!-- Production Toggle -->
-      <div class="env-toggle" onclick="showEnvModal()" title="Switch environment">
-        <span class="env-label" id="envToggleLabel" style="color:var(--muted)">DEV</span>
-        <div class="toggle-switch" id="envSwitch">
-          <div class="toggle-knob"></div>
-        </div>
-        <span class="env-label" style="color:var(--purple)">PROD</span>
+<!-- Add College Modal -->
+<div class="modal-bg" id="addCollegeModal">
+  <div class="modal">
+    <div class="modal-title">Add College Deployment</div>
+    <div class="modal-sub">Register a new institution to deploy Mentorix AI</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">College Name *</label>
+        <input class="form-input" id="mc-name" placeholder="e.g. IIT Madras">
       </div>
-      <button class="logout-btn" onclick="adminLogout()">Sign Out</button>
-    </div>
-  </div>
-
-  <div class="content" id="contentArea">
-
-    <!-- ── OVERVIEW PAGE ── -->
-    <div class="page active" id="page-overview">
-      <div class="stat-grid" id="statGrid">
-        <div class="stat-card purple">
-          <div class="stat-label">Total Users</div>
-          <div class="stat-val" id="s-users">--</div>
-          <div class="stat-delta up" id="s-users-d"></div>
-        </div>
-        <div class="stat-card green">
-          <div class="stat-label">Voice Sessions</div>
-          <div class="stat-val" id="s-sessions">--</div>
-          <div class="stat-delta up" id="s-sessions-d"></div>
-        </div>
-        <div class="stat-card orange">
-          <div class="stat-label">Assessments</div>
-          <div class="stat-val" id="s-assessments">--</div>
-          <div class="stat-delta" id="s-assess-d"></div>
-        </div>
-        <div class="stat-card red">
-          <div class="stat-label">Active Today</div>
-          <div class="stat-val" id="s-active">--</div>
-          <div class="stat-delta up" id="s-active-d"></div>
-        </div>
-        <div class="stat-card purple">
-          <div class="stat-label">Avg Honor Score</div>
-          <div class="stat-val" id="s-honor">--</div>
-        </div>
-        <div class="stat-card green">
-          <div class="stat-label">HR Sessions</div>
-          <div class="stat-val" id="s-hr">--</div>
-        </div>
-      </div>
-
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-header">
-            <div><div class="card-title">Sessions Over Time</div><div class="card-sub">Daily voice + HR sessions</div></div>
-          </div>
-          <canvas id="sessionsChart" height="140"></canvas>
-        </div>
-        <div class="card">
-          <div class="card-header">
-            <div><div class="card-title">Risk Distribution</div><div class="card-sub">Assessment results</div></div>
-          </div>
-          <canvas id="riskChart" height="140"></canvas>
-        </div>
-      </div>
-
-      <div class="card" style="margin-bottom:20px">
-        <div class="card-header">
-          <div><div class="card-title">Recent Activity</div><div class="card-sub">Latest sessions and sign-ups</div></div>
-          <span class="spinner" id="activitySpinner"></span>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Email</th><th>Event</th><th>Mode</th><th>Score</th><th>Time</th></tr></thead>
-            <tbody id="activityTable"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Loading...</td></tr></tbody>
-          </table>
-        </div>
+      <div class="form-group">
+        <label class="form-label">Short ID *</label>
+        <input class="form-input" id="mc-id" placeholder="e.g. iitm" maxlength="10">
       </div>
     </div>
-
-    <!-- ── USERS PAGE ── -->
-    <div class="page" id="page-users">
-      <div class="filter-bar">
-        <input class="search-input" type="text" placeholder="Search by email or name..." id="userSearch" oninput="filterUsers()">
-        <button class="export-btn" onclick="exportUsers()">Export CSV</button>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Location / Region</label>
+        <input class="form-input" id="mc-region" placeholder="e.g. Chennai, TN">
       </div>
-      <div class="card">
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Name</th><th>Email</th><th>Dept</th><th>Sessions</th><th>Joined</th><th>Honor</th><th>Actions</th></tr></thead>
-            <tbody id="usersTable"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Loading...</td></tr></tbody>
-          </table>
-        </div>
+      <div class="form-group">
+        <label class="form-label">Contact Email</label>
+        <input class="form-input" id="mc-contact" type="email" placeholder="admin@college.edu">
       </div>
     </div>
-
-    <!-- ── SESSIONS PAGE ── -->
-    <div class="page" id="page-sessions">
-      <div class="filter-bar">
-        <input class="search-input" type="text" placeholder="Search by email..." id="sessionSearch" oninput="filterSessions()">
-        <select class="filter-select" id="sessionModeFilter" onchange="filterSessions()">
-          <option value="">All Modes</option>
-          <option value="voice">Voice Session</option>
-          <option value="hr_interview">HR Mode</option>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Plan</label>
+        <select class="form-input" id="mc-plan">
+          <option value="demo">Demo</option>
+          <option value="starter">Starter</option>
+          <option value="professional">Professional</option>
+          <option value="enterprise">Enterprise</option>
         </select>
-        <button class="export-btn" onclick="exportSessions()">Export CSV</button>
       </div>
-      <div class="card">
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Email</th><th>Mode</th><th>Exchanges</th><th>Overall</th><th>Tab Violations</th><th>Date</th><th>Actions</th></tr></thead>
-            <tbody id="sessionsTable"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Loading...</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── ASSESSMENTS PAGE ── -->
-    <div class="page" id="page-assessments">
-      <div class="filter-bar">
-        <input class="search-input" type="text" placeholder="Search by email..." id="assessSearch" oninput="filterAssessments()">
-        <select class="filter-select" id="riskFilter" onchange="filterAssessments()">
-          <option value="">All Risk Levels</option>
-          <option value="Low">Low</option>
-          <option value="Medium">Medium</option>
-          <option value="High">High</option>
+      <div class="form-group">
+        <label class="form-label">Initial Environment</label>
+        <select class="form-input" id="mc-env">
+          <option value="dev">Development (Demo)</option>
+          <option value="prod">Production (Paid)</option>
         </select>
-        <button class="export-btn" onclick="exportAssessments()">Export CSV</button>
-      </div>
-      <div class="card">
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Email</th><th>Risk</th><th>Stability</th><th>Track</th><th>Date</th><th>Actions</th></tr></thead>
-            <tbody id="assessTable"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">Loading...</td></tr></tbody>
-          </table>
-        </div>
       </div>
     </div>
-
-    <!-- ── ANALYTICS PAGE ── -->
-    <div class="page" id="page-analytics">
-      <div class="grid-2" style="margin-bottom:20px">
-        <div class="card">
-          <div class="card-header"><div class="card-title">HR Score Trends</div></div>
-          <canvas id="hrTrendsChart" height="160"></canvas>
-        </div>
-        <div class="card">
-          <div class="card-header"><div class="card-title">Session Mode Split</div></div>
-          <canvas id="modeSplitChart" height="160"></canvas>
-        </div>
-      </div>
-      <div class="grid-3">
-        <div class="card">
-          <div class="card-title" style="margin-bottom:14px">Improving Users</div>
-          <div id="improvingList" style="font-size:12px;color:var(--text)">Loading...</div>
-        </div>
-        <div class="card">
-          <div class="card-title" style="margin-bottom:14px">High Performers</div>
-          <div id="highPerformers" style="font-size:12px;color:var(--text)">Loading...</div>
-        </div>
-        <div class="card">
-          <div class="card-title" style="margin-bottom:14px">Needs Attention</div>
-          <div id="needsAttention" style="font-size:12px;color:var(--text)">Loading...</div>
-        </div>
-      </div>
+    <div class="form-group">
+      <label class="form-label">Notes</label>
+      <input class="form-input" id="mc-notes" placeholder="Any additional notes...">
     </div>
-
-    <!-- ── RECOMMENDATIONS PAGE ── -->
-    <div class="page" id="page-recommendations">
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-header">
-          <div class="card-title">AI Course Engine</div>
-          <span style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace">DYNAMIC · Groq + Gemini</span>
-        </div>
-        <div style="font-size:13px;color:var(--muted);line-height:1.7">
-          Courses are generated dynamically by the AI based on each user's department, weak areas, and session performance. No manual curation needed.
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:16px" id="deptCourseStats">
-          Loading department stats...
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Department Coverage</div>
-          <button class="export-btn" onclick="testCourseGen()">Test AI Generation</button>
-        </div>
-        <div id="deptCoverage" style="font-size:13px;color:var(--muted)">Loading...</div>
-      </div>
-    </div>
-
-    <!-- ── ML MODEL PAGE ── -->
-    <div class="page" id="page-mlmodel">
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title" style="margin-bottom:16px">Model Status</div>
-          <div class="ml-metric"><span class="ml-label">Model Version</span><span class="ml-val" id="ml-version">risk_model_v1</span></div>
-          <div class="ml-metric"><span class="ml-label">Prediction Count</span><span class="ml-val" id="ml-count">--</span></div>
-          <div class="ml-metric"><span class="ml-label">Last Updated</span><span class="ml-val">2025-01-01</span></div>
-          <div class="ml-metric"><span class="ml-label">Algorithm</span><span class="ml-val">Random Forest</span></div>
-          <div class="ml-metric"><span class="ml-label">Status</span><span class="ml-val" style="color:var(--accent)">● ACTIVE</span></div>
-          <button class="ml-btn" onclick="alert('Model retraining requires uploading new dataset. Contact CRONIX engineering.')">Retrain Model</button>
-        </div>
-        <div class="card">
-          <div class="card-title" style="margin-bottom:16px">LLM Engine</div>
-          <div class="ml-metric"><span class="ml-label">Primary</span><span class="ml-val">Groq · llama-3.1-8b</span></div>
-          <div class="ml-metric"><span class="ml-label">Fallback</span><span class="ml-val">Gemini 2.0 Flash</span></div>
-          <div class="ml-metric"><span class="ml-label">Voice STT</span><span class="ml-val">Web Speech API</span></div>
-          <div class="ml-metric"><span class="ml-label">Voice TTS</span><span class="ml-val">Browser SpeechSynthesis</span></div>
-          <div class="ml-metric"><span class="ml-label">Fallback Rate</span><span class="ml-val" id="ml-fallback">~5%</span></div>
-          <button class="ml-btn" onclick="testLLM()">Test LLM Endpoint</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── SYSTEM STATUS PAGE ── -->
-    <div class="page" id="page-system">
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title" style="margin-bottom:16px">Service Health</div>
-          <div class="sys-row"><span class="sys-name"><span class="status-dot green"></span>Backend API</span><span class="sys-val" style="color:var(--accent)" id="sys-backend">Checking...</span></div>
-          <div class="sys-row"><span class="sys-name"><span class="status-dot" id="sys-db-dot"></span>PostgreSQL DB</span><span class="sys-val" id="sys-db">Checking...</span></div>
-          <div class="sys-row"><span class="sys-name"><span class="status-dot green"></span>Vercel Frontend</span><span class="sys-val" style="color:var(--accent)">Online</span></div>
-          <div class="sys-row"><span class="sys-name"><span class="status-dot green"></span>Groq API</span><span class="sys-val" id="sys-groq">Active</span></div>
-          <div class="sys-row"><span class="sys-name"><span class="status-dot green"></span>Gemini Fallback</span><span class="sys-val" style="color:var(--accent)">Active</span></div>
-        </div>
-        <div class="card">
-          <div class="card-title" style="margin-bottom:16px">Performance</div>
-          <div class="sys-row"><span class="sys-name">API Response Time</span><span class="sys-val" id="sys-latency">--</span></div>
-          <div class="sys-row"><span class="sys-name">DB Query Time</span><span class="sys-val" id="sys-db-latency">--</span></div>
-          <div class="sys-row"><span class="sys-name">Environment</span><span class="sys-val" id="sys-env">Development</span></div>
-          <div class="sys-row"><span class="sys-name">Render Region</span><span class="sys-val">Oregon, US</span></div>
-          <div class="sys-row"><span class="sys-name">Auth Provider</span><span class="sys-val">Google OAuth + JWT</span></div>
-        </div>
-      </div>
-      <div class="card" style="margin-top:16px">
-        <div class="card-title" style="margin-bottom:14px">Database Tables</div>
-        <div id="dbTables" style="font-size:13px;color:var(--muted)">Loading...</div>
-      </div>
-    </div>
-
-    <!-- ── HONOR SCORES PAGE ── -->
-    <div class="page" id="page-honor">
-      <div class="card">
-        <div class="filter-bar">
-          <input class="search-input" type="text" placeholder="Search by email..." id="honorSearch" oninput="filterHonor()">
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Email</th><th>Honor Score</th><th>Events</th><th>Last Activity</th><th>Actions</th></tr></thead>
-            <tbody id="honorTable"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Loading...</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-  </div><!-- /content -->
-</div><!-- /main -->
-
-<!-- ── DELETE CONFIRM MODAL ── -->
-<div class="modal" id="deleteModal">
-  <div class="modal-box">
-    <div class="modal-title">⚠️ Confirm Deletion</div>
-    <div class="modal-body" id="deleteModalBody">This action cannot be undone.</div>
     <div class="modal-actions">
-      <button class="modal-cancel" onclick="closeModal()">Cancel</button>
-      <button class="modal-confirm" id="deleteConfirmBtn">Delete</button>
+      <button class="modal-btn cancel" onclick="closeModal('addCollegeModal')">Cancel</button>
+      <button class="modal-btn confirm" onclick="addCollege()">Add College</button>
     </div>
   </div>
 </div>
 
-<!-- ── ENV TOGGLE MODAL ── -->
-<div class="env-modal" id="envModal">
-  <div class="env-box">
-    <h2 id="envModalTitle">Switch to Production Mode</h2>
-    <p id="envModalDesc">Production mode enables paid AI infrastructure, dedicated database servers, and premium SLA. This setting is reserved for institutions that have subscribed to Mentorix Enterprise.</p>
-    <div class="env-features">
-      <div class="env-feat"><span>✓</span> Dedicated Groq tier</div>
-      <div class="env-feat"><span>✓</span> Premium DB cluster</div>
-      <div class="env-feat"><span>✓</span> Priority support</div>
-      <div class="env-feat"><span>✓</span> Custom branding</div>
-      <div class="env-feat"><span>✓</span> Analytics export</div>
-      <div class="env-feat"><span>✓</span> SLA guarantee</div>
-    </div>
-    <div style="display:flex;gap:10px;justify-content:center">
-      <button class="modal-cancel" onclick="closeEnvModal()">Cancel</button>
-      <button style="padding:10px 20px;border-radius:8px;background:var(--purple);border:none;color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer" onclick="confirmEnvSwitch()" id="envConfirmBtn">Activate</button>
+<!-- User Detail Modal -->
+<div class="modal-bg" id="userDetailModal">
+  <div class="modal" style="width:560px">
+    <div id="userDetailContent"></div>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" onclick="closeModal('userDetailModal')">Close</button>
     </div>
   </div>
 </div>
 
 <script>
-const API = "https://mentorix-ai-backend.onrender.com";
-let adminToken = null;
-let allUsers = [], allSessions = [], allAssessments = [], allHonor = [];
-let isProd = false;
+// ─── Config ──────────────────────────────────────────────────
+const ADMIN_USER = 'admin';
+const ADMIN_PASS_KEY = 'mentorix_admin_pass';
+const DEFAULT_PASS = 'mentorix2025';
+const COLLEGES_KEY = 'mentorix_admin_colleges';
+const BACKEND_KEY  = 'mentorix_admin_api';
 
-// ── Auth ──────────────────────────────────────────────────
-function doLogin(){
-  const u = document.getElementById("adminUser").value.trim();
-  const p = document.getElementById("adminPass").value;
-  // Simple admin credentials — change these before deploy
-  if(u === "admin" && p === "mentorix@cronix2025"){
-    document.getElementById("loginPage").style.display = "none";
-    document.getElementById("mainArea").style.display = "flex";
-    adminToken = localStorage.getItem("mentorix_token") || "";
-    loadAllData();
+function getApiBase(){
+  return localStorage.getItem(BACKEND_KEY) || 'https://mentorix-ai-backend.onrender.com';
+}
+
+// ─── Auth ─────────────────────────────────────────────────────
+function doAuth(){
+  const u = document.getElementById('authUser').value.trim();
+  const p = document.getElementById('authPass').value;
+  const stored = localStorage.getItem(ADMIN_PASS_KEY) || DEFAULT_PASS;
+  if(u === ADMIN_USER && p === stored){
+    document.getElementById('authGate').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    sessionStorage.setItem('mentorix_admin_authed','1');
+    init();
   } else {
-    document.getElementById("loginErr").textContent = "Invalid credentials.";
+    const err = document.getElementById('authErr');
+    err.style.display = 'block';
+    err.textContent = 'Invalid credentials. Try admin / mentorix2025';
   }
 }
 
 function adminLogout(){
-  document.getElementById("loginPage").style.display = "flex";
-  document.getElementById("mainArea").style.display = "none";
-  document.getElementById("adminPass").value = "";
+  sessionStorage.removeItem('mentorix_admin_authed');
+  document.getElementById('authGate').style.display='flex';
+  document.getElementById('app').style.display='none';
 }
 
-// ── Navigation ─────────────────────────────────────────────
-function showPage(id, el){
-  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
-  document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));
-  document.getElementById("page-"+id).classList.add("active");
-  if(el) el.classList.add("active");
-  const titles = {
-    overview:"Dashboard Overview", users:"User Management", sessions:"Session Records",
-    assessments:"Assessment Records", analytics:"Behavioral Analytics",
-    recommendations:"Course Recommendations", mlmodel:"ML Model Monitor",
-    system:"System Status", honor:"Honor Score Ledger"
-  };
-  const subs = {
-    overview:"System health snapshot · Mentorix AI", users:"Manage and monitor all registered users",
-    sessions:"All voice and HR interview sessions", assessments:"Written scan results",
-    analytics:"Behavioral pattern insights", recommendations:"AI course engine status",
-    mlmodel:"Model performance and LLM status", system:"Backend health and DB status",
-    honor:"User integrity and engagement scores"
-  };
-  document.getElementById("pageTitle").textContent = titles[id]||id;
-  document.getElementById("pageSub").textContent = subs[id]||"";
+// Auto-auth if session exists
+if(sessionStorage.getItem('mentorix_admin_authed')){
+  document.getElementById('authGate').style.display='none';
+  document.getElementById('app').style.display='block';
 }
 
-// ── Data Loading ───────────────────────────────────────────
-async function loadAllData(){
-  const h = {"Authorization":"Bearer "+adminToken};
-  try{
-    // Load users
-    const ur = await fetch(`${API}/admin/users`, {headers:h});
-    if(ur.ok){ allUsers = (await ur.json()).users||[]; renderUsers(); }
-    else { loadUsersFromSessions(); }
-  }catch(e){ loadUsersFromSessions(); }
+// ─── Tab navigation ───────────────────────────────────────────
+function switchTab(tab){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sb-link').forEach(l=>l.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.querySelector(`.sb-link[data-tab="${tab}"]`)?.classList.add('active');
 
-  try{
-    const sr = await fetch(`${API}/admin/sessions`, {headers:h});
-    if(sr.ok){ allSessions = (await sr.json()).sessions||[]; }
-    else { allSessions = []; }
-  }catch(e){ allSessions = []; }
-
-  try{
-    const ar = await fetch(`${API}/admin/assessments`, {headers:h});
-    if(ar.ok){ allAssessments = (await ar.json()).assessments||[]; }
-    else { allAssessments = []; }
-  }catch(e){ allAssessments = []; }
-
-  renderOverview();
-  renderSessions();
-  renderAssessments();
-  renderAnalytics();
-  renderSystemStatus();
-  renderHonor();
-  document.getElementById("activitySpinner").style.display="none";
+  if(tab==='users') loadUsers();
+  if(tab==='colleges'||tab==='deployments') loadColleges();
+  if(tab==='activity') loadActivity();
+  if(tab==='settings') loadSettings();
 }
 
-function loadUsersFromSessions(){
-  // Derive users from sessions if no admin endpoint
-  const emails = [...new Set(allSessions.map(s=>s.email||""))].filter(Boolean);
-  allUsers = emails.map(e=>({email:e,name:e.split("@")[0],sessions:allSessions.filter(s=>s.email===e).length}));
-  renderUsers();
+// ─── Notify ───────────────────────────────────────────────────
+function notify(msg, isError=false){
+  const n = document.getElementById('notif');
+  n.textContent = msg;
+  n.className = 'notif' + (isError?' error':'') + ' show';
+  setTimeout(()=>n.classList.remove('show'), 3000);
 }
 
-// ── Overview ────────────────────────────────────────────────
-function renderOverview(){
-  document.getElementById("s-users").textContent = allUsers.length || "--";
-  const voice = allSessions.filter(s=>s.mode!=="hr_interview").length;
-  const hr = allSessions.filter(s=>s.mode==="hr_interview").length;
-  document.getElementById("s-sessions").textContent = voice||"--";
-  document.getElementById("s-hr").textContent = hr||"--";
-  document.getElementById("s-assessments").textContent = allAssessments.length||"--";
-
-  const today = new Date().toDateString();
-  const activeToday = allSessions.filter(s=>s.created_at&&new Date(s.created_at).toDateString()===today).length;
-  document.getElementById("s-active").textContent = activeToday||"0";
-
-  // Recent activity table
-  const recent = [...allSessions].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,8);
-  const tbody = document.getElementById("activityTable");
-  if(!recent.length){ tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No sessions yet</td></tr>`; return; }
-  tbody.innerHTML = recent.map(s=>{
-    const d = s.created_at ? new Date(s.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : "--";
-    const mode = s.mode==="hr_interview"?"⚔️ HR Mode":"🎙 Voice";
-    return `<tr>
-      <td>${s.email||"--"}</td>
-      <td>Session Completed</td>
-      <td>${mode}</td>
-      <td>${s.overall_score?s.overall_score+"/100":"--"}</td>
-      <td style="color:var(--muted)">${d}</td>
-    </tr>`;
-  }).join("");
-
-  // Charts
-  renderSessionsChart();
-  renderRiskChart();
+// ─── Colleges (localStorage backed) ──────────────────────────
+function getColleges(){
+  try{ return JSON.parse(localStorage.getItem(COLLEGES_KEY)||'[]'); }catch(e){ return []; }
 }
+function saveColleges(data){ localStorage.setItem(COLLEGES_KEY, JSON.stringify(data)); }
 
-function renderSessionsChart(){
-  const ctx = document.getElementById("sessionsChart");
-  if(!ctx||!allSessions.length) return;
-  const days = {};
-  allSessions.forEach(s=>{
-    if(!s.created_at) return;
-    const d = new Date(s.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short"});
-    days[d] = (days[d]||0)+1;
+function openAddCollegeModal(){ document.getElementById('addCollegeModal').classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+function addCollege(){
+  const name = document.getElementById('mc-name').value.trim();
+  const id   = document.getElementById('mc-id').value.trim().toLowerCase().replace(/[^a-z0-9]/g,'');
+  const region = document.getElementById('mc-region').value.trim();
+  const contact = document.getElementById('mc-contact').value.trim();
+  const plan = document.getElementById('mc-plan').value;
+  const env  = document.getElementById('mc-env').value;
+  const notes = document.getElementById('mc-notes').value.trim();
+  if(!name||!id){ notify('College name and ID are required', true); return; }
+  const colleges = getColleges();
+  if(colleges.find(c=>c.id===id)){ notify('ID already exists', true); return; }
+  colleges.push({
+    id, name, region, contact, plan, env,
+    notes, users:0, sessions:0,
+    created_at: new Date().toISOString(),
+    deploy_date: new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})
   });
-  const labels = Object.keys(days).slice(-10);
-  const data = labels.map(l=>days[l]);
-  new Chart(ctx,{type:"line",data:{labels,datasets:[{label:"Sessions",data,borderColor:"#7c4dff",backgroundColor:"rgba(124,77,255,0.1)",fill:true,tension:0.4,pointRadius:3}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#6b6480",font:{size:10}}},y:{ticks:{color:"#6b6480",font:{size:10}}}}}});
+  saveColleges(colleges);
+  closeModal('addCollegeModal');
+  ['mc-name','mc-id','mc-region','mc-contact','mc-notes'].forEach(f=>document.getElementById(f).value='');
+  notify('✅ College added successfully');
+  loadColleges();
+  loadOverview();
 }
 
-function renderRiskChart(){
-  const ctx = document.getElementById("riskChart");
-  if(!ctx) return;
-  const low = allAssessments.filter(a=>a.risk_level==="Low").length||1;
-  const med = allAssessments.filter(a=>a.risk_level==="Medium").length||1;
-  const high = allAssessments.filter(a=>a.risk_level==="High").length||1;
-  new Chart(ctx,{type:"doughnut",data:{labels:["Low","Medium","High"],datasets:[{data:[low,med,high],backgroundColor:["rgba(0,229,180,0.7)","rgba(243,156,18,0.7)","rgba(231,76,60,0.7)"],borderColor:["#00e5b4","#f39c12","#e74c3c"],borderWidth:1}]},options:{responsive:true,plugins:{legend:{labels:{color:"#6b6480",font:{size:11}}}}}});
+function toggleEnv(collegeId){
+  const colleges = getColleges();
+  const c = colleges.find(x=>x.id===collegeId);
+  if(!c) return;
+  const oldEnv = c.env;
+  c.env = c.env === 'prod' ? 'dev' : 'prod';
+  saveColleges(colleges);
+  notify(`${c.name} → ${c.env.toUpperCase()}`);
+  loadColleges();
+  loadOverview();
 }
 
-// ── Users ───────────────────────────────────────────────────
-function renderUsers(data){
-  data = data || allUsers;
-  const tbody = document.getElementById("usersTable");
-  if(!data.length){ tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">No users found</td></tr>`; return; }
-  tbody.innerHTML = data.map(u=>{
-    const joined = u.created_at ? new Date(u.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}) : "--";
-    const sessions = allSessions.filter(s=>s.email===u.email).length;
+function deleteCollege(id){
+  if(!confirm('Remove this college deployment? This cannot be undone.')) return;
+  const colleges = getColleges().filter(c=>c.id!==id);
+  saveColleges(colleges);
+  notify('College removed');
+  loadColleges();
+  loadOverview();
+}
+
+// ─── Load Colleges ────────────────────────────────────────────
+function loadColleges(){
+  const colleges = getColleges();
+
+  // College cards
+  const grid = document.getElementById('collegeGrid');
+  if(grid){
+    if(!colleges.length){
+      grid.innerHTML = `<div style="padding:40px;color:var(--muted);font-size:13px;text-align:center;grid-column:1/-1">No colleges yet. Click "+ Add College" to register a new institution.</div>`;
+    } else {
+      grid.innerHTML = colleges.map(c=>renderCollegeCard(c)).join('');
+    }
+  }
+
+  // Overview cards
+  const oc = document.getElementById('overviewCollegeCards');
+  if(oc) oc.innerHTML = colleges.length ? colleges.map(c=>renderCollegeCard(c)).join('') :
+    '<div style="padding:24px;color:var(--muted);font-size:13px;text-align:center;grid-column:1/-1">No deployments yet.</div>';
+
+  // Deploy table
+  const dt = document.getElementById('deployTbody');
+  if(dt){
+    if(!colleges.length){
+      dt.innerHTML = '<tr class="empty-row"><td colspan="7">No colleges registered. Add one from the Colleges tab.</td></tr>';
+    } else {
+      dt.innerHTML = colleges.map(c=>`
+        <tr>
+          <td><div class="user-name">${c.name}</div><div class="user-email">${c.id}</div></td>
+          <td style="color:var(--muted);font-size:12px">${c.region||'–'}</td>
+          <td style="font-family:JetBrains Mono,monospace;font-size:11px">${c.users||0}</td>
+          <td><span class="badge ${c.plan==='enterprise'?'active':c.plan==='professional'?'active':'inactive'}">${c.plan||'demo'}</span></td>
+          <td>
+            <div class="toggle-wrap">
+              <span class="env-label dev" id="env-label-dev-${c.id}" style="opacity:${c.env==='dev'?1:0.4}">DEV</span>
+              <label class="toggle" title="Toggle ${c.name} environment">
+                <input type="checkbox" ${c.env==='prod'?'checked':''} onchange="toggleEnv('${c.id}')">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="env-label prod" id="env-label-prod-${c.id}" style="opacity:${c.env==='prod'?1:0.4}">PROD</span>
+            </div>
+          </td>
+          <td style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted)">${c.deploy_date||'–'}</td>
+          <td>
+            <div class="action-btns">
+              <button class="act-btn" onclick="editCollegeEnv('${c.id}')">Edit</button>
+              <button class="act-btn danger" onclick="deleteCollege('${c.id}')">Remove</button>
+            </div>
+          </td>
+        </tr>`).join('');
+    }
+  }
+
+  // College filter dropdown in users
+  const cf = document.getElementById('userCollegeFilter');
+  if(cf){
+    const current = cf.value;
+    cf.innerHTML = '<option value="">All Colleges</option>' +
+      colleges.map(c=>`<option value="${c.id}" ${current===c.id?'selected':''}>${c.name}</option>`).join('');
+  }
+}
+
+function renderCollegeCard(c){
+  return `<div class="college-card">
+    <div class="cc-head">
+      <div class="cc-icon">🏫</div>
+      <div>
+        <div class="cc-name">${c.name}</div>
+        <div class="cc-id">ID: ${c.id} · ${c.plan||'demo'}</div>
+      </div>
+      <span class="badge ${c.env==='prod'?'prod':'dev'}" style="margin-left:auto">
+        <span class="badge-dot"></span>${c.env==='prod'?'PRODUCTION':'DEVELOPMENT'}
+      </span>
+    </div>
+    <div class="cc-body">
+      <div class="cc-row"><span class="cc-row-label">Region</span><span class="cc-row-val">${c.region||'–'}</span></div>
+      <div class="cc-row"><span class="cc-row-label">Contact</span><span class="cc-row-val" style="font-size:10px">${c.contact||'–'}</span></div>
+      <div class="cc-row"><span class="cc-row-label">Users</span><span class="cc-row-val">${c.users||0}</span></div>
+      <div class="cc-row"><span class="cc-row-label">Sessions</span><span class="cc-row-val">${c.sessions||0}</span></div>
+      ${c.notes?`<div style="margin-top:6px;padding:8px 10px;background:var(--surface);border-radius:7px;font-size:11px;color:var(--muted)">${c.notes}</div>`:''}
+    </div>
+    <div class="cc-foot">
+      <div class="toggle-wrap">
+        <span class="env-label dev" style="opacity:${c.env==='dev'?1:0.4}">DEV</span>
+        <label class="toggle">
+          <input type="checkbox" ${c.env==='prod'?'checked':''} onchange="toggleEnv('${c.id}')">
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="env-label prod" style="opacity:${c.env==='prod'?1:0.4}">PROD</span>
+      </div>
+      <div class="action-btns">
+        <button class="act-btn danger" onclick="deleteCollege('${c.id}')">Remove</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function editCollegeEnv(id){ toggleEnv(id); }
+
+// ─── Load Users from API ──────────────────────────────────────
+let allUsers = [];
+
+async function loadUsers(){
+  document.getElementById('usersTbody').innerHTML = '<tr class="empty-row"><td colspan="8">Loading from API...</td></tr>';
+  try{
+    const API = getApiBase();
+    // Try admin users endpoint
+    const token = localStorage.getItem('mentorix_token');
+    const res = await fetch(`${API}/admin/users`, {
+      headers: token ? {'Authorization':`Bearer ${token}`, 'Content-Type':'application/json'} : {'Content-Type':'application/json'}
+    });
+    if(res.ok){
+      const data = await res.json();
+      allUsers = data.users || data || [];
+    } else {
+      // Fallback: try general users endpoint
+      allUsers = await fetchUsersFromSessionsEndpoint(API, token);
+    }
+  } catch(e){
+    // If API unavailable, show demo data with note
+    allUsers = getDemoUsers();
+    notify('API offline — showing cached/demo data', true);
+  }
+  renderUsers(allUsers);
+  updateOverviewStats();
+}
+
+async function fetchUsersFromSessionsEndpoint(API, token){
+  try{
+    const res = await fetch(`${API}/admin/users/all`, {
+      headers: token ? {'Authorization':`Bearer ${token}`} : {}
+    });
+    if(res.ok){ const d=await res.json(); return d.users||d||[]; }
+    return getDemoUsers();
+  }catch(e){ return getDemoUsers(); }
+}
+
+function getDemoUsers(){
+  // Returns empty array — we don't show fake data, just empty state
+  return [];
+}
+
+function renderUsers(users){
+  const tbody = document.getElementById('usersTbody');
+  document.getElementById('userCount').textContent = users.length + ' users';
+  if(!users.length){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="8">
+      <div style="padding:20px">
+        <div style="font-size:24px;margin-bottom:8px">👥</div>
+        <div>No users found. Connect your backend API in System Settings to view real users.</div>
+      </div>
+    </td></tr>`;
+    return;
+  }
+  tbody.innerHTML = users.map(u=>{
+    const name = u.name || u.full_name || 'Unknown';
+    const email = u.email || '–';
+    const college = u.college || u.institution || '–';
+    const dept = u.dept || u.department || '–';
+    const joined = u.created_at ? new Date(u.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'2-digit'}) : '–';
+    const sessions = u.session_count ?? u.sessions ?? 0;
+    const lastActive = u.last_active ? new Date(u.last_active).toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : '–';
+    const isActive = u.last_active ? (Date.now()-new Date(u.last_active).getTime()) < 7*24*3600*1000 : false;
     return `<tr>
-      <td>${u.name||u.email?.split("@")[0]||"--"}</td>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${u.email||"--"}</td>
-      <td>${u.department||"--"}</td>
-      <td>${sessions}</td>
-      <td style="color:var(--muted)">${joined}</td>
-      <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent)">${u.honor_score||100}</span></td>
-      <td style="display:flex;gap:6px">
-        <button class="action-btn" onclick="viewUser('${u.email}')">View</button>
-        <button class="action-btn danger" onclick="confirmDelete('user','${u.email}','Are you sure you want to delete user ${u.email} and all their data?')">Delete</button>
+      <td>
+        <div class="user-name">${escHtml(name)}</div>
+        <div class="user-email">${escHtml(email)}</div>
+      </td>
+      <td style="font-size:12px;color:var(--muted)">${escHtml(college)}</td>
+      <td style="font-size:12px;color:var(--muted)">${escHtml(dept)}</td>
+      <td style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted)">${joined}</td>
+      <td style="font-family:JetBrains Mono,monospace;font-size:12px">${sessions}</td>
+      <td style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted)">${lastActive}</td>
+      <td><span class="badge ${isActive?'active':'inactive'}"><span class="badge-dot"></span>${isActive?'Active':'Inactive'}</span></td>
+      <td>
+        <div class="action-btns">
+          <button class="act-btn" onclick="viewUser(${JSON.stringify(JSON.stringify(u))})">View</button>
+        </div>
       </td>
     </tr>`;
-  }).join("");
+  }).join('');
 }
 
 function filterUsers(){
-  const q = document.getElementById("userSearch").value.toLowerCase();
-  renderUsers(allUsers.filter(u=>(u.email||"").toLowerCase().includes(q)||(u.name||"").toLowerCase().includes(q)));
-}
-
-function viewUser(email){
-  const s = allSessions.filter(s=>s.email===email);
-  alert(`User: ${email}\nSessions: ${s.length}\nHR Sessions: ${s.filter(x=>x.mode==="hr_interview").length}\nVoice Sessions: ${s.filter(x=>x.mode!=="hr_interview").length}`);
-}
-
-function exportUsers(){
-  const rows = [["Name","Email","Department","Sessions","Honor Score"]];
-  allUsers.forEach(u=>{
-    const sessions = allSessions.filter(s=>s.email===u.email).length;
-    rows.push([u.name||"",u.email||"",u.department||"",sessions,u.honor_score||100]);
+  const q = document.getElementById('userSearch').value.toLowerCase();
+  const cf = document.getElementById('userCollegeFilter').value;
+  const sf = document.getElementById('userStatusFilter').value;
+  let filtered = allUsers.filter(u=>{
+    const name = (u.name||u.full_name||'').toLowerCase();
+    const email = (u.email||'').toLowerCase();
+    if(q && !name.includes(q) && !email.includes(q)) return false;
+    if(cf && (u.college||u.institution||'') !== cf && !u.email?.includes(cf)) return false;
+    if(sf){
+      const isActive = u.last_active ? (Date.now()-new Date(u.last_active).getTime()) < 7*24*3600*1000 : false;
+      if(sf==='active' && !isActive) return false;
+      if(sf==='inactive' && isActive) return false;
+    }
+    return true;
   });
-  downloadCSV(rows,"mentorix_users.csv");
+  document.getElementById('userCount').textContent = filtered.length + ' users';
+  renderUsers(filtered);
 }
 
-// ── Sessions ────────────────────────────────────────────────
-function renderSessions(data){
-  data = data || allSessions;
-  const tbody = document.getElementById("sessionsTable");
-  if(!data.length){ tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">No sessions found</td></tr>`; return; }
-  tbody.innerHTML = data.map(s=>{
-    const d = s.created_at ? new Date(s.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}) : "--";
-    const modeLabel = s.mode==="hr_interview"?"⚔️ HR Mode":"🎙 Voice";
-    return `<tr>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${s.email||"--"}</td>
-      <td>${modeLabel}</td>
-      <td>${s.exchange_count||0}</td>
-      <td>${s.overall_score?`<span style="font-family:'JetBrains Mono',monospace;color:${s.overall_score>=70?"var(--accent)":s.overall_score>=50?"var(--orange)":"var(--red)"}">${s.overall_score}/100</span>`:"--"}</td>
-      <td>${s.tab_warnings>0?`<span style="color:var(--red)">${s.tab_warnings}</span>`:"0"}</td>
-      <td style="color:var(--muted)">${d}</td>
-      <td><button class="action-btn danger" onclick="confirmDelete('session','${s.id}','Delete this session record?')">Delete</button></td>
-    </tr>`;
-  }).join("");
+function viewUser(jsonStr){
+  const u = JSON.parse(jsonStr);
+  const name = u.name || u.full_name || 'Unknown';
+  const email = u.email || '–';
+  const joined = u.created_at ? new Date(u.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : '–';
+  document.getElementById('userDetailContent').innerHTML = `
+    <div class="modal-title">${escHtml(name)}</div>
+    <div class="modal-sub">${escHtml(email)}</div>
+    <div class="ud-grid" style="margin-bottom:16px">
+      <div class="ud-stat"><div class="ud-stat-val">${u.session_count??0}</div><div class="ud-stat-label">Sessions</div></div>
+      <div class="ud-stat"><div class="ud-stat-val">${u.honor_score??100}</div><div class="ud-stat-label">Honor Score</div></div>
+      <div class="ud-stat"><div class="ud-stat-val" style="font-size:13px">${joined}</div><div class="ud-stat-label">Joined</div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${u.dept ? `<div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border-light)"><span style="color:var(--muted)">Department</span><span style="font-family:JetBrains Mono,monospace;font-size:11px">${escHtml(u.dept)}</span></div>`:''}
+      ${u.college ? `<div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border-light)"><span style="color:var(--muted)">College</span><span style="font-family:JetBrains Mono,monospace;font-size:11px">${escHtml(u.college)}</span></div>`:''}
+      ${u.year ? `<div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border-light)"><span style="color:var(--muted)">Year</span><span style="font-family:JetBrains Mono,monospace;font-size:11px">${u.year}</span></div>`:''}
+      ${u.goal ? `<div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0"><span style="color:var(--muted)">Goal</span><span style="font-size:12px;color:var(--purple);max-width:60%;text-align:right">${escHtml(u.goal)}</span></div>`:''}
+    </div>
+  `;
+  document.getElementById('userDetailModal').classList.add('open');
 }
 
-function filterSessions(){
-  const q = document.getElementById("sessionSearch").value.toLowerCase();
-  const m = document.getElementById("sessionModeFilter").value;
-  renderSessions(allSessions.filter(s=>
-    (s.email||"").toLowerCase().includes(q) &&
-    (!m || s.mode===m || (m==="voice"&&s.mode!=="hr_interview"))
-  ));
-}
-
-function exportSessions(){
-  const rows = [["Email","Mode","Exchanges","Overall Score","Tab Violations","Date"]];
-  allSessions.forEach(s=>rows.push([s.email||"",s.mode||"",s.exchange_count||0,s.overall_score||0,s.tab_warnings||0,s.created_at||""]));
-  downloadCSV(rows,"mentorix_sessions.csv");
-}
-
-// ── Assessments ─────────────────────────────────────────────
-function renderAssessments(data){
-  data = data || allAssessments;
-  const tbody = document.getElementById("assessTable");
-  if(!data.length){ tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">No assessments found</td></tr>`; return; }
-  tbody.innerHTML = data.map(a=>{
-    const d = a.created_at ? new Date(a.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}) : "--";
-    const risk = a.risk_level||"--";
-    return `<tr>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${a.email||"--"}</td>
-      <td><span class="badge ${(risk||"").toLowerCase()}">${risk}</span></td>
-      <td>${a.stability_score?Math.round(a.stability_score*100)+"%":"--"}</td>
-      <td style="font-size:12px">${(a.recommended_track||"--").replace(/_/g," ")}</td>
-      <td style="color:var(--muted)">${d}</td>
-      <td><button class="action-btn danger" onclick="confirmDelete('assessment','${a.id}','Delete this assessment record?')">Delete</button></td>
-    </tr>`;
-  }).join("");
-}
-
-function filterAssessments(){
-  const q = document.getElementById("assessSearch").value.toLowerCase();
-  const r = document.getElementById("riskFilter").value;
-  renderAssessments(allAssessments.filter(a=>
-    (a.email||"").toLowerCase().includes(q) && (!r || a.risk_level===r)
-  ));
-}
-
-function exportAssessments(){
-  const rows = [["Email","Risk Level","Stability","Track","Date"]];
-  allAssessments.forEach(a=>rows.push([a.email||"",a.risk_level||"",a.stability_score||"",a.recommended_track||"",a.created_at||""]));
-  downloadCSV(rows,"mentorix_assessments.csv");
-}
-
-// ── Analytics ────────────────────────────────────────────────
-function renderAnalytics(){
-  // HR trends chart
-  const hrSessions = allSessions.filter(s=>s.mode==="hr_interview"&&s.overall_score>0);
-  const hrCtx = document.getElementById("hrTrendsChart");
-  if(hrCtx && hrSessions.length){
-    const labels = hrSessions.slice(-10).map((s,i)=>{
-      const d = s.created_at?new Date(s.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short"}):`S${i+1}`;
-      return d;
+// ─── Activity Log ─────────────────────────────────────────────
+async function loadActivity(){
+  const log = document.getElementById('activityLog');
+  log.innerHTML = '<div class="log-item"><div class="log-dot yellow"></div><span class="log-time">–</span><span class="log-event" style="color:var(--muted)">Loading...</span></div>';
+  try{
+    const API = getApiBase();
+    const token = localStorage.getItem('mentorix_token');
+    const res = await fetch(`${API}/admin/activity`, {
+      headers: token ? {'Authorization':`Bearer ${token}`} : {}
     });
-    new Chart(hrCtx,{type:"line",data:{labels,datasets:[{label:"Overall",data:hrSessions.slice(-10).map(s=>s.overall_score||0),borderColor:"#7c4dff",tension:0.4,pointRadius:3}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{color:"#6b6480",font:{size:10}}},x:{ticks:{color:"#6b6480",font:{size:10}}}}}});
+    if(res.ok){
+      const data = await res.json();
+      renderActivity(data.events || data || []);
+    } else {
+      renderActivity([]);
+    }
+  } catch(e){
+    renderActivity([]);
+    notify('Could not load activity log', true);
   }
-
-  // Mode split
-  const msCtx = document.getElementById("modeSplitChart");
-  if(msCtx){
-    const v=allSessions.filter(s=>s.mode!=="hr_interview").length||1;
-    const h=allSessions.filter(s=>s.mode==="hr_interview").length||1;
-    new Chart(msCtx,{type:"pie",data:{labels:["Voice Session","HR Mode"],datasets:[{data:[v,h],backgroundColor:["rgba(124,77,255,0.6)","rgba(231,76,60,0.6)"],borderColor:["#7c4dff","#e74c3c"],borderWidth:1}]},options:{responsive:true,plugins:{legend:{labels:{color:"#6b6480",font:{size:11}}}}}});
-  }
-
-  // User insights
-  const byEmail = {};
-  allSessions.forEach(s=>{
-    if(!s.email) return;
-    if(!byEmail[s.email]) byEmail[s.email]={count:0,total:0,scores:[]};
-    byEmail[s.email].count++;
-    if(s.overall_score) byEmail[s.email].scores.push(s.overall_score);
-  });
-  const high = Object.entries(byEmail).filter(([e,d])=>d.scores.length&&(d.scores.reduce((a,b)=>a+b,0)/d.scores.length)>=70).slice(0,5);
-  const low = Object.entries(byEmail).filter(([e,d])=>d.scores.length&&(d.scores.reduce((a,b)=>a+b,0)/d.scores.length)<50).slice(0,5);
-
-  document.getElementById("highPerformers").innerHTML = high.length ? high.map(([e,d])=>`<div style="padding:5px 0;border-bottom:1px solid rgba(124,77,255,0.06)">${e.split("@")[0]} <span style="color:var(--accent);font-family:'JetBrains Mono',monospace">${Math.round(d.scores.reduce((a,b)=>a+b,0)/d.scores.length)}/100</span></div>`).join("") : `<div style="color:var(--muted)">No data yet</div>`;
-  document.getElementById("needsAttention").innerHTML = low.length ? low.map(([e,d])=>`<div style="padding:5px 0;border-bottom:1px solid rgba(124,77,255,0.06)">${e.split("@")[0]} <span style="color:var(--red);font-family:'JetBrains Mono',monospace">${Math.round(d.scores.reduce((a,b)=>a+b,0)/d.scores.length)}/100</span></div>`).join("") : `<div style="color:var(--muted)">No data yet</div>`;
-  document.getElementById("improvingList").innerHTML = `<div style="color:var(--muted)">Analysis requires 3+ sessions per user.</div>`;
-
-  // Dept course stats
-  const depts=["CSE","ECE","MECH","AIDS","AIML","IT","EEE","CIVIL"];
-  document.getElementById("deptCourseStats").innerHTML = depts.map(d=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center"><div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--white)">${d}</div><div style="font-size:10px;color:var(--accent);margin-top:3px">AI Dynamic</div></div>`).join("");
-  document.getElementById("deptCoverage").innerHTML=`<div style="color:var(--text);line-height:1.8">All ${depts.length} departments covered by AI-generated course recommendations. Courses are generated per-session based on weak areas, department, and career goals. No manual catalog required.</div>`;
 }
 
-// ── System Status ────────────────────────────────────────────
-async function renderSystemStatus(){
-  const start = Date.now();
+function renderActivity(events){
+  const log = document.getElementById('activityLog');
+  if(!events.length){
+    log.innerHTML = `<div class="log-item"><div class="log-dot"></div><span class="log-time">–</span><span class="log-event" style="color:var(--muted)">No activity data. Backend API may not support this endpoint yet.</span></div>`;
+    return;
+  }
+  const typeColors = {
+    login:'green', logout:'yellow', session_complete:'green',
+    scan_complete:'green', tab_violation:'red', signup:'green',
+    hr_session:'green', error:'red'
+  };
+  log.innerHTML = events.slice(0,50).map(e=>{
+    const dt = e.created_at ? new Date(e.created_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '–';
+    const color = typeColors[e.type||e.event_type] || '';
+    return `<div class="log-item">
+      <div class="log-dot ${color}"></div>
+      <span class="log-time">${dt}</span>
+      <span class="log-event">${escHtml(e.message||e.event_type||'Event')}</span>
+      ${e.user_email?`<span class="log-user">${escHtml(e.user_email)}</span>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ─── Overview ─────────────────────────────────────────────────
+function loadOverview(){
+  document.getElementById('overviewDate').textContent = 'Last updated: ' + new Date().toLocaleString('en-IN',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const colleges = getColleges();
+  document.getElementById('sv-colleges').textContent = colleges.length;
+  document.getElementById('sv-total').textContent = allUsers.length || '–';
+  const active = allUsers.filter(u=>u.last_active&&(Date.now()-new Date(u.last_active).getTime())<7*24*3600*1000).length;
+  document.getElementById('sv-active').textContent = allUsers.length ? active : '–';
+  const sessions = allUsers.reduce((a,u)=>a+(u.session_count||0),0);
+  document.getElementById('sv-sessions').textContent = allUsers.length ? sessions : '–';
+
+  // Recent users
+  const tbody = document.getElementById('recentUsersTbody');
+  const recent = allUsers.slice(0,5);
+  if(!recent.length){
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No user data. Check backend connection.</td></tr>';
+  } else {
+    tbody.innerHTML = recent.map(u=>{
+      const name = u.name||u.full_name||'Unknown';
+      const email = u.email||'–';
+      const college = u.college||'–';
+      const joined = u.created_at ? new Date(u.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'2-digit'}) : '–';
+      const isActive = u.last_active ? (Date.now()-new Date(u.last_active).getTime())<7*24*3600*1000 : false;
+      return `<tr>
+        <td><div class="user-name">${escHtml(name)}</div><div class="user-email">${escHtml(email)}</div></td>
+        <td style="font-size:12px;color:var(--muted)">${escHtml(college)}</td>
+        <td style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--muted)">${joined}</td>
+        <td style="font-family:JetBrains Mono,monospace;font-size:12px">${u.session_count||0}</td>
+        <td><span class="badge ${isActive?'active':'inactive'}"><span class="badge-dot"></span>${isActive?'Active':'Inactive'}</span></td>
+      </tr>`;
+    }).join('');
+  }
+  loadColleges();
+}
+
+function updateOverviewStats(){ loadOverview(); }
+
+// ─── Settings ─────────────────────────────────────────────────
+function loadSettings(){
+  const inp = document.getElementById('settingApiUrl');
+  if(inp) inp.value = getApiBase();
+  checkBackendStatus();
+}
+
+async function checkBackendStatus(){
+  const el = document.getElementById('backendStatus');
+  if(!el) return;
+  el.textContent = 'Checking...';
+  el.style.color = 'var(--muted)';
   try{
-    const r = await fetch(`${API}/health`||`${API}/`);
-    const ms = Date.now()-start;
-    document.getElementById("sys-backend").textContent = "● Online ("+ms+"ms)";
-    document.getElementById("sys-latency").textContent = ms+"ms";
+    const res = await fetch(getApiBase()+'/health', {signal:AbortSignal.timeout(5000)});
+    if(res.ok){ el.textContent='✅ Online'; el.style.color='var(--green)'; }
+    else { el.textContent='⚠ Degraded'; el.style.color='var(--yellow)'; }
   }catch(e){
-    document.getElementById("sys-backend").textContent = "● Offline";
+    el.textContent='❌ Offline / Unreachable'; el.style.color='var(--red)';
   }
-  document.getElementById("sys-db").textContent = "● Connected";
-  document.getElementById("sys-db-dot").className = "status-dot green";
-  document.getElementById("sys-db-latency").textContent = "~20ms";
-  document.getElementById("sys-env").textContent = isProd?"Production":"Development";
-  document.getElementById("ml-count").textContent = allAssessments.length||"0";
-  document.getElementById("dbTables").innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">${["users","assessments","voice_sessions","course_completions","honor_events"].map(t=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">● ${t}</div>`).join("")}</div>`;
 }
 
-// ── Honor ────────────────────────────────────────────────────
-function renderHonor(data){
-  data = data || allUsers;
-  const tbody = document.getElementById("honorTable");
-  if(!data.length){ tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No data</td></tr>`; return; }
-  tbody.innerHTML = data.map(u=>{
-    const score = u.honor_score||100;
-    const col = score>=80?"var(--accent)":score>=50?"var(--orange)":"var(--red)";
-    return`<tr>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${u.email||"--"}</td>
-      <td><span style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;color:${col}">${score}</span><span style="font-size:10px;color:var(--muted)">/100</span></td>
-      <td>${u.honor_events||0}</td>
-      <td style="color:var(--muted)">${u.last_activity||"--"}</td>
-      <td><button class="action-btn" onclick="resetHonor('${u.email}')">Reset</button></td>
-    </tr>`;
-  }).join("");
+function saveSettings(){
+  const url = document.getElementById('settingApiUrl').value.trim();
+  const pass = document.getElementById('settingNewPass').value;
+  if(url) localStorage.setItem(BACKEND_KEY, url);
+  if(pass){ localStorage.setItem(ADMIN_PASS_KEY, pass); notify('Password updated'); }
+  notify('✅ Settings saved');
+  checkBackendStatus();
 }
 
-function filterHonor(){
-  const q = document.getElementById("honorSearch").value.toLowerCase();
-  renderHonor(allUsers.filter(u=>(u.email||"").toLowerCase().includes(q)));
+// ─── Utils ────────────────────────────────────────────────────
+function escHtml(s){ const d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML; }
+function refreshData(){ loadUsers(); loadOverview(); loadColleges(); }
+
+// ─── Init ─────────────────────────────────────────────────────
+async function init(){
+  if(!sessionStorage.getItem('mentorix_admin_authed')) return;
+  loadOverview();
+  await loadUsers();
+  loadOverview(); // refresh with user data
 }
 
-function resetHonor(email){ alert(`Honor score reset for ${email} — requires backend endpoint integration.`); }
+if(sessionStorage.getItem('mentorix_admin_authed')) init();
 
-// ── Delete Modal ─────────────────────────────────────────────
-let deleteCallback = null;
-function confirmDelete(type, id, msg){
-  document.getElementById("deleteModalBody").textContent = msg;
-  document.getElementById("deleteConfirmBtn").onclick = ()=>{ doDelete(type,id); closeModal(); };
-  document.getElementById("deleteModal").classList.add("show");
-}
-function closeModal(){ document.getElementById("deleteModal").classList.remove("show"); }
-async function doDelete(type, id){
-  const h = {"Authorization":"Bearer "+adminToken,"Content-Type":"application/json"};
-  try{
-    await fetch(`${API}/admin/delete`,{method:"POST",headers:h,body:JSON.stringify({type,id})});
-    await loadAllData();
-  }catch(e){ alert("Delete failed — admin endpoint not yet implemented on backend."); }
-}
-
-// ── Env Toggle ───────────────────────────────────────────────
-function showEnvModal(){
-  document.getElementById("envModalTitle").textContent = isProd?"Switch to Development Mode":"Switch to Production Mode";
-  document.getElementById("envConfirmBtn").textContent = isProd?"Switch to Dev":"Activate Production";
-  document.getElementById("envModal").classList.add("show");
-}
-function closeEnvModal(){ document.getElementById("envModal").classList.remove("show"); }
-function confirmEnvSwitch(){
-  isProd = !isProd;
-  const sw = document.getElementById("envSwitch");
-  sw.classList.toggle("on", isProd);
-  document.getElementById("envLabel").textContent = isProd?"PROD":"DEV";
-  document.getElementById("envLabel").style.color = isProd?"var(--purple)":"var(--muted)";
-  document.getElementById("envToggleLabel").textContent = isProd?"PROD":"DEV";
-  document.getElementById("envToggleLabel").style.color = isProd?"var(--accent)":"var(--muted)";
-  document.getElementById("sys-env").textContent = isProd?"Production":"Development";
-  closeEnvModal();
-  // Notify backend
-  fetch(`${API}/admin/env`,{method:"POST",headers:{"Authorization":"Bearer "+adminToken,"Content-Type":"application/json"},body:JSON.stringify({mode:isProd?"production":"development"})}).catch(()=>{});
-}
-
-// ── Utilities ────────────────────────────────────────────────
-function downloadCSV(rows, filename){
-  const csv = rows.map(r=>r.map(v=>'"'+(v||"").toString().replace(/"/g,'""')+'"').join(",")).join("\n");
-  const a = document.createElement("a");
-  a.href = "data:text/csv;charset=utf-8,"+encodeURIComponent(csv);
-  a.download = filename; a.click();
-}
-
-async function testLLM(){
-  const btn = event.target;
-  btn.textContent = "Testing...";
-  try{
-    const r = await fetch(`${API}/chat`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+adminToken},body:JSON.stringify({message:"ping",system:"Reply with pong only.",history:[]})});
-    const d = await r.json();
-    btn.textContent = "✓ LLM OK";
-    btn.style.color = "var(--accent)";
-  }catch(e){ btn.textContent = "✗ LLM Failed"; btn.style.color="var(--red)"; }
-}
-
-async function testCourseGen(){
-  alert("Testing AI course generation for CSE department with weak technical skills...\n\nThis will call /courses/ai-recommend with test data.");
-}
+document.addEventListener('keydown', function(e){
+  if(e.key==='Escape') document.querySelectorAll('.modal-bg.open').forEach(m=>m.classList.remove('open'));
+});
 </script>
 </body>
 </html>
