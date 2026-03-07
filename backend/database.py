@@ -45,13 +45,16 @@ def init_db():
     """)
     cur.execute("""
     CREATE TABLE IF NOT EXISTS voice_sessions (
-        id            SERIAL PRIMARY KEY,
-        email         TEXT NOT NULL,
-        transcript    TEXT,
-        summary       TEXT,
-        tab_warnings  INTEGER DEFAULT 0,
+        id             SERIAL PRIMARY KEY,
+        email          TEXT NOT NULL,
+        transcript     TEXT,
+        summary        TEXT,
+        tab_warnings   INTEGER DEFAULT 0,
         exchange_count INTEGER DEFAULT 0,
-        created_at    TIMESTAMP DEFAULT NOW()
+        scores         TEXT DEFAULT '{}',
+        overall_score  INTEGER DEFAULT 0,
+        mode           TEXT DEFAULT 'voice',
+        created_at     TIMESTAMP DEFAULT NOW()
     )
 """)
 

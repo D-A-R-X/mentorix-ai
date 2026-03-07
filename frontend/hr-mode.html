@@ -328,7 +328,7 @@ if(!TOKEN) window.location.href="login.html";
 let active=false,listening=false,speaking=false,tabViol=0,qNum=0,convo=[],rec=null;
 let audioCtx=null,analyser=null,micStream=null,camStream=null,raf=null,aiLv=0;
 let hrMode="voice",sessionStart=null,timerInterval=null,silenceTimer=null;
-let scores={tech:0,comm:0,crit:0,pres:0,lead:0},scoreCount={tech:0,comm:0,crit:0,pres:0,lead:0};
+let scores={tech:null,comm:null,crit:null,pres:null,lead:null},scoreCount={tech:0,comm:0,crit:0,pres:0,lead:0};
 const MAX_Q=10,MAX_VIOL=3;
 
 // ── DOM ───────────────────────────────────────────────────
@@ -337,7 +337,7 @@ const hrAv=document.getElementById("hrAv"),hrChat=document.getElementById("hrCha
 const hrMicBtn=document.getElementById("hrMicBtn"),hrSendBtn=document.getElementById("hrSendBtn");
 const hrTypeInp=document.getElementById("hrTypeInp");
 const violBar=document.getElementById("violBar"),violCount=document.getElementById("violCount");
-const canvas=document.getElementById("hrCanvas"),cx=canvas.getContext("2d");
+const canvas=document.getElementById("hrCanvas"),cx=canvas.getContext("2d",{willReadFrequently:true});
 
 // ── Canvas ────────────────────────────────────────────────
 function resizeCvs(){canvas.width=canvas.offsetWidth*devicePixelRatio;canvas.height=canvas.offsetHeight*devicePixelRatio;cx.scale(devicePixelRatio,devicePixelRatio);}
@@ -356,13 +356,18 @@ document.addEventListener("visibilitychange",()=>{
 // ── Camera ────────────────────────────────────────────────
 async function initCamera(){
   try{
-    camStream=await navigator.mediaDevices.getUserMedia({video:{width:220,height:165},audio:false});
-    const vid=document.getElementById("camVideo");vid.srcObject=camStream;
+    camStream=await navigator.mediaDevices.getUserMedia({video:{width:220,height:165,facingMode:"user"},audio:false});
+    const vid=document.getElementById("camVideo");
+    vid.srcObject=camStream;
+    await vid.play().catch(()=>{});
     document.getElementById("camStatus").textContent="● REC";
-    startPostureAnalysis(vid);
+    // Wait for video to be ready before analysing
+    vid.onloadedmetadata=()=>startPostureAnalysis(vid);
     return true;
   }catch(e){
-    document.getElementById("camFeed").innerHTML='<div class="cam-denied">CAMERA<br>ACCESS DENIED<br><br>Posture monitoring<br>disabled</div>';
+    console.warn("Camera:",e.name,e.message);
+    const feed=document.getElementById("camFeed");
+    if(feed) feed.innerHTML='<div class="cam-denied">CAMERA<br>ACCESS DENIED<br><br>Posture monitoring<br>disabled</div>';
     return false;
   }
 }
@@ -370,7 +375,7 @@ async function initCamera(){
 // ── Posture analysis (lightweight, no ML library) ─────────
 function startPostureAnalysis(vid){
   const postCanvas=document.createElement("canvas");postCanvas.width=110;postCanvas.height=82;
-  const pCtx=postCanvas.getContext("2d");
+  const pCtx=postCanvas.getContext("2d",{willReadFrequently:true});
   let prevBrightness=0,stableFrames=0;
 
   setInterval(()=>{
@@ -437,7 +442,7 @@ function speak(text,cb){
   let lv=0,dir=1;const iv=setInterval(()=>{lv+=dir*0.06;if(lv>=1)dir=-1;if(lv<=0)dir=1;aiLv=lv;},50);
   const u=new SpeechSynthesisUtterance(text);
   u.rate=0.82;u.pitch=0.9;u.volume=1.0; // Slower, lower pitch = authoritative
-  const go=()=>{const v=getBestHRVoice();if(v)u.voice=v;u.onend=()=>{clearInterval(iv);aiLv=0;speaking=false;hrAv.classList.remove("speaking");hrDot.className="hr-dot rec";hrStatus.textContent="RECORDING";if(cb)cb();};window.speechSynthesis.speak(u);};
+  const go=()=>{const v=getBestHRVoice();if(v)u.voice=v;u.onend=()=>{clearInterval(iv);aiLv=0;speaking=false;hrAv.classList.remove("speaking");hrDot.className="hr-dot";hrStatus.textContent="STANDBY";if(cb)cb();};window.speechSynthesis.speak(u);};
   window.speechSynthesis.getVoices().length>0?go():(window.speechSynthesis.onvoiceschanged=go);
 }
 
@@ -502,10 +507,9 @@ function drawSpec(){
 // ── Score update ──────────────────────────────────────────
 function updateScore(key,val){
   scores[key]=val;
-  const pct=val;
   const el=document.getElementById("sc-"+key),bar=document.getElementById("sb-"+key);
-  if(el)el.textContent=Math.round(val)+"/100";
-  if(bar){bar.style.width=pct+"%";bar.className="score-fill"+(pct>=70?" high":pct>=45?" mid":"");}
+  if(el)el.textContent=val!==null?Math.round(val)+"/100":"--";
+  if(bar){bar.style.width=(val||0)+"%";bar.className="score-fill"+((val||0)>=70?" high":(val||0)>=45?" mid":"");}
 }
 
 // ── Messages ──────────────────────────────────────────────
@@ -542,15 +546,23 @@ async function initSession(){
   document.getElementById("landStartBtn").textContent="INITIALIZING...";
 
   // Request mic
+  let micOk=false;
   try{
     micStream=await navigator.mediaDevices.getUserMedia({audio:true});
     audioCtx=new(window.AudioContext||window.webkitAudioContext)();
     analyser=audioCtx.createAnalyser();analyser.fftSize=256;
     audioCtx.createMediaStreamSource(micStream).connect(analyser);
-  }catch(e){setHRMode("type");}
+    micOk=true;
+  }catch(e){
+    console.warn("Mic denied:",e.message);
+    setHRMode("type");
+  }
 
-  // Request camera
+  // Request camera (independent of mic)
   await initCamera();
+
+  // Enable mic button only if mic was granted
+  if(micOk) hrMicBtn.className="hr-micbtn";
 
   // Hide landing
   document.getElementById("landing").classList.add("gone");
@@ -573,8 +585,15 @@ function updateProgress(){
 
 function enableHRInput(){
   hrDot.className="hr-dot";hrStatus.textContent="AWAITING RESPONSE";
-  if(hrMode==="voice")hrMicBtn.className="hr-micbtn";
-  else{hrTypeInp.disabled=false;hrSendBtn.disabled=false;hrTypeInp.focus();}
+  if(hrMode==="voice"){
+    hrMicBtn.className=micStream?"hr-micbtn":"hr-micbtn off";
+    hrTypeInp.disabled=false; // always allow typing as fallback
+  } else {
+    hrMicBtn.className="hr-micbtn off";
+    hrTypeInp.disabled=false;
+    hrSendBtn.disabled=false;
+    hrTypeInp.focus();
+  }
 }
 
 // ── Handle response ───────────────────────────────────────
@@ -611,20 +630,20 @@ function parseScores(aiReply,userAnswer){
   // Technical
   const techQ=qNum<=4;
   if(techQ){
-    const base=scores.tech||50;
+    const base=scores.tech!==null?scores.tech:50;
     scores.tech=Math.min(100,Math.max(0,base+(isCorrect?8:0)+(isChallenged?-6:0)+(hasDetail?4:0)+(isVague?-4:0)));
     updateScore("tech",scores.tech);
   }
   // Communication
-  const commScore=Math.min(100,Math.max(0,(scores.comm||50)+(hasDetail?5:0)+(isVague?-5:0)+(isConfident?4:0)));
+  const commScore=Math.min(100,Math.max(0,(scores.comm!==null?scores.comm:50)+(hasDetail?5:0)+(isVague?-5:0)+(isConfident?4:0)));
   updateScore("comm",commScore);scores.comm=commScore;
   // Pressure
-  const presScore=Math.min(100,Math.max(0,(scores.pres||60)+(isChallenged&&!isVague?5:0)+(isChallenged&&isVague?-5:0)));
+  const presScore=Math.min(100,Math.max(0,(scores.pres!==null?scores.pres:60)+(isChallenged&&!isVague?5:0)+(isChallenged&&isVague?-5:0)));
   updateScore("pres",presScore);scores.pres=presScore;
   // Critical thinking
-  if(qNum>4){const critScore=Math.min(100,Math.max(0,(scores.crit||50)+(isCorrect?7:0)+(hasDetail?5:0)+(isVague?-6:0)));updateScore("crit",critScore);scores.crit=critScore;}
+  if(qNum>4){const critScore=Math.min(100,Math.max(0,(scores.crit!==null?scores.crit:50)+(isCorrect?7:0)+(hasDetail?5:0)+(isVague?-6:0)));updateScore("crit",critScore);scores.crit=critScore;}
   // Leadership
-  if(qNum>6){const leadScore=Math.min(100,Math.max(0,(scores.lead||50)+(hasDetail?6:0)+(isConfident?5:0)+(isVague?-4:0)));updateScore("lead",leadScore);scores.lead=leadScore;}
+  if(qNum>6){const leadScore=Math.min(100,Math.max(0,(scores.lead!==null?scores.lead:50)+(hasDetail?6:0)+(isConfident?5:0)+(isVague?-4:0)));updateScore("lead",leadScore);scores.lead=leadScore;}
 }
 
 // ── HR AI ─────────────────────────────────────────────────
@@ -688,7 +707,7 @@ async function endSession(){
   document.getElementById("endOv").classList.add("show");
 
   // Calculate overall score
-  const scoreVals=Object.values(scores).filter(s=>s>0);
+  const scoreVals=Object.values(scores).filter(s=>s!==null&&s>0);
   const overall=scoreVals.length?Math.round(scoreVals.reduce((a,b)=>a+b,0)/scoreVals.length):50;
   const duration=sessionStart?Math.floor((Date.now()-sessionStart)/1000):0;
 
