@@ -776,13 +776,72 @@ function removeMessage(id) {
 
 
 
-    function toggleTask(sessionDate, idx, total){
+
+    function injectSessionsStrip(sessions, profile){
+      if(!sessions||!sessions.length) return;
+      const mp = document.getElementById("mainPage");
+      if(!mp) return;
+      const cats={tech:"Technical",comm:"Communication",crit:"Critical Thinking",pres:"Pressure",lead:"Leadership"};
+      const col=v=>v>=70?"#059669":v>=50?"#d97706":"#dc2626";
+
+      const stripHTML = `<div style="max-width:100%;padding:0 0 32px">
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;color:#f0ecff;margin:32px 0 16px;padding:0 4px">
+          🎙 AI Session History
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+        ${sessions.map((s,i)=>{
+          const isHR=s.mode==="hr_interview";
+          const sc=s.scores||{};
+          const ov=s.overall_score||0;
+          const date=s.created_at?new Date(s.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}):"";
+          const scGrid=isHR&&Object.keys(sc).length?
+            `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:12px">`+
+            Object.entries(cats).map(([k,l])=>{const v=Math.round(sc[k]||0);return`<div style="text-align:center;padding:8px 4px;background:rgba(13,11,24,0.6);border-radius:8px;border:1px solid #1a1030"><div style="font-size:16px;font-weight:800;color:${col(v)};font-family:'Syne',sans-serif">${v}</div><div style="font-size:9px;color:#6b7280;margin-top:2px">${l}</div></div>`;}).join("")+`</div>`:"";
+          const taskLines=(s.summary||"").split("\n").filter(l=>l.trim().startsWith("→")).map(l=>l.replace(/^→/,"").trim());
+          const savedTasks=JSON.parse(localStorage.getItem("mentorix_tasks_"+(s.created_at||""))||"{}");
+          const tasksHTML=taskLines.length?`<div style="margin-top:12px;padding-top:12px;border-top:1px solid #1a1030">
+            <div style="font-size:10px;color:#6b7280;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">⚡ Action Items</div>`+
+            taskLines.map((t,ti)=>{const done=savedTasks[ti];return`<div id="strip-task-${i}-${ti}" style="display:flex;gap:8px;align-items:flex-start;padding:5px 0">
+              <div onclick="toggleTask('${s.created_at||""}',${ti},'strip-task-${i}-${ti}')" style="width:16px;height:16px;border-radius:3px;border:1px solid ${done?"#059669":"#2a2a3a"};background:${done?"#059669":"transparent"};cursor:pointer;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff">${done?"✓":""}</div>
+              <div style="font-size:12px;color:${done?"#6b7280":"#c8c2e0"};text-decoration:${done?"line-through":"none"};line-height:1.5">${t}</div>
+            </div>`;}).join("")+`</div>`:"";
+          return `<div style="background:rgba(13,11,24,0.5);border:1px solid #1a1030;border-radius:14px;padding:18px 20px">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <div style="font-size:24px">${isHR?"⚔️":"🎙️"}</div>
+              <div style="flex:1">
+                <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;color:#f0ecff">${isHR?"HR Mode Interview":"Voice Session"}</div>
+                <div style="font-size:11px;color:#6b7280;margin-top:2px">${date} · ${s.exchange_count||0} exchanges · ${s.tab_warnings||0} tab violations</div>
+              </div>
+              ${ov?`<div style="text-align:center;padding:8px 14px;border:1px solid #1a1030;border-radius:10px;background:rgba(13,11,24,0.6)"><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:${col(ov)}">${ov}</div><div style="font-size:9px;color:#6b7280">OVERALL</div></div>`:""}
+            </div>
+            ${scGrid}
+            ${s.summary?`<div style="margin-top:12px;font-size:13px;color:#6b7280;line-height:1.7;white-space:pre-wrap;max-height:80px;overflow:hidden;text-overflow:ellipsis">${s.summary.slice(0,300)}${s.summary.length>300?"…":""}</div>`:""}
+            ${tasksHTML}
+          </div>`;
+        }).join("")}
+        </div>
+        <div id="honorCard" style="margin-top:20px"></div>
+      </div>`;
+
+      // Append after existing dashboard
+      const wrapper = mp.querySelector(".dash-grid");
+      if(wrapper){
+        const div=document.createElement("div");
+        div.innerHTML=stripHTML;
+        mp.appendChild(div);
+      } else {
+        mp.insertAdjacentHTML("beforeend", stripHTML);
+      }
+      loadHonorScore();
+    }
+
+    function toggleTask(sessionDate, idx, rowId){
       const key="mentorix_tasks_"+sessionDate;
       const tasks=JSON.parse(localStorage.getItem(key)||"{}");
       tasks[idx]=!tasks[idx];
       localStorage.setItem(key,JSON.stringify(tasks));
-      // Re-render just that row
-      const row=document.getElementById("task-row-"+idx);
+      const rowIdFinal = rowId || ("task-row-"+idx);
+      const row=document.getElementById(rowIdFinal);
       if(row){
         const box=row.querySelector("div");
         const txt=row.querySelectorAll("div")[1];
@@ -791,13 +850,13 @@ function removeMessage(id) {
       }
     }
 
-    function toggleTask(sessionDate, idx, total){
+    function toggleTask(sessionDate, idx, rowId){
       const key="mentorix_tasks_"+sessionDate;
       const tasks=JSON.parse(localStorage.getItem(key)||"{}");
       tasks[idx]=!tasks[idx];
       localStorage.setItem(key,JSON.stringify(tasks));
-      // Re-render just that row
-      const row=document.getElementById("task-row-"+idx);
+      const rowIdFinal = rowId || ("task-row-"+idx);
+      const row=document.getElementById(rowIdFinal);
       if(row){
         const box=row.querySelector("div");
         const txt=row.querySelectorAll("div")[1];
@@ -953,11 +1012,15 @@ function removeMessage(id) {
     }catch(e){ console.error("fetch latest scan failed", e); }
   }
 
+  // Always fetch sessions in parallel — used by both paths
+  let sessionsData = null;
+  try{
+    const sr=await fetch(`${API}/user/sessions`,{headers:authHeaders()});
+    if(sr.ok){ const sd=await sr.json(); if(sd.sessions&&sd.sessions.length>0) sessionsData=sd; }
+  }catch(e){}
+
   if(!stored){
-    try{
-      const sr=await fetch(`${API}/user/sessions`,{headers:authHeaders()});
-      if(sr.ok){const sd=await sr.json();if(sd.sessions&&sd.sessions.length>0){renderSessionsDashboard(sd.sessions, sd.profile);return;}}
-    }catch(e){}
+    if(sessionsData){ renderSessionsDashboard(sessionsData.sessions, sessionsData.profile); return; }
     document.getElementById("mainPage").innerHTML=`
       <div class="empty-state">
         <div class="empty-icon">🧠</div>
