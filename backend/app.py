@@ -14,7 +14,7 @@ import pickle
 from llm_client import call_llm
 import numpy as np
 from assessment import get_all_questions, score_assessment
-from database import init_db, save_assessment, get_user_history, create_user, get_user_by_email
+from database import init_db, save_assessment, get_user_history, create_user, get_user_by_email, get_connection
 from risk_explanation import build_risk_explanation
 from recommender import generate_recommendations
 from career_mapper import infer_career_direction
@@ -27,7 +27,8 @@ from auth import (hash_password, verify_password, create_token,
 from database import (init_db, save_assessment, get_user_history,
                       create_user, get_user_by_email, upsert_google_user,
                       upsert_course_completion, get_course_completions,
-                      get_completion_stats,migrate_db)
+                      get_completion_stats,migrate_db,
+                      get_connection)
 from explainer import generate_explanation, score_latency
 # ── App ─────────────────────────────────────────────────────────
 app = FastAPI(title="Mentorix AI")
@@ -279,13 +280,13 @@ async def update_name(
     data: UpdateNameRequest,
     current_user: str = Depends(get_current_user)
 ):
-    if len(data.name.strip()) < 2:
+    if len((data.name or "").strip()) < 2:
         raise HTTPException(status_code=400, detail="Name too short")
     conn = get_connection()
     cur  = conn.cursor()
     cur.execute(
         "UPDATE users SET name = %s WHERE email = %s",
-        (data.name.strip(), current_user)
+        ((data.name or "").strip(), current_user)
     )
     conn.commit()
     cur.close()
@@ -351,7 +352,7 @@ async def register(data: RegisterRequest):
 
     if len(data.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
-    if len(data.name.strip()) < 2:
+    if len((data.name or "").strip()) < 2:
         raise HTTPException(status_code=400, detail="Please enter your full name.")
 
     # Hash password
@@ -360,15 +361,15 @@ async def register(data: RegisterRequest):
     created = create_user(
         email=data.email,
         password_hash=pw_hash,
-        name=data.name.strip(),
+        name=(data.name or "").strip(),
         auth_provider="email"
     )
     if not created:
         raise HTTPException(status_code=500, detail="Could not create account. Try again.")
 
-    token = create_access_token(data.email)
+    token = create_token(data.email)
     logger.info(f"new user registered email={data.email}")
-    return {"token": token, "name": data.name.strip(), "email": data.email}
+    return {"token": token, "name": (data.name or "").strip(), "email": data.email}
 
 
 @app.post("/auth/login")
@@ -393,7 +394,7 @@ async def login(data: LoginRequest):
     if not valid:
         raise HTTPException(status_code=401, detail="Incorrect password. Please try again.")
 
-    token = create_access_token(data.email)
+    token = create_token(data.email)
     logger.info(f"user logged in email={data.email}")
     return {"token": token, "name": user.get("name") or data.email.split("@")[0], "email": data.email}
 
@@ -484,7 +485,7 @@ def analyze_risk(
     )
     career_direction, insight = infer_career_direction(data)
 
-    save_assessment(current_user, risk, stability_index, recommendation["track"], scan_result=None)
+    save_assessment(current_user, risk, stability_index, recommendation["track"], scan_result={})
 
     return {
         "risk_level":       risk,
@@ -653,6 +654,7 @@ async def submit_assessment(
         "engine_inputs":     engine_inputs,
         "latency_analysis":  latency_analysis,        # ← NEW
     }
+@app.get("/user/latest-scan")
 async def get_latest_scan(current_user: str = Depends(get_current_user)):
     history = get_user_history(current_user, limit=1)
     if not history:
@@ -714,48 +716,6 @@ async def chat_endpoint(
         raise HTTPException(status_code=503, detail="AI service unavailable")
     return {"reply": reply}
 
-    groq_api_key = os.getenv("GROQ_API_KEY", "")
-    if not groq_api_key:
-        raise HTTPException(status_code=503, detail="Chat not available")
-
-    messages = []
-    if data.system:
-        messages.append({"role": "system", "content": data.system})
-
-    # Add conversation history (max last 6 messages)
-    for h in data.history[-6:]:
-        if isinstance(h, dict) and h.get("role") in ("user", "assistant"):
-            messages.append({"role": h["role"], "content": h["content"]})
-
-    messages.append({"role": "user", "content": data.message})
-
-    try:
-        import httpx
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            res = await client.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {groq_api_key}",
-                    "Content-Type":  "application/json",
-                },
-                json={
-                    "model":       "llama-3.1-8b-instant",
-                    "max_tokens":  200,
-                    "temperature": 0.7,
-                    "messages":    messages,
-                }
-            )
-        if res.status_code != 200:
-            raise HTTPException(status_code=502, detail="Chat service error")
-
-        body  = res.json()
-        reply = body["choices"][0]["message"]["content"].strip()
-        logger.info(f"chat user={current_user} tokens={body.get('usage',{}).get('total_tokens',0)}")
-        return {"reply": reply}
-
-    except Exception as e:
-        logger.exception(f"chat failed: {e}")
-        raise HTTPException(status_code=502, detail="Chat failed")
 class VoiceSession(BaseModel):
     transcript:     str = ""
     summary:        str = ""
