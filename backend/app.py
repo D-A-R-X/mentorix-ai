@@ -896,6 +896,93 @@ async def post_honor_event(data: dict, current_user: str = Depends(get_current_u
     result     = add_honor_event(current_user, event_type, note)
     return result
 
+
+@app.post("/courses/ai-recommend")
+async def ai_course_recommend(data: dict, current_user: str = Depends(get_current_user)):
+    try:
+        dept       = data.get("dept", "")
+        mode       = data.get("mode", "voice")
+        scores     = data.get("scores", {})
+        summary    = data.get("summary", "")
+        track      = data.get("track", "")
+        goal       = data.get("goal", "")
+
+        weaknesses = []
+        if scores:
+            for k, v in scores.items():
+                if isinstance(v, (int, float)) and v < 60:
+                    labels = {"tech":"Technical Knowledge","comm":"Communication","crit":"Critical Thinking","pres":"Pressure Handling","lead":"Leadership"}
+                    weaknesses.append(labels.get(k, k))
+
+        prompt = f"""You are a career advisor for a student/professional using Mentorix AI.
+
+User Profile:
+- Department/Field: {dept or "Not specified"}
+- Career Goal: {goal or "Not specified"}
+- Session Type: {mode}
+- Track: {track or "Not specified"}
+- Weak Areas: {", ".join(weaknesses) if weaknesses else "General improvement needed"}
+- Session Summary: {summary[:400] if summary else "No summary"}
+
+Generate exactly 5 course recommendations. Mix free and paid. Include at least 2 with certificates.
+Prioritize: Coursera, edX, NPTEL, Udemy, YouTube (freeCodeCamp/Traversy), MIT OpenCourseWare, LinkedIn Learning.
+
+Respond ONLY with a JSON array. No explanation. No markdown. No backticks. Example format:
+[
+  {{
+    "title": "Course Title",
+    "provider": "Coursera",
+    "url": "https://coursera.org/learn/example",
+    "duration": "4 weeks",
+    "level": "Beginner",
+    "certificate": true,
+    "free": false,
+    "reason": "One sentence why this course fits this user"
+  }}
+]
+
+Rules:
+- URLs must be real working URLs from the actual platform
+- Match courses to weak areas and department
+- level must be one of: Beginner, Intermediate, Advanced
+- duration format: X weeks or X hours
+- certificate: true only if platform actually gives a certificate
+- free: true for YouTube, NPTEL, MIT OCW, freeCodeCamp"""
+
+        from llm_client import call_llm
+        import json as _json
+
+        result = await call_llm(
+            messages=[{"role":"user","content":prompt}],
+            system="You are a course recommendation engine. Output only valid JSON arrays.",
+            max_tokens=1200,
+            timeout=20
+        )
+
+        text = result.strip()
+        if "```" in text:
+            text = text.split("```")[1].replace("json","").strip()
+        courses = _json.loads(text)
+
+        validated = []
+        for course in courses[:6]:
+            if "title" in course and "url" in course:
+                validated.append({
+                    "title":       course.get("title",""),
+                    "provider":    course.get("provider",""),
+                    "url":         course.get("url","#"),
+                    "duration":    course.get("duration","Self-paced"),
+                    "level":       course.get("level","Intermediate"),
+                    "certificate": bool(course.get("certificate",False)),
+                    "free":        bool(course.get("free",False)),
+                    "reason":      course.get("reason","")
+                })
+        return {"courses": validated, "track": track or dept}
+
+    except Exception as e:
+        logger.warning(f"AI course recommend failed: {e}")
+        return {"courses": [], "track": ""}
+
 if __name__ == "__main__":
     import uvicorn
     is_render = os.getenv("RENDER") is not None

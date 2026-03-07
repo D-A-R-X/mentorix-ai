@@ -651,6 +651,59 @@ function removeMessage(id) {
   }).join("");
 }
 
+
+    async function loadAICourses(payload, containerId){
+      const el = document.getElementById(containerId);
+      if(!el) return;
+      el.innerHTML = `<div style="font-size:12px;color:#6b7280;padding:12px 0;font-family:'JetBrains Mono',monospace">Generating personalised recommendations...</div>`;
+      try{
+        const res = await fetch(`${API}/courses/ai-recommend`, {
+          method:"POST",
+          headers:{...authHeaders(),"Content-Type":"application/json"},
+          body: JSON.stringify(payload)
+        });
+        if(!res.ok) throw new Error("API error");
+        const data = await res.json();
+        if(!data.courses||!data.courses.length){
+          el.innerHTML=`<div style="font-size:12px;color:#6b7280;padding:8px 0">No recommendations generated. Try completing a full session.</div>`;
+          return;
+        }
+        el.innerHTML = renderAICourses(data.courses, data.track);
+      }catch(e){
+        el.innerHTML=`<div style="font-size:12px;color:#6b7280;padding:8px 0">Could not load recommendations right now.</div>`;
+      }
+    }
+
+    function renderAICourses(courses, track){
+      return `<div style="display:flex;flex-direction:column;gap:10px">` +
+      courses.map((c,i)=>{
+        const encodedUrl=btoa(c.url).replace(/[^a-zA-Z0-9]/g,"");
+        const status=courseProgressData[c.url]||"none";
+        const certBadge=c.certificate?`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--accent);border:1px solid rgba(0,229,180,0.3);padding:2px 6px;border-radius:4px;margin-left:6px">CERT</span>`:"";
+        const freeBadge=c.free?`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#059669;border:1px solid rgba(5,150,105,0.3);padding:2px 6px;border-radius:4px;margin-left:4px">FREE</span>`:`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#d97706;border:1px solid rgba(217,119,6,0.3);padding:2px 6px;border-radius:4px;margin-left:4px">PAID</span>`;
+        const safeTitle=(c.title||"").replace(/'/g,"&#39;").replace(/"/g,"&quot;");
+        const safeProvider=(c.provider||"").replace(/'/g,"&#39;");
+        return`<div class="course-item" style="flex-direction:column;align-items:flex-start;gap:6px">
+          <div style="display:flex;align-items:center;gap:10px;width:100%">
+            <span class="course-num">0${i+1}</span>
+            <div class="course-info" style="flex:1">
+              <div class="course-title">${c.title}${certBadge}${freeBadge}</div>
+              <div class="course-meta">${c.provider} · ${c.duration} · ${c.level}</div>
+            </div>
+            <div class="course-actions">
+              <a class="course-link" href="${c.url}" target="_blank" rel="noopener"
+                 onclick="trackCourse('${safeTitle}','${c.url}','${safeProvider}','${track||"ai"}','started')">Open</a>
+              <button id="done-${encodedUrl}" class="track-btn ${status==="completed"?"status-completed":""}"
+                onclick="trackCourse('${safeTitle}','${c.url}','${safeProvider}','${track||"ai"}','completed')">
+                ${status==="completed"?"Done":"Mark Done"}
+              </button>
+            </div>
+          </div>
+          ${c.reason?`<div style="font-size:11px;color:#7c4dff;padding-left:32px;line-height:1.5">${c.reason}</div>`:""}
+        </div>`;
+      }).join("") + `</div>`;
+    }
+
     function renderCourses(courses,track){
       if(!courses||!courses.length)return'<p style="font-size:13px;color:var(--muted)">No courses found.</p>';
       return courses.map((c,i)=>{
@@ -817,6 +870,10 @@ function removeMessage(id) {
             ${scGrid}
             ${s.summary?`<div style="margin-top:12px;font-size:13px;color:#6b7280;line-height:1.7;white-space:pre-wrap;max-height:80px;overflow:hidden;text-overflow:ellipsis">${s.summary.slice(0,300)}${s.summary.length>300?"…":""}</div>`:""}
             ${tasksHTML}
+            <div style="margin-top:14px;padding-top:14px;border-top:1px solid #1a1030">
+              <div style="font-size:10px;color:#6b7280;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Recommended Courses</div>
+              <div id="ai-courses-${i}"></div>
+            </div>
           </div>`;
         }).join("")}
         </div>
@@ -833,6 +890,17 @@ function removeMessage(id) {
         mp.insertAdjacentHTML("beforeend", stripHTML);
       }
       loadHonorScore();
+      sessions.forEach((s,i)=>{
+        const profile=JSON.parse(localStorage.getItem("mentorix_profile")||"{}");
+        loadAICourses({
+          dept:    profile.dept||"",
+          goal:    profile.goal||"",
+          mode:    s.mode||"voice",
+          scores:  s.scores||{},
+          summary: s.summary||"",
+          track:   ""
+        }, "ai-courses-"+i);
+      });
     }
 
     function toggleTask(sessionDate, idx, rowId){
