@@ -374,9 +374,11 @@ document.addEventListener("DOMContentLoaded",()=>{
     localStorage.setItem("mentorix_token",token);localStorage.setItem("mentorix_email",email);
     history.replaceState({},"","/login.html");
     const saved=localStorage.getItem("mentorix_name");
-    const needName=!saved&&(!name||name.length<4||!name.includes(" ")||/[0-9_\-.@#]/.test(name));
-    if(needName)showNameModal(name,token);
-    else{localStorage.setItem("mentorix_name",saved||name);_tok=token;maybeShowCollege();}
+    // Only ask name for brand-new users whose Google name looks auto-generated
+    // Returning users (saved!=null) are NEVER asked again
+    const badName=!name||name.length<4||!name.includes(" ")||/[0-9_\-.@#]/.test(name);
+    if(!saved&&badName){showNameModal(name,token);}
+    else{if(!saved&&name)localStorage.setItem("mentorix_name",name);_tok=token;maybeShowCollege();}
   }
   if(p.get("error"))showMsg("loginMsg","Google sign-in failed. Please try again.","error");
 });
