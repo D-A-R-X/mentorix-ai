@@ -57,31 +57,45 @@ except Exception as e:
     raise RuntimeError("Model file missing or corrupted.") from e
 
 # ── CORS ─────────────────────────────────────────────────────────
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5500",
-        "http://127.0.0.1:5500",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
+# Dynamic origin check: allow any Vercel preview URL + localhost on any port
+def _is_allowed_origin(origin: str) -> bool:
+    if not origin:
+        return False
+    allowed = [
         "https://mentorix-ai.vercel.app",
         "https://mentorix-ai-git-version-2-dev-darxs-projects.vercel.app",
         "https://mentorix-ai-git-version-2-dev.vercel.app",
-    ],
+    ]
+    if origin in allowed:
+        return True
+    # Allow all Vercel preview deploys for this project
+    if origin.startswith("https://mentorix-ai") and origin.endswith(".vercel.app"):
+        return True
+    # Allow localhost on any port for local dev
+    if origin.startswith("http://localhost:") or origin.startswith("http://127.0.0.1:"):
+        return True
+    return False
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=r"https://mentorix-ai.*\.vercel\.app|http://(localhost|127\.0\.0\.1):\d+",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
-# ── Explicit OPTIONS preflight handler ───────────────────────────────────────
+# ── Explicit OPTIONS preflight — echoes back the requesting origin ────────────
 from fastapi import Response as _FResponse
 
 @app.options("/{rest_of_path:path}")
-async def preflight_handler(rest_of_path: str):
+async def preflight_handler(request: Request, rest_of_path: str):
+    origin = request.headers.get("origin", "")
+    allow = origin if _is_allowed_origin(origin) else "https://mentorix-ai.vercel.app"
     return _FResponse(
         status_code=200,
         headers={
-            "Access-Control-Allow-Origin": "https://mentorix-ai.vercel.app",
+            "Access-Control-Allow-Origin": allow,
+            "Access-Control-Allow-Credentials": "true",
             "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
             "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept",
             "Access-Control-Max-Age": "600",
