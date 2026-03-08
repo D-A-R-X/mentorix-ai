@@ -59,11 +59,34 @@ except Exception as e:
 # ── CORS ─────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=[
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://mentorix-ai.vercel.app",
+        "https://mentorix-ai-git-version-2-dev-darxs-projects.vercel.app",
+        "https://mentorix-ai-git-version-2-dev.vercel.app",
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
+
+# ── Explicit OPTIONS preflight handler ───────────────────────────────────────
+from fastapi import Response as _FResponse
+
+@app.options("/{rest_of_path:path}")
+async def preflight_handler(rest_of_path: str):
+    return _FResponse(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "https://mentorix-ai.vercel.app",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept",
+            "Access-Control-Max-Age": "600",
+        }
+    )
 
 # ── Bearer token security ────────────────────────────────────────
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -929,21 +952,7 @@ Rules:
         return {"courses": [], "track": ""}
 
 
-# ── is_suspended column migration ──────────────────────────────────────────
-def _migrate_suspended():
-    conn = get_connection(); cur = conn.cursor()
-    for sql in [
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN DEFAULT FALSE",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS institution_id INTEGER DEFAULT NULL",
-    ]:
-        try:
-            cur.execute(sql); conn.commit()
-        except Exception as e:
-            conn.rollback()
-            logger.warning(f"migration skipped: {e}")
-    cur.close(); conn.close()
-try: _migrate_suspended()
-except Exception as _me: logger.warning(f"migration outer: {_me}")
+
 
 # ── Public: list institutions (for student login page) ───────────────────────
 @app.get("/institutions")
@@ -987,27 +996,36 @@ def require_admin(current_user: str = Depends(get_current_user)):
     return current_user
 
 
-# Bootstrap institutions table
-def _ensure_institutions_table():
+# Bootstrap extra tables + columns
+def _ensure_extra_tables():
     conn = get_connection(); cur = conn.cursor()
-    try:
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS institutions (
-                id            SERIAL PRIMARY KEY,
-                name          TEXT NOT NULL,
-                contact_email TEXT,
-                env           TEXT DEFAULT 'dev',
-                created_at    TIMESTAMP DEFAULT NOW()
-            )
-        """)
-        conn.commit()
-    finally:
-        cur.close(); conn.close()
+    stmts = [
+        """CREATE TABLE IF NOT EXISTS institutions (
+                id SERIAL PRIMARY KEY, name TEXT NOT NULL,
+                contact_email TEXT, env TEXT DEFAULT 'dev',
+                created_at TIMESTAMP DEFAULT NOW())""",
+        """CREATE TABLE IF NOT EXISTS honor_events (
+                id SERIAL PRIMARY KEY, email TEXT NOT NULL,
+                event_type TEXT NOT NULL, delta INTEGER NOT NULL DEFAULT 0,
+                running_score INTEGER NOT NULL DEFAULT 0, note TEXT,
+                created_at TIMESTAMP DEFAULT NOW())""",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS institution_id INTEGER DEFAULT NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS department TEXT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS year TEXT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS semester TEXT",
+    ]
+    for sql in stmts:
+        try:
+            cur.execute(sql); conn.commit()
+        except Exception as e:
+            conn.rollback(); logger.warning(f"bootstrap skipped: {e}")
+    cur.close(); conn.close()
 
 try:
-    _ensure_institutions_table()
+    _ensure_extra_tables()
 except Exception as _ie:
-    logger.warning(f"institutions table init: {_ie}")
+    logger.warning(f"extra tables init: {_ie}")
 
 
 # ── /admin/overview ───────────────────────────────────────────────────────────
@@ -1023,6 +1041,9 @@ def admin_overview(admin: str = Depends(require_admin)):
 
         cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= NOW() - INTERVAL '7 days'")
         new_users_week = (cur.fetchone() or (0,))[0]
+
+        cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= NOW() - INTERVAL '1 day'")
+        active_today = (cur.fetchone() or (0,))[0]
 
         cur.execute("SELECT AVG(overall_score) FROM voice_sessions WHERE overall_score IS NOT NULL")
         r = cur.fetchone()
@@ -1059,6 +1080,7 @@ def admin_overview(admin: str = Depends(require_admin)):
             "total_users": total_users,
             "total_sessions": total_sessions,
             "new_users_week": new_users_week,
+            "active_today": active_today,
             "avg_score": avg_score,
             "recent_activity": recent_activity,
             "registrations_by_day": registrations_by_day,
@@ -1075,15 +1097,18 @@ def admin_get_users(admin: str = Depends(require_admin)):
     try:
         cur.execute("""
             SELECT u.id, u.name, u.email, u.department, u.year, u.semester,
-                   u.auth_provider, u.created_at,
+                   u.auth_provider, u.created_at::text AS created_at,
                    COALESCE(u.is_suspended, FALSE) AS is_suspended,
                    COUNT(DISTINCT vs.id)           AS session_count,
-                   COALESCE(SUM(he.delta), 0)      AS honor_score
+                   COALESCE((SELECT SUM(he.delta) FROM honor_events he WHERE he.email=u.email), 0) AS honor_score,
+                   COALESCE(u.institution_id, 0)   AS institution_id,
+                   COALESCE(i.name, '')             AS institution_name
             FROM users u
             LEFT JOIN voice_sessions vs ON vs.email = u.email
-            LEFT JOIN honor_events   he ON he.email = u.email
+            LEFT JOIN institutions   i  ON i.id = u.institution_id
             GROUP BY u.id, u.name, u.email, u.department, u.year,
-                     u.semester, u.auth_provider, u.created_at, u.is_suspended
+                     u.semester, u.auth_provider, u.created_at, u.is_suspended,
+                     u.institution_id, i.name
             ORDER BY u.created_at DESC
         """)
         cols = [d[0] for d in (cur.description or [])]
@@ -1164,9 +1189,12 @@ def admin_get_sessions(admin: str = Depends(require_admin)):
         cur.execute("""
             SELECT vs.id, u.name AS user_name, vs.email AS user_email,
                    vs.mode, vs.created_at, vs.exchange_count,
-                   vs.overall_score, vs.tab_warnings
+                   vs.overall_score, vs.tab_warnings,
+                   COALESCE(i.name, 'Independent') AS institution_name,
+                   u.department
             FROM voice_sessions vs
             LEFT JOIN users u ON u.email = vs.email
+            LEFT JOIN institutions i ON i.id = u.institution_id
             ORDER BY vs.created_at DESC
             LIMIT 500
         """)
@@ -1290,6 +1318,35 @@ def admin_delete_institution(inst_id: int, admin: str = Depends(require_admin)):
             raise HTTPException(status_code=404, detail="Institution not found.")
         conn.commit()
         return {"ok": True}
+    finally:
+        cur.close(); conn.close()
+
+
+# ── /admin/honor ──────────────────────────────────────────────────────────────
+@app.get("/admin/honor")
+def admin_get_honor(admin: str = Depends(require_admin)):
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT u.name, u.email, u.department,
+                   COALESCE(i.name,'Independent') AS institution_name,
+                   COALESCE(SUM(he.delta),0) AS total_score,
+                   COUNT(he.id) AS event_count,
+                   MAX(he.created_at) AS last_event
+            FROM users u
+            LEFT JOIN honor_events he ON he.email = u.email
+            LEFT JOIN institutions i  ON i.id = u.institution_id
+            GROUP BY u.name, u.email, u.department, i.name
+            ORDER BY total_score DESC
+        """)
+        cols = [d[0] for d in (cur.description or [])]
+        rows = []
+        for row in cur.fetchall():
+            d = dict(zip(cols, row))
+            if d.get("last_event"): d["last_event"] = d["last_event"].isoformat()
+            d["total_score"] = float(d["total_score"])
+            rows.append(d)
+        return {"honor": rows}
     finally:
         cur.close(); conn.close()
 
@@ -1447,61 +1504,3 @@ if __name__ == "__main__":
     reload    = not is_render
     logger.info(f"Starting server on {host}:{port}")
     uvicorn.run("app:app", host=host, port=port, reload=reload)
-import bcrypt as _bcrypt
-
-class AdminSetup(BaseModel):
-
-    secret: str
-
-    email: str
-
-    password: str
-
-    name: str = "Admin"
-
-@app.post("/admin/setup")
-
-async def admin_setup(data: AdminSetup):
-
-    expected = os.getenv("ADMIN_SETUP_SECRET", "mentorix-setup-2025")
-
-    if data.secret != expected:
-
-        raise HTTPException(status_code=403, detail="Invalid setup secret.")
-
-    pw = _bcrypt.hashpw(data.password.encode(), _bcrypt.gensalt()).decode()
-
-    conn = get_connection(); cur = conn.cursor()
-
-    try:
-
-        cur.execute("""
-
-            INSERT INTO users (email, password_hash, name, auth_provider)
-
-            VALUES (%s,%s,%s,'email')
-
-            ON CONFLICT (email)
-
-            DO UPDATE SET password_hash=EXCLUDED.password_hash, name=EXCLUDED.name, auth_provider='email'
-
-        """, (data.email.lower(), pw, data.name))
-
-        conn.commit()
-
-        return {"ok": True, "message": "Admin ready. Log in to cronix-admin.html"}
-
-    except Exception as e:
-
-        conn.rollback(); raise HTTPException(status_code=500, detail=str(e))
-
-    finally:
-
-        cur.close(); conn.close()
-
-@app.get("/admin/setup")
-
-async def admin_setup_get(secret: str, email: str, password: str, name: str = "Admin"):
-
-    return await admin_setup(AdminSetup(secret=secret, email=email, password=password, name=name))
-
