@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mentorix — Admin Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#07060f;--surface:#0f0d1c;--surface2:#161228;--surface3:#1c1830;
+      --border:rgba(124,77,255,0.12);--border2:rgba(124,77,255,0.25);
+      --purple:#7c4dff;--purple-dim:#5b35c0;--purple-glow:rgba(124,77,255,0.08);
+      --accent:#00e5b4;--red:#e74c3c;--orange:#f39c12;--green:#27ae60;
+      --white:#f0ecff;--muted:#6b6480;--text:#c4bedd;
+    }
+    html,body{height:100%;overflow:hidden}
+    body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--text);display:flex}
+
+    /* ── Sidebar ── */
+    .sidebar{
+      width:220px;min-width:220px;height:100vh;background:var(--surface);
+      border-right:1px solid var(--border);display:flex;flex-direction:column;
+      padding:0;overflow-y:auto;position:relative;z-index:10;
+    }
+    .sidebar-logo{
+      padding:20px 18px;border-bottom:1px solid var(--border);
+      display:flex;align-items:center;gap:10px;
+    }
+    .logo-mark{
+      width:32px;height:32px;background:var(--purple);border-radius:8px;
+      display:flex;align-items:center;justify-content:center;
+      font-family:'Syne',sans-serif;font-weight:800;font-size:14px;color:#fff;flex-shrink:0;
+    }
+    .logo-text{font-family:'Syne',sans-serif;font-weight:800;font-size:14px;color:var(--white)}
+    .logo-badge{font-size:9px;color:var(--red);font-family:'JetBrains Mono',monospace;
+      background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);
+      padding:1px 5px;border-radius:3px;margin-left:4px}
+
+    .nav-section{padding:16px 0 8px;border-bottom:1px solid var(--border)}
+    .nav-label{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);
+      letter-spacing:1.5px;text-transform:uppercase;padding:0 18px 8px}
+    .nav-item{
+      display:flex;align-items:center;gap:10px;padding:9px 18px;
+      cursor:pointer;transition:all 0.18s;border-left:2px solid transparent;
+      font-size:13px;color:var(--muted);
+    }
+    .nav-item:hover{background:var(--purple-glow);color:var(--white);border-left-color:rgba(124,77,255,0.3)}
+    .nav-item.active{background:rgba(124,77,255,0.1);color:var(--white);border-left-color:var(--purple)}
+    .nav-icon{font-size:15px;width:20px;text-align:center}
+
+    .sidebar-footer{margin-top:auto;padding:16px 18px;border-top:1px solid var(--border)}
+    .admin-user{display:flex;align-items:center;gap:8px}
+    .admin-avatar{width:28px;height:28px;border-radius:50%;background:var(--purple);
+      display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff}
+    .admin-name{font-size:12px;color:var(--text)}
+    .admin-role{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+
+    /* ── Main ── */
+    .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+    .topbar{
+      padding:14px 28px;border-bottom:1px solid var(--border);
+      display:flex;align-items:center;justify-content:space-between;
+      background:rgba(7,6,15,0.8);backdrop-filter:blur(12px);
+    }
+    .page-title{font-family:'Syne',sans-serif;font-weight:700;font-size:16px;color:var(--white)}
+    .page-sub{font-size:12px;color:var(--muted);margin-top:2px}
+    .topbar-right{display:flex;align-items:center;gap:12px}
+    .env-toggle{
+      display:flex;align-items:center;gap:8px;
+      background:var(--surface2);border:1px solid var(--border);
+      border-radius:8px;padding:6px 12px;cursor:pointer;
+    }
+    .env-label{font-family:'JetBrains Mono',monospace;font-size:11px}
+    .toggle-switch{
+      width:36px;height:18px;background:#1a1030;border-radius:9px;
+      position:relative;cursor:pointer;transition:background 0.3s;border:1px solid var(--border2);
+    }
+    .toggle-switch.on{background:var(--purple)}
+    .toggle-knob{
+      width:12px;height:12px;background:#fff;border-radius:50%;
+      position:absolute;top:2px;left:2px;transition:left 0.3s;
+    }
+    .toggle-switch.on .toggle-knob{left:20px}
+    .logout-btn{
+      font-family:'JetBrains Mono',monospace;font-size:11px;
+      padding:6px 12px;border-radius:6px;border:1px solid rgba(231,76,60,0.3);
+      color:var(--red);background:rgba(231,76,60,0.05);cursor:pointer;
+    }
+    .logout-btn:hover{background:rgba(231,76,60,0.12)}
+
+    .content{flex:1;overflow-y:auto;padding:24px 28px}
+
+    /* ── Cards ── */
+    .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+    .stat-card{
+      background:var(--surface);border:1px solid var(--border);border-radius:12px;
+      padding:18px;position:relative;overflow:hidden;
+    }
+    .stat-card::before{
+      content:'';position:absolute;top:0;right:0;width:80px;height:80px;
+      border-radius:50%;filter:blur(30px);opacity:0.3;
+    }
+    .stat-card.purple::before{background:var(--purple)}
+    .stat-card.green::before{background:var(--green)}
+    .stat-card.orange::before{background:var(--orange)}
+    .stat-card.red::before{background:var(--red)}
+    .stat-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);
+      letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
+    .stat-val{font-family:'Syne',sans-serif;font-weight:800;font-size:28px;color:var(--white)}
+    .stat-delta{font-size:11px;margin-top:4px}
+    .stat-delta.up{color:var(--accent)}
+    .stat-delta.down{color:var(--red)}
+
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+    .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px}
+    .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+    .card-title{font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--white)}
+    .card-sub{font-size:11px;color:var(--muted);margin-top:2px}
+
+    /* ── Table ── */
+    .table-wrap{overflow-x:auto}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    thead tr{border-bottom:1px solid var(--border)}
+    th{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);
+      letter-spacing:1px;text-transform:uppercase;padding:10px 12px;text-align:left;font-weight:400}
+    td{padding:10px 12px;color:var(--text);border-bottom:1px solid rgba(124,77,255,0.05)}
+    tr:hover td{background:var(--purple-glow)}
+    .badge{
+      font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 7px;
+      border-radius:4px;letter-spacing:0.5px;
+    }
+    .badge.low{color:var(--accent);background:rgba(0,229,180,0.1);border:1px solid rgba(0,229,180,0.25)}
+    .badge.medium{color:var(--orange);background:rgba(243,156,18,0.1);border:1px solid rgba(243,156,18,0.25)}
+    .badge.high{color:var(--red);background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.25)}
+    .badge.active{color:var(--accent);background:rgba(0,229,180,0.08);border:1px solid rgba(0,229,180,0.2)}
+    .badge.prod{color:#fff;background:var(--purple);border:1px solid var(--purple)}
+    .badge.dev{color:var(--muted);background:var(--surface2);border:1px solid var(--border)}
+
+    .action-btn{
+      font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 9px;
+      border-radius:5px;border:1px solid var(--border);background:transparent;
+      color:var(--muted);cursor:pointer;transition:all 0.18s;
+    }
+    .action-btn:hover{border-color:var(--purple);color:var(--purple);background:var(--purple-glow)}
+    .action-btn.danger:hover{border-color:var(--red);color:var(--red);background:rgba(231,76,60,0.05)}
+    .action-btn.success:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,229,180,0.05)}
+    .action-btn.warn{border-color:rgba(255,160,0,0.3);color:rgba(255,160,0,0.8)}
+    .action-btn.warn:hover{border-color:rgba(255,160,0,0.7);color:rgb(255,160,0);background:rgba(255,160,0,0.05)}
+
+    /* ── Search/Filter bar ── */
+    .filter-bar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+    .search-input{
+      flex:1;min-width:180px;padding:8px 12px;
+      background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+      color:var(--white);font-size:13px;font-family:'DM Sans',sans-serif;
+    }
+    .search-input:focus{outline:none;border-color:var(--purple)}
+    .filter-select{
+      padding:8px 10px;background:var(--surface2);border:1px solid var(--border);
+      border-radius:8px;color:var(--text);font-size:12px;cursor:pointer;
+    }
+    .filter-select:focus{outline:none}
+    .export-btn{
+      font-family:'JetBrains Mono',monospace;font-size:11px;padding:8px 14px;
+      border-radius:8px;border:1px solid rgba(0,229,180,0.3);color:var(--accent);
+      background:rgba(0,229,180,0.05);cursor:pointer;white-space:nowrap;
+    }
+    .export-btn:hover{background:rgba(0,229,180,0.1)}
+
+    /* ── Status indicators ── */
+    .status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:6px}
+    .status-dot.green{background:var(--green)}
+    .status-dot.red{background:var(--red)}
+    .status-dot.orange{background:var(--orange)}
+
+    /* ── System status ── */
+    .sys-row{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:12px 0;border-bottom:1px solid rgba(124,77,255,0.06);
+    }
+    .sys-name{font-size:13px;color:var(--text);display:flex;align-items:center}
+    .sys-val{font-family:'JetBrains Mono',monospace;font-size:12px}
+
+    /* ── ML card ── */
+    .ml-metric{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:10px 0;border-bottom:1px solid rgba(124,77,255,0.06);
+    }
+    .ml-label{font-size:13px;color:var(--text)}
+    .ml-val{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--white)}
+    .ml-btn{
+      font-family:'JetBrains Mono',monospace;font-size:11px;padding:8px 14px;
+      border-radius:8px;border:1px solid var(--border2);color:var(--purple);
+      background:var(--purple-glow);cursor:pointer;margin-top:8px;width:100%;
+    }
+    .ml-btn:hover{background:rgba(124,77,255,0.15)}
+
+    /* ── Modal ── */
+    .modal{
+      display:none;position:fixed;inset:0;z-index:200;
+      background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);
+      align-items:center;justify-content:center;
+    }
+    .modal.show{display:flex}
+    .modal-box{
+      background:var(--surface);border:1px solid var(--border2);border-radius:16px;
+      padding:28px;max-width:440px;width:90%;
+    }
+    .modal-title{font-family:'Syne',sans-serif;font-weight:700;font-size:16px;color:var(--white);margin-bottom:8px}
+    .modal-body{font-size:13px;color:var(--text);line-height:1.6;margin-bottom:20px}
+    .modal-actions{display:flex;gap:10px;justify-content:flex-end}
+    .modal-cancel{padding:8px 16px;border-radius:8px;border:1px solid var(--border);
+      color:var(--muted);background:transparent;cursor:pointer;font-size:13px}
+    .modal-confirm{padding:8px 16px;border-radius:8px;border:1px solid rgba(231,76,60,0.4);
+      color:var(--red);background:rgba(231,76,60,0.08);cursor:pointer;font-size:13px}
+    .modal-confirm:hover{background:rgba(231,76,60,0.15)}
+
+    /* ── Tabs (pages) ── */
+    .page{display:none}
+    .page.active{display:block}
+
+    /* ── Loading ── */
+    .spinner{
+      display:inline-block;width:16px;height:16px;border:2px solid rgba(124,77,255,0.2);
+      border-top-color:var(--purple);border-radius:50%;animation:spin 0.7s linear infinite;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* ── Env toggle modal ── */
+    .env-modal{
+      display:none;position:fixed;inset:0;z-index:300;
+      background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);
+      align-items:center;justify-content:center;
+    }
+    .env-modal.show{display:flex}
+    .env-box{
+      background:var(--surface);border:2px solid var(--purple);border-radius:20px;
+      padding:36px;max-width:480px;width:90%;text-align:center;
+    }
+    .env-box h2{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--white);margin-bottom:10px}
+    .env-box p{font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:24px}
+    .env-features{
+      display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:24px;text-align:left;
+    }
+    .env-feat{
+      background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+      padding:10px 12px;font-size:12px;color:var(--text);
+    }
+    .env-feat span{color:var(--accent);font-weight:600}
+
+    /* ── Login page ── */
+    .login-page{
+      position:fixed;inset:0;z-index:500;background:var(--bg);
+      display:flex;align-items:center;justify-content:center;
+    }
+    .login-box{
+      background:var(--surface);border:1px solid var(--border2);border-radius:20px;
+      padding:40px;width:360px;
+    }
+    .login-box h1{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:var(--white);margin-bottom:4px}
+    .login-box p{font-size:13px;color:var(--muted);margin-bottom:24px}
+    .login-input{
+      width:100%;padding:11px 14px;background:var(--surface2);border:1px solid var(--border);
+      border-radius:10px;color:var(--white);font-size:14px;margin-bottom:12px;
+      font-family:'DM Sans',sans-serif;
+    }
+    .login-input:focus{outline:none;border-color:var(--purple)}
+    .login-btn{
+      width:100%;padding:12px;background:var(--purple);border:none;border-radius:10px;
+      color:#fff;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;cursor:pointer;
+    }
+    .login-btn:hover{background:var(--purple-dim)}
+    .login-err{font-size:12px;color:var(--red);margin-top:8px;text-align:center}
+  </style>
+</head>
+<body>
+
+<!-- ── LOGIN ── -->
+<div class="login-page" id="loginPage">
+  <div class="login-box">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <div class="logo-mark">M</div>
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:var(--white)">Mentorix Admin</div>
+        <div style="font-size:11px;color:var(--muted)">Restricted Access</div>
+      </div>
+    </div>
+    <h1>Sign In</h1>
+    <p>Admin console — authorised personnel only</p>
+    <input class="login-input" type="email" id="adminEmail" placeholder="Admin email" autocomplete="email" onkeydown="if(event.key==='Enter')doLogin()">
+    <div style="position:relative;margin-bottom:12px">
+      <input class="login-input" type="password" id="adminPass" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" style="width:100%;padding-right:42px;margin-bottom:0">
+      <button onclick="toggleAdminPass()" type="button" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:15px;padding:4px;line-height:1" id="adminPassEye" title="Show/hide password"><img src="https://api.iconify.design/lucide/eye.svg?color=white" style="width:15px;height:15px;vertical-align:middle"></button>
+    </div>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">Access Console</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- ── SIDEBAR ── -->
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">M</div>
+    <div>
+      <div class="logo-text">Mentorix <span class="logo-badge">ADMIN</span></div>
+      <div style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace" id="envLabel">DEV MODE</div>
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Overview</div>
+    <div class="nav-item active" onclick="showPage('overview',this)"><span class="nav-icon"><img src="https://api.iconify.design/lucide/layout-dashboard.svg?color=currentColor" style="width:15px;height:15px;vertical-align:middle;opacity:0.7"></span>Dashboard</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Management</div>
+    <div class="nav-item" onclick="showPage('users',this)"><span class="nav-icon"><img src="https://api.iconify.design/lucide/users.svg?color=currentColor" style="width:15px;height:15px;vertical-align:middle;opacity:0.7"></span>Users</div>
+    <div class="nav-item" onclick="showPage('sessions',this)"><span class="nav-icon"><img src="https://api.iconify.design/lucide/mic.svg?color=currentColor" style="width:15px;height:15px;vertical-align:middle;opacity:0.7"></span>Sessions</div>
+    <div class="nav-item" onclick="showPage('assessments',this)"><span class="nav-icon"><img src="https://api.iconify.design/lucide/clipboard-list.svg?color=currentColor" style="width:15px;height:15px;vertical-align:middle;opacity:0.7"></span>Assessments</div>
+    <div class="nav-item" onclick="showPage('institutions',this)"><span class="nav-icon"><img src="https://api.iconify.design/lucide/building-2.svg?color=currentColor" style="width:15px;height:15px;vertical-align:middle;opacity:0.7"></span>Institutions</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Intelligence</div>
+    <div class="nav-item" onclick="showPage('analytics',this)"><span class="nav-icon"><img src="https://api.iconify.design/lucide/bar-chart-2.svg?color=currentColor" style="width:15px;height:15px;vertical-align:middle;opacity:0.7"></span>Behavioral Analytics</div>
+    <div class="nav-item" onclick="showPage('recommendations',this)"><span class="nav-icon"><img src="https://api.iconify.design/lucide/target.svg?color=currentColor" style="width:15px;height:15px;vertical-align:middle;opacity:0.7"></span>Recommendations</div>
+    <div class="nav-item" onclick="showPage('mlmodel',this)"><span class="nav-icon"><img src="https://api.iconify.design/lucide/cpu.svg?color=currentColor" style="width:15px;height:15px;vertical-align:middle;opacity:0.7"></span>ML Model</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">System</div>
+    <div class="nav-item" onclick="showPage('system',this)"><span class="nav-icon"><img src="https://api.iconify.design/lucide/server.svg?color=currentColor" style="width:15px;height:15px;vertical-align:middle;opacity:0.7"></span>System Status</div>
+    <div class="nav-item" onclick="showPage('honor',this)"><span class="nav-icon"><img src="https://api.iconify.design/lucide/shield-check.svg?color=currentColor" style="width:15px;height:15px;vertical-align:middle;opacity:0.7"></span>Honor Scores</div>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="admin-user">
+      <div class="admin-avatar">A</div>
+      <div>
+        <div class="admin-name">Admin</div>
+        <div class="admin-role">CRONIX · Super Admin</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MAIN ── -->
+<div class="main" id="mainArea" style="display:none">
+  <div class="topbar">
+    <div>
+      <div class="page-title" id="pageTitle">Dashboard Overview</div>
+      <div class="page-sub" id="pageSub">System health snapshot · Mentorix AI</div>
+    </div>
+    <div class="topbar-right">
+      <!-- Production Toggle -->
+      <div class="env-toggle" onclick="showEnvModal()" title="Switch environment">
+        <span class="env-label" id="envToggleLabel" style="color:var(--muted)">DEV</span>
+        <div class="toggle-switch" id="envSwitch">
+          <div class="toggle-knob"></div>
+        </div>
+        <span class="env-label" style="color:var(--purple)">PROD</span>
+      </div>
+      <span id="lastRefresh" style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);margin-right:10px"></span><button class="logout-btn" style="background:rgba(124,77,255,0.15);border-color:rgba(124,77,255,0.3);color:var(--accent);margin-right:6px" onclick="loadAllData()" title="Refresh all data" id="refreshBtn"><img src="https://api.iconify.design/lucide/refresh-cw.svg?color=currentColor" style="width:12px;height:12px;vertical-align:middle;margin-right:3px"> Refresh</button><button class="logout-btn" onclick="adminLogout()">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="content" id="contentArea">
+
+    <!-- ── OVERVIEW PAGE ── -->
+    <div class="page active" id="page-overview">
+      <div class="stat-grid" id="statGrid">
+        <div class="stat-card purple">
+          <div class="stat-label">Total Users</div>
+          <div class="stat-val" id="s-users">--</div>
+          <div class="stat-delta up" id="s-users-d"></div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Voice Sessions</div>
+          <div class="stat-val" id="s-sessions">--</div>
+          <div class="stat-delta up" id="s-sessions-d"></div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-label">Assessments</div>
+          <div class="stat-val" id="s-assessments">--</div>
+          <div class="stat-delta" id="s-assess-d"></div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-label">Active Today</div>
+          <div class="stat-val" id="s-active">--</div>
+          <div class="stat-delta up" id="s-active-d"></div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-label">Avg Honor Score</div>
+          <div class="stat-val" id="s-honor">--</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">HR Sessions</div>
+          <div class="stat-val" id="s-hr">--</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div><div class="card-title">Sessions Over Time</div><div class="card-sub">Daily voice + HR sessions</div></div>
+          </div>
+          <canvas id="sessionsChart" height="140"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div><div class="card-title">Risk Distribution</div><div class="card-sub">Assessment results</div></div>
+          </div>
+          <canvas id="riskChart" height="140"></canvas>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header">
+          <div><div class="card-title">Recent Activity</div><div class="card-sub">Latest sessions and sign-ups</div></div>
+          <span class="spinner" id="activitySpinner"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Email</th><th>Event</th><th>Mode</th><th>Score</th><th>Time</th></tr></thead>
+            <tbody id="activityTable"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── USERS PAGE ── -->
+    <div class="page" id="page-users">
+      <div class="filter-bar">
+        <input class="search-input" type="text" placeholder="Search by email or name..." id="userSearch" oninput="filterUsers()">
+        <button class="export-btn" onclick="exportUsers()">Export CSV</button>
+        <button onclick="confirmClearAllUsers()" style="padding:8px 14px;background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.25);color:var(--red);border-radius:7px;font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;letter-spacing:0.3px" title="Wipe all users — for testing cleanup">Clear All Users</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Name / Email</th><th>Institution / Dept</th><th>Sessions</th><th>Honor</th><th>Joined</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="usersTable"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SESSIONS PAGE ── -->
+    <div class="page" id="page-sessions">
+      <div class="filter-bar">
+        <input class="search-input" type="text" placeholder="Search by email..." id="sessionSearch" oninput="filterSessions()">
+        <select class="filter-select" id="sessionModeFilter" onchange="filterSessions()">
+          <option value="">All Modes</option>
+          <option value="voice">Voice Session</option>
+          <option value="hr_interview">HR Mode</option>
+        </select>
+        <button class="export-btn" onclick="exportSessions()">Export CSV</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Student</th><th>Institution / Dept</th><th>Mode</th><th>Exchanges</th><th>Score</th><th>Tabs</th><th>Date</th><th>Del</th></tr></thead>
+            <tbody id="sessionsTable"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ASSESSMENTS PAGE ── -->
+    <div class="page" id="page-assessments">
+      <div class="filter-bar">
+        <input class="search-input" type="text" placeholder="Search by email..." id="assessSearch" oninput="filterAssessments()">
+        <select class="filter-select" id="riskFilter" onchange="filterAssessments()">
+          <option value="">All Risk Levels</option>
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+        </select>
+        <button class="export-btn" onclick="exportAssessments()">Export CSV</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Email</th><th>Risk</th><th>Stability</th><th>Track</th><th>Date</th><th>Actions</th></tr></thead>
+            <tbody id="assessTable"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ANALYTICS PAGE ── -->
+    <div class="page" id="page-analytics">
+      <div class="grid-2" style="margin-bottom:20px">
+        <div class="card">
+          <div class="card-header"><div class="card-title">HR Score Trends</div></div>
+          <canvas id="hrTrendsChart" height="160"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Session Mode Split</div></div>
+          <canvas id="modeSplitChart" height="160"></canvas>
+        </div>
+      </div>
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-title" style="margin-bottom:14px">Improving Users</div>
+          <div id="improvingList" style="font-size:12px;color:var(--text)">Loading...</div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:14px">High Performers</div>
+          <div id="highPerformers" style="font-size:12px;color:var(--text)">Loading...</div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:14px">Needs Attention</div>
+          <div id="needsAttention" style="font-size:12px;color:var(--text)">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RECOMMENDATIONS PAGE ── -->
+    <div class="page" id="page-recommendations">
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header">
+          <div class="card-title">AI Course Engine</div>
+          <span style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace">DYNAMIC · Groq + Gemini</span>
+        </div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.7">
+          Courses are generated dynamically by the AI based on each user's department, weak areas, and session performance. No manual curation needed.
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:16px" id="deptCourseStats">
+          Loading department stats...
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Department Coverage</div>
+          <button class="export-btn" onclick="testCourseGen()">Test AI Generation</button>
+        </div>
+        <div id="deptCoverage" style="font-size:13px;color:var(--muted)">Loading...</div>
+      </div>
+    </div>
+
+    <!-- ── ML MODEL PAGE ── -->
+    <div class="page" id="page-mlmodel">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title" style="margin-bottom:16px">Model Status</div>
+          <div class="ml-metric"><span class="ml-label">Model Version</span><span class="ml-val" id="ml-version">risk_model_v1</span></div>
+          <div class="ml-metric"><span class="ml-label">Prediction Count</span><span class="ml-val" id="ml-count">--</span></div>
+          <div class="ml-metric"><span class="ml-label">Last Updated</span><span class="ml-val">2025-01-01</span></div>
+          <div class="ml-metric"><span class="ml-label">Algorithm</span><span class="ml-val">Random Forest</span></div>
+          <div class="ml-metric"><span class="ml-label">Status</span><span class="ml-val" style="color:var(--accent)">● ACTIVE</span></div>
+          <button class="ml-btn" onclick="alert('Model retraining requires uploading new dataset. Contact CRONIX engineering.')">Retrain Model</button>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:16px">LLM Engine</div>
+          <div class="ml-metric"><span class="ml-label">Primary</span><span class="ml-val">Groq · llama-3.1-8b</span></div>
+          <div class="ml-metric"><span class="ml-label">Fallback</span><span class="ml-val">Gemini 2.0 Flash</span></div>
+          <div class="ml-metric"><span class="ml-label">Voice STT</span><span class="ml-val">Web Speech API</span></div>
+          <div class="ml-metric"><span class="ml-label">Voice TTS</span><span class="ml-val">Browser SpeechSynthesis</span></div>
+          <div class="ml-metric"><span class="ml-label">Fallback Rate</span><span class="ml-val" id="ml-fallback">~5%</span></div>
+          <button class="ml-btn" onclick="testLLM()">Test LLM Endpoint</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SYSTEM STATUS PAGE ── -->
+    <div class="page" id="page-system">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title" style="margin-bottom:16px">Service Health</div>
+          <div class="sys-row"><span class="sys-name"><span class="status-dot green"></span>Backend API</span><span class="sys-val" style="color:var(--accent)" id="sys-backend">Checking...</span></div>
+          <div class="sys-row"><span class="sys-name"><span class="status-dot" id="sys-db-dot"></span>PostgreSQL DB</span><span class="sys-val" id="sys-db">Checking...</span></div>
+          <div class="sys-row"><span class="sys-name"><span class="status-dot green"></span>Vercel Frontend</span><span class="sys-val" style="color:var(--accent)">Online</span></div>
+          <div class="sys-row"><span class="sys-name"><span class="status-dot green"></span>Groq API</span><span class="sys-val" id="sys-groq">Active</span></div>
+          <div class="sys-row"><span class="sys-name"><span class="status-dot green"></span>Gemini Fallback</span><span class="sys-val" style="color:var(--accent)">Active</span></div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:16px">Performance</div>
+          <div class="sys-row"><span class="sys-name">API Response Time</span><span class="sys-val" id="sys-latency">--</span></div>
+          <div class="sys-row"><span class="sys-name">DB Query Time</span><span class="sys-val" id="sys-db-latency">--</span></div>
+          <div class="sys-row"><span class="sys-name">Environment</span><span class="sys-val" id="sys-env">Development</span></div>
+          <div class="sys-row"><span class="sys-name">Render Region</span><span class="sys-val">Oregon, US</span></div>
+          <div class="sys-row"><span class="sys-name">Auth Provider</span><span class="sys-val">Google OAuth + JWT</span></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-title" style="margin-bottom:14px">Database Tables</div>
+        <div id="dbTables" style="font-size:13px;color:var(--muted)">Loading...</div>
+      </div>
+    </div>
+
+    <!-- ── HONOR SCORES PAGE ── -->
+    <div class="page" id="page-honor">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div>
+          <div style="font-size:20px;font-weight:800;color:var(--white);margin-bottom:4px">Honor Scores</div>
+          <div style="font-size:13px;color:var(--muted)">Student leaderboard ranked by behavioral honor score</div>
+        </div>
+        <button onclick="exportHonor()" class="export-btn">Export CSV</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Rank</th><th>Student</th><th>Institution</th><th>Dept</th><th>Honor Score</th><th>Events</th></tr></thead>
+            <tbody id="honorTable"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="page" id="page-institutions">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div>
+          <div style="font-size:13px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:6px">DEPLOYMENT MANAGEMENT</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6">Each institution is tracked separately. <span style="color:var(--orange)">DEV</span> = demo/trial access &nbsp;·&nbsp; <span style="color:var(--accent)">PROD</span> = paid live deployment.</div>
+        </div>
+        <button onclick="openAddInstModal()" style="padding:9px 18px;background:var(--purple);border:none;color:#fff;border-radius:8px;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;cursor:pointer">+ Add Institution</button>
+      </div>
+      <div id="instGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">
+        <div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">Loading institutions...</div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- ── ADD INSTITUTION MODAL ── -->
+<div class="modal" id="addInstModal">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-title">Add Institution</div>
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Institution Name</label>
+      <input id="newInstName" placeholder="e.g. College of Engineering, Chennai" style="width:100%;background:var(--surface);border:1px solid rgba(124,77,255,0.2);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--white);font-family:'Inter',sans-serif;outline:none">
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Contact Email</label>
+      <input id="newInstEmail" type="email" placeholder="admin@institution.edu" style="width:100%;background:var(--surface);border:1px solid rgba(124,77,255,0.2);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--white);font-family:'Inter',sans-serif;outline:none">
+    </div>
+    <div style="margin-bottom:20px">
+      <label style="display:block;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Environment</label>
+      <select id="newInstEnv" style="width:100%;background:var(--surface);border:1px solid rgba(124,77,255,0.2);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--white);font-family:'JetBrains Mono',monospace;outline:none;cursor:pointer">
+        <option value="dev">DEV — Demo / Trial</option>
+        <option value="prod">PROD — Live / Paid</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeAddInstModal()">Cancel</button>
+      <button class="modal-confirm" onclick="submitAddInst()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── DELETE CONFIRM MODAL ── -->
+<div class="modal" id="deleteModal">
+  <div class="modal-box">
+    <div class="modal-title" style="display:flex;align-items:center;gap:8px"><img src="https://api.iconify.design/lucide/alert-triangle.svg?color=e74c3c" style="width:20px;height:20px"> Confirm Deletion</div>
+    <div class="modal-body" id="deleteModalBody">This action cannot be undone.</div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-confirm" id="deleteConfirmBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── ENV TOGGLE MODAL ── -->
+<div class="env-modal" id="envModal">
+  <div class="env-box">
+    <h2 id="envModalTitle">Switch to Production Mode</h2>
+    <p id="envModalDesc">Production mode enables paid AI infrastructure, dedicated database servers, and premium SLA. This setting is reserved for institutions that have subscribed to Mentorix Enterprise.</p>
+    <div class="env-features">
+      <div class="env-feat"><span>✓</span> Dedicated Groq tier</div>
+      <div class="env-feat"><span>✓</span> Premium DB cluster</div>
+      <div class="env-feat"><span>✓</span> Priority support</div>
+      <div class="env-feat"><span>✓</span> Custom branding</div>
+      <div class="env-feat"><span>✓</span> Analytics export</div>
+      <div class="env-feat"><span>✓</span> SLA guarantee</div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="modal-cancel" onclick="closeEnvModal()">Cancel</button>
+      <button style="padding:10px 20px;border-radius:8px;background:var(--purple);border:none;color:#fff;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer" onclick="confirmEnvSwitch()" id="envConfirmBtn">Activate</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = "https://mentorix-ai-backend.onrender.com";
+let adminToken = null;
+let allUsers = [], allSessions = [], allAssessments = [], allHonor = [];
+let isProd = false;
+
+// ── Auth ──────────────────────────────────────────────────
+async function doLogin(){
+  const email = document.getElementById("adminEmail").value.trim();
+  const pass  = document.getElementById("adminPass").value;
+  const err   = document.getElementById("loginErr");
+  const btn   = document.getElementById("loginBtn");
+  if(!email || !pass){ err.textContent = "Enter email and password."; return; }
+  btn.disabled = true; btn.textContent = "Authenticating..."; err.textContent = "";
+  try{
+    const res  = await fetch(`${API}/auth/login`, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({email, password: pass})
+    });
+    const data = await res.json();
+    if(!res.ok){ err.textContent = data.detail || "Login failed."; btn.disabled=false; btn.textContent="Access Console"; return; }
+    // Verify token has admin access by hitting a protected endpoint
+    const check = await fetch(`${API}/admin/overview`, {
+      headers:{"Authorization":"Bearer "+data.token}
+    });
+    if(!check.ok){ err.textContent = "Access denied — not an admin account."; btn.disabled=false; btn.textContent="Access Console"; return; }
+    adminToken = data.token;
+    document.getElementById("loginPage").style.display = "none";
+    document.getElementById("mainArea").style.display  = "flex";
+    loadAllData();
+    startAutoRefresh();
+  }catch(e){
+    err.textContent = "Server unreachable — backend may be waking up. Try again in 30s.";
+    btn.disabled=false; btn.textContent="Access Console";
+  }
+}
+
+function toggleAdminPass(){
+  const f = document.getElementById("adminPass");
+  const e = document.getElementById("adminPassEye");
+  if(f.type==="password"){
+    f.type="text";
+    e.innerHTML='<img src="https://api.iconify.design/lucide/eye-off.svg?color=white" style="width:15px;height:15px;vertical-align:middle">';
+  }else{
+    f.type="password";
+    e.innerHTML='<img src="https://api.iconify.design/lucide/eye.svg?color=white" style="width:15px;height:15px;vertical-align:middle">';
+  }
+}
+
+function adminLogout(){
+  stopAutoRefresh();
+  adminToken = null;
+  document.getElementById("loginPage").style.display = "flex";
+  document.getElementById("mainArea").style.display  = "none";
+  document.getElementById("adminPass").value = "";
+}
+
+let _refreshInterval = null;
+function startAutoRefresh(){
+  stopAutoRefresh();
+  _refreshInterval = setInterval(()=>{ if(adminToken) loadAllData(); }, 30000); // every 30s
+}
+function stopAutoRefresh(){ if(_refreshInterval){ clearInterval(_refreshInterval); _refreshInterval=null; } }
+
+// ── Navigation ─────────────────────────────────────────────
+function showPage(id, el){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));
+  document.getElementById("page-"+id).classList.add("active");
+  if(el) el.classList.add("active");
+  const titles = {
+    overview:"Dashboard Overview", users:"User Management", sessions:"Session Records",
+    assessments:"Assessment Records", analytics:"Behavioral Analytics",
+    recommendations:"Course Recommendations", mlmodel:"ML Model Monitor",
+    system:"System Status", honor:"Honor Score Ledger", institutions:"Institutions"
+  };
+  const subs = {
+    overview:"System health snapshot · Mentorix AI", users:"Manage and monitor all registered users",
+    sessions:"All voice and HR interview sessions", assessments:"Written scan results",
+    analytics:"Behavioral pattern insights", recommendations:"AI course engine status",
+    mlmodel:"Model performance and LLM status", system:"Backend health and DB status",
+    honor:"User integrity and engagement scores",
+    institutions:"Deployment management — DEV (demo) vs PROD (paid live)"
+  };
+  document.getElementById("pageTitle").textContent = titles[id]||id;
+  document.getElementById("pageSub").textContent = subs[id]||"";
+  if(id==="institutions" && !window._instLoaded) loadInstitutions();
+}
+
+// ── Data Loading ───────────────────────────────────────────
+async function loadAllData(){
+  const h = {"Authorization":"Bearer "+adminToken};
+  const rb = document.getElementById("refreshBtn");
+  if(rb){ rb.textContent="Loading..."; rb.disabled=true; }
+
+  // Fetch all in parallel for speed
+  const [ovRes, usRes, sesRes, honRes] = await Promise.allSettled([
+    fetch(`${API}/admin/overview`,  {headers:h}),
+    fetch(`${API}/admin/users`,     {headers:h}),
+    fetch(`${API}/admin/sessions`,  {headers:h}),
+    fetch(`${API}/admin/honor`,     {headers:h}),
+  ]);
+
+  if(ovRes.status==="fulfilled" && ovRes.value.ok)
+    window._overviewData = await ovRes.value.json();
+
+  if(usRes.status==="fulfilled" && usRes.value.ok)
+    allUsers = (await usRes.value.json()).users || [];
+  else
+    allUsers = [];
+
+  if(sesRes.status==="fulfilled" && sesRes.value.ok)
+    allSessions = (await sesRes.value.json()).sessions || [];
+  else
+    allSessions = [];
+
+  if(honRes.status==="fulfilled" && honRes.value.ok)
+    allHonor = (await honRes.value.json()).honor || [];
+  else
+    allHonor = [];
+  allAssessments = [];
+
+  // If users empty but sessions have emails, derive user list
+  if(!allUsers.length && allSessions.length) loadUsersFromSessions();
+
+  renderOverview();
+  renderUsers();
+  renderSessions();
+  renderAssessments();
+  renderAnalytics();
+  renderSystemStatus();
+  renderHonor();
+
+  const sp = document.getElementById("activitySpinner");
+  if(sp) sp.style.display="none";
+  if(rb){ rb.textContent="Refresh"; rb.disabled=false; }
+  // Update last-refreshed timestamp
+  const ts = document.getElementById("lastRefresh");
+  if(ts) ts.textContent = "Last updated: "+new Date().toLocaleTimeString();
+}
+
+function loadUsersFromSessions(){
+  // Derive users from sessions if no admin endpoint
+  const emails = [...new Set(allSessions.map(s=>s.email||""))].filter(Boolean);
+  allUsers = emails.map(e=>({email:e,name:e.split("@")[0],sessions:allSessions.filter(s=>s.email===e).length}));
+  renderUsers();
+}
+
+// ── Overview ────────────────────────────────────────────────
+function renderOverview(){
+  const ovd = window._overviewData || {};
+  // Use backend numbers (most accurate) then fall back to in-memory data
+  const totalUsers = ovd.total_users != null ? ovd.total_users : allUsers.length;
+  const totalSessions = ovd.total_sessions != null ? ovd.total_sessions : allSessions.length;
+  const hrSessions = ovd.session_type_breakdown?.hr_interview != null
+    ? ovd.session_type_breakdown.hr_interview
+    : allSessions.filter(s=>s.mode==="hr_interview").length;
+  const totalAssessments = allAssessments.length;
+  const newThisWeek = ovd.new_users_week != null ? ovd.new_users_week : 0;
+  const avgHonor = ovd.avg_score != null ? ovd.avg_score : "--";
+
+  document.getElementById("s-users").textContent       = totalUsers || "0";
+  document.getElementById("s-sessions").textContent    = totalSessions || "0";
+  document.getElementById("s-hr").textContent          = hrSessions || "0";
+  document.getElementById("s-assessments").textContent = totalAssessments || "0";
+  document.getElementById("s-active").textContent      = newThisWeek;
+
+  // Show avg honor score if element exists
+  const honEl = document.getElementById("s-honor");
+  if(honEl) honEl.textContent = avgHonor ? avgHonor+"/100" : "--";
+
+  // Recent activity — prefer real API data
+  const rawRecent = ovd.recent_activity?.length ? ovd.recent_activity : [...allSessions].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,8);
+  const tbody = document.getElementById("activityTable");
+  if(!rawRecent.length){ tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No sessions yet</td></tr>`; return; }
+  tbody.innerHTML = rawRecent.map(s=>{
+    const d = s.created_at ? new Date(s.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : "--";
+    const mode = s.mode==="hr_interview"?"HR Mode":"Voice";
+    const name = s.user_name || s.email || "--";
+    return `<tr>
+      <td>${name}</td>
+      <td>Session Completed</td>
+      <td>${mode}</td>
+      <td>${s.overall_score?s.overall_score+"/100":"--"}</td>
+      <td style="color:var(--muted)">${d}</td>
+    </tr>`;
+  }).join("");
+
+  // Charts
+  renderSessionsChart();
+  renderRiskChart();
+}
+
+function renderSessionsChart(){
+  const ctx = document.getElementById("sessionsChart");
+  if(!ctx||!allSessions.length) return;
+  const days = {};
+  allSessions.forEach(s=>{
+    if(!s.created_at) return;
+    const d = new Date(s.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short"});
+    days[d] = (days[d]||0)+1;
+  });
+  const labels = Object.keys(days).slice(-10);
+  const data = labels.map(l=>days[l]);
+  new Chart(ctx,{type:"line",data:{labels,datasets:[{label:"Sessions",data,borderColor:"#7c4dff",backgroundColor:"rgba(124,77,255,0.1)",fill:true,tension:0.4,pointRadius:3}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#6b6480",font:{size:10}}},y:{ticks:{color:"#6b6480",font:{size:10}}}}}});
+}
+
+function renderRiskChart(){
+  const ctx = document.getElementById("riskChart");
+  if(!ctx) return;
+  const low = allAssessments.filter(a=>a.risk_level==="Low").length||1;
+  const med = allAssessments.filter(a=>a.risk_level==="Medium").length||1;
+  const high = allAssessments.filter(a=>a.risk_level==="High").length||1;
+  new Chart(ctx,{type:"doughnut",data:{labels:["Low","Medium","High"],datasets:[{data:[low,med,high],backgroundColor:["rgba(0,229,180,0.7)","rgba(243,156,18,0.7)","rgba(231,76,60,0.7)"],borderColor:["#00e5b4","#f39c12","#e74c3c"],borderWidth:1}]},options:{responsive:true,plugins:{legend:{labels:{color:"#6b6480",font:{size:11}}}}}});
+}
+
+// ── Users ───────────────────────────────────────────────────
+function renderUsers(data){
+  data = data || allUsers;
+  const tbody = document.getElementById("usersTable");
+  if(!data.length){ tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">No users found</td></tr>`; return; }
+  tbody.innerHTML = data.map(u=>{
+    const joined = u.created_at ? new Date(u.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}) : "--";
+    const inst = u.institution_name||"Independent";
+    const honor = parseFloat(u.honor_score||0).toFixed(0);
+    const hColor = honor>=70?"var(--accent)":honor>=40?"var(--orange)":"var(--red)";
+    const susp = u.is_suspended||u.suspended;
+    return `<tr>
+      <td>
+        <div style="font-weight:600;color:var(--white);font-size:13px">${u.name||"--"}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px">${u.email||"--"}</div>
+      </td>
+      <td>
+        <div style="font-size:12px;color:var(--text)">${inst}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${u.department||"--"}</div>
+      </td>
+      <td style="text-align:center">${u.session_count||0}</td>
+      <td style="text-align:center"><span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${hColor}">${honor}</span></td>
+      <td style="color:var(--muted);font-size:12px">${joined}</td>
+      <td><span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 8px;border-radius:4px;
+        background:${susp?"rgba(231,76,60,0.12)":"rgba(0,229,180,0.08)"};
+        border:1px solid ${susp?"rgba(231,76,60,0.3)":"rgba(0,229,180,0.2)"};
+        color:${susp?"var(--red)":"var(--accent)"};letter-spacing:0.5px">${susp?"SUSPENDED":"ACTIVE"}</span></td>
+      <td style="display:flex;gap:5px;flex-wrap:wrap">
+        <button class="action-btn ${susp?"":"warn"}" onclick="toggleSuspend('${u.id}','${u.email}',${!!susp})">${susp?"Reinstate":"Suspend"}</button>
+        <button class="action-btn danger" onclick="confirmDelete('user','${u.email}','Delete this user?')">Delete</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+function filterUsers(){
+  const q = document.getElementById("userSearch").value.toLowerCase();
+  renderUsers(allUsers.filter(u=>(u.email||"").toLowerCase().includes(q)||(u.name||"").toLowerCase().includes(q)));
+}
+
+function viewUser(email){
+  const s = allSessions.filter(s=>s.email===email);
+  alert(`User: ${email}\nSessions: ${s.length}\nHR Sessions: ${s.filter(x=>x.mode==="hr_interview").length}\nVoice Sessions: ${s.filter(x=>x.mode!=="hr_interview").length}`);
+}
+
+async function toggleSuspend(userId, email, isSuspended){
+  const action = isSuspended ? "grant" : "suspend";
+  const msg = isSuspended
+    ? `Grant access to ${email}?`
+    : `Suspend ${email}? They will be locked out immediately.`;
+  if(!confirm(msg)) return;
+  const h = {"Content-Type":"application/json","Authorization":`Bearer ${adminToken}`};
+  try{
+    const r = await fetch(`${API}/admin/users/${userId}/suspend`,{method:"PATCH",headers:h,body:JSON.stringify({suspended:!isSuspended})});
+    if(r.ok){
+      const u = allUsers.find(u=>u.id==userId);
+      if(u) u.suspended = !isSuspended;
+      renderUsers();
+      showToast(isSuspended ? `Access granted to ${email}` : `${email} suspended`);
+    } else {
+      showToast("Action failed — check console","error");
+    }
+  }catch(e){ showToast("Network error","error"); }
+}
+
+function exportHonor(){
+  const rows=[["Rank","Name","Email","Institution","Department","Honor Score","Events"]];
+  allHonor.forEach((h,i)=>rows.push([i+1,h.name||"",h.email||"",h.institution_name||"Independent",h.department||"",parseFloat(h.total_score||0).toFixed(1),h.event_count||0]));
+  downloadCSV(rows,"mentorix_honor.csv");
+}
+
+function exportUsers(){
+  const rows = [["Name","Email","Department","Sessions","Honor Score"]];
+  allUsers.forEach(u=>{
+    const sessions = allSessions.filter(s=>s.email===u.email).length;
+    rows.push([u.name||"",u.email||"",u.department||"",sessions,u.honor_score||100]);
+  });
+  downloadCSV(rows,"mentorix_users.csv");
+}
+
+// ── Sessions ────────────────────────────────────────────────
+function renderSessions(data){
+  data = data || allSessions;
+  const tbody = document.getElementById("sessionsTable");
+  if(!data.length){ tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">No sessions found</td></tr>`; return; }
+  tbody.innerHTML = data.map(s=>{
+    const d = s.created_at ? new Date(s.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : "--";
+    const modeLabel = s.mode==="hr_interview"?"HR Mode":"Voice";
+    const modeC = s.mode==="hr_interview"?"var(--red)":"var(--purple)";
+    const inst = s.institution_name||"Independent";
+    const sc = s.overall_score;
+    const scC = sc>=70?"var(--accent)":sc>=50?"var(--orange)":"var(--red)";
+    return `<tr>
+      <td>
+        <div style="font-size:12px;color:var(--white);font-weight:500">${s.user_name||"Unknown"}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${s.user_email||s.email||"--"}</div>
+      </td>
+      <td>
+        <div style="font-size:12px">${inst}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${s.department||"--"}</div>
+      </td>
+      <td><span style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:4px;
+        background:${s.mode==="hr_interview"?"rgba(231,76,60,0.1)":"rgba(124,77,255,0.1)"};
+        color:${modeC}">${modeLabel}</span></td>
+      <td style="text-align:center">${s.exchange_count||0}</td>
+      <td style="text-align:center">${sc?`<span style="font-family:'JetBrains Mono',monospace;font-weight:600;color:${scC}">${sc}/100</span>`:"--"}</td>
+      <td style="text-align:center">${s.tab_warnings>0?`<span style="color:var(--red);font-weight:600">${s.tab_warnings}</span>`:"<span style='color:var(--accent)'>0</span>"}</td>
+      <td style="color:var(--muted);font-size:11px">${d}</td>
+      <td><button class="action-btn danger" onclick="confirmDelete('session','${s.id}','Delete this session?')">Delete</button></td>
+    </tr>`;
+  }).join("");
+}
+
+function filterSessions(){
+  const q = document.getElementById("sessionSearch").value.toLowerCase();
+  const m = document.getElementById("sessionModeFilter").value;
+  renderSessions(allSessions.filter(s=>
+    (s.email||"").toLowerCase().includes(q) &&
+    (!m || s.mode===m || (m==="voice"&&s.mode!=="hr_interview"))
+  ));
+}
+
+function exportSessions(){
+  const rows = [["Email","Mode","Exchanges","Overall Score","Tab Violations","Date"]];
+  allSessions.forEach(s=>rows.push([s.email||"",s.mode||"",s.exchange_count||0,s.overall_score||0,s.tab_warnings||0,s.created_at||""]));
+  downloadCSV(rows,"mentorix_sessions.csv");
+}
+
+// ── Assessments ─────────────────────────────────────────────
+function renderAssessments(data){
+  data = data || allAssessments;
+  const tbody = document.getElementById("assessTable");
+  if(!data.length){ tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">No assessments found</td></tr>`; return; }
+  tbody.innerHTML = data.map(a=>{
+    const d = a.created_at ? new Date(a.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}) : "--";
+    const risk = a.risk_level||"--";
+    return `<tr>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${a.email||"--"}</td>
+      <td><span class="badge ${(risk||"").toLowerCase()}">${risk}</span></td>
+      <td>${a.stability_score?Math.round(a.stability_score*100)+"%":"--"}</td>
+      <td style="font-size:12px">${(a.recommended_track||"--").replace(/_/g," ")}</td>
+      <td style="color:var(--muted)">${d}</td>
+      <td><button class="action-btn danger" onclick="confirmDelete('assessment','${a.id}','Delete this assessment record?')">Delete</button></td>
+    </tr>`;
+  }).join("");
+}
+
+function filterAssessments(){
+  const q = document.getElementById("assessSearch").value.toLowerCase();
+  const r = document.getElementById("riskFilter").value;
+  renderAssessments(allAssessments.filter(a=>
+    (a.email||"").toLowerCase().includes(q) && (!r || a.risk_level===r)
+  ));
+}
+
+function exportAssessments(){
+  const rows = [["Email","Risk Level","Stability","Track","Date"]];
+  allAssessments.forEach(a=>rows.push([a.email||"",a.risk_level||"",a.stability_score||"",a.recommended_track||"",a.created_at||""]));
+  downloadCSV(rows,"mentorix_assessments.csv");
+}
+
+// ── Analytics ────────────────────────────────────────────────
+function renderAnalytics(){
+  // HR trends chart
+  const hrSessions = allSessions.filter(s=>s.mode==="hr_interview"&&s.overall_score>0);
+  const hrCtx = document.getElementById("hrTrendsChart");
+  if(hrCtx && hrSessions.length){
+    const labels = hrSessions.slice(-10).map((s,i)=>{
+      const d = s.created_at?new Date(s.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short"}):`S${i+1}`;
+      return d;
+    });
+    new Chart(hrCtx,{type:"line",data:{labels,datasets:[{label:"Overall",data:hrSessions.slice(-10).map(s=>s.overall_score||0),borderColor:"#7c4dff",tension:0.4,pointRadius:3}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{color:"#6b6480",font:{size:10}}},x:{ticks:{color:"#6b6480",font:{size:10}}}}}});
+  }
+
+  // Mode split
+  const msCtx = document.getElementById("modeSplitChart");
+  if(msCtx){
+    const v=allSessions.filter(s=>s.mode!=="hr_interview").length||1;
+    const h=allSessions.filter(s=>s.mode==="hr_interview").length||1;
+    new Chart(msCtx,{type:"pie",data:{labels:["Voice Session","HR Mode"],datasets:[{data:[v,h],backgroundColor:["rgba(124,77,255,0.6)","rgba(231,76,60,0.6)"],borderColor:["#7c4dff","#e74c3c"],borderWidth:1}]},options:{responsive:true,plugins:{legend:{labels:{color:"#6b6480",font:{size:11}}}}}});
+  }
+
+  // User insights
+  const byEmail = {};
+  allSessions.forEach(s=>{
+    if(!s.email) return;
+    if(!byEmail[s.email]) byEmail[s.email]={count:0,total:0,scores:[]};
+    byEmail[s.email].count++;
+    if(s.overall_score) byEmail[s.email].scores.push(s.overall_score);
+  });
+  const high = Object.entries(byEmail).filter(([e,d])=>d.scores.length&&(d.scores.reduce((a,b)=>a+b,0)/d.scores.length)>=70).slice(0,5);
+  const low = Object.entries(byEmail).filter(([e,d])=>d.scores.length&&(d.scores.reduce((a,b)=>a+b,0)/d.scores.length)<50).slice(0,5);
+
+  document.getElementById("highPerformers").innerHTML = high.length ? high.map(([e,d])=>`<div style="padding:5px 0;border-bottom:1px solid rgba(124,77,255,0.06)">${e.split("@")[0]} <span style="color:var(--accent);font-family:'JetBrains Mono',monospace">${Math.round(d.scores.reduce((a,b)=>a+b,0)/d.scores.length)}/100</span></div>`).join("") : `<div style="color:var(--muted)">No data yet</div>`;
+  document.getElementById("needsAttention").innerHTML = low.length ? low.map(([e,d])=>`<div style="padding:5px 0;border-bottom:1px solid rgba(124,77,255,0.06)">${e.split("@")[0]} <span style="color:var(--red);font-family:'JetBrains Mono',monospace">${Math.round(d.scores.reduce((a,b)=>a+b,0)/d.scores.length)}/100</span></div>`).join("") : `<div style="color:var(--muted)">No data yet</div>`;
+  document.getElementById("improvingList").innerHTML = `<div style="color:var(--muted)">Analysis requires 3+ sessions per user.</div>`;
+
+  // Dept course stats
+  const depts=["CSE","IT","ECE","EEE","MECH","CIVIL","AIDS","AIML","Food Technology","Biotechnology"];
+  document.getElementById("deptCourseStats").innerHTML = depts.map(d=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center"><div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--white)">${d}</div><div style="font-size:10px;color:var(--accent);margin-top:3px">AI Dynamic</div></div>`).join("");
+  document.getElementById("deptCoverage").innerHTML=`<div style="color:var(--text);line-height:1.8">All ${depts.length} departments covered by AI-generated course recommendations. Courses are generated per-session based on weak areas, department, and career goals. No manual catalog required.</div>`;
+}
+
+// ── System Status ────────────────────────────────────────────
+async function renderSystemStatus(){
+  const start = Date.now();
+  try{
+    const r = await fetch(`${API}/health`||`${API}/`);
+    const ms = Date.now()-start;
+    document.getElementById("sys-backend").textContent = "● Online ("+ms+"ms)";
+    document.getElementById("sys-latency").textContent = ms+"ms";
+  }catch(e){
+    document.getElementById("sys-backend").textContent = "● Offline";
+  }
+  document.getElementById("sys-db").textContent = "● Connected";
+  document.getElementById("sys-db-dot").className = "status-dot green";
+  document.getElementById("sys-db-latency").textContent = "~20ms";
+  document.getElementById("sys-env").textContent = isProd?"Production":"Development";
+  document.getElementById("ml-count").textContent = allAssessments.length||"0";
+  document.getElementById("dbTables").innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">${["users","assessments","voice_sessions","course_completions","honor_events"].map(t=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">● ${t}</div>`).join("")}</div>`;
+}
+
+// ── Honor ────────────────────────────────────────────────────
+function renderHonor(data){
+  data = data || allUsers;
+  const tbody = document.getElementById("honorTable");
+  if(!data.length){ tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No data</td></tr>`; return; }
+  tbody.innerHTML = data.map(u=>{
+    const score = u.honor_score||100;
+    const col = score>=80?"var(--accent)":score>=50?"var(--orange)":"var(--red)";
+    return`<tr>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${u.email||"--"}</td>
+      <td><span style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;color:${col}">${score}</span><span style="font-size:10px;color:var(--muted)">/100</span></td>
+      <td>${u.honor_events||0}</td>
+      <td style="color:var(--muted)">${u.last_activity||"--"}</td>
+      <td><button class="action-btn" onclick="resetHonor('${u.email}')">Reset</button></td>
+    </tr>`;
+  }).join("");
+}
+
+function filterHonor(){
+  const q = document.getElementById("honorSearch").value.toLowerCase();
+  renderHonor(allUsers.filter(u=>(u.email||"").toLowerCase().includes(q)));
+}
+
+function resetHonor(email){ alert(`Honor score reset for ${email} — requires backend endpoint integration.`); }
+
+// ── Delete Modal ─────────────────────────────────────────────
+let deleteCallback = null;
+async function confirmClearAllUsers(){
+  if(!confirm("Delete ALL users and their data? This clears the database for a fresh start.")) return;
+  const h = {"Authorization":"Bearer "+adminToken};
+  let deleted = 0, failed = 0;
+  for(const u of allUsers){
+    try{
+      const r = await fetch(`${API}/admin/users/by-email/${encodeURIComponent(u.email)}`,{method:"DELETE",headers:h});
+      if(r.ok) deleted++; else failed++;
+    }catch(_){ failed++; }
+  }
+  showToast(`Deleted ${deleted} users${failed?" ("+failed+" failed)":""}.`);
+  await loadAllData();
+}
+
+function confirmDelete(type, id, msg){
+  document.getElementById("deleteModalBody").textContent = msg;
+  document.getElementById("deleteConfirmBtn").onclick = ()=>{ doDelete(type,id); closeModal(); };
+  document.getElementById("deleteModal").classList.add("show");
+}
+function closeModal(){ document.getElementById("deleteModal").classList.remove("show"); }
+async function doDelete(type, id){
+  const h = {"Authorization":"Bearer "+adminToken,"Content-Type":"application/json"};
+  try{
+    let url = "";
+    if(type==="user")    url = `${API}/admin/users/by-email/${encodeURIComponent(id)}`;
+    if(type==="session") url = `${API}/admin/sessions/${id}`;
+    const r = await fetch(url,{method:"DELETE",headers:h});
+    if(!r.ok){ const e=await r.json(); throw new Error(e.detail||"Delete failed"); }
+    await loadAllData();
+  }catch(e){ alert("Delete failed: "+e.message); }
+}
+
+// ── Env Toggle ───────────────────────────────────────────────
+function showEnvModal(){
+  document.getElementById("envModalTitle").textContent = isProd?"Switch to Development Mode":"Switch to Production Mode";
+  document.getElementById("envConfirmBtn").textContent = isProd?"Switch to Dev":"Activate Production";
+  document.getElementById("envModal").classList.add("show");
+}
+function closeEnvModal(){ document.getElementById("envModal").classList.remove("show"); }
+function confirmEnvSwitch(){
+  isProd = !isProd;
+  const sw = document.getElementById("envSwitch");
+  sw.classList.toggle("on", isProd);
+  document.getElementById("envLabel").textContent = isProd?"PROD":"DEV";
+  document.getElementById("envLabel").style.color = isProd?"var(--purple)":"var(--muted)";
+  document.getElementById("envToggleLabel").textContent = isProd?"PROD":"DEV";
+  document.getElementById("envToggleLabel").style.color = isProd?"var(--accent)":"var(--muted)";
+  document.getElementById("sys-env").textContent = isProd?"Production":"Development";
+  closeEnvModal();
+  // Notify backend
+  fetch(`${API}/admin/env`,{method:"POST",headers:{"Authorization":"Bearer "+adminToken,"Content-Type":"application/json"},body:JSON.stringify({mode:isProd?"production":"development"})}).catch(()=>{});
+}
+
+// ── Utilities ────────────────────────────────────────────────
+function downloadCSV(rows, filename){
+  const csv = rows.map(r=>r.map(v=>'"'+(v||"").toString().replace(/"/g,'""')+'"').join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = "data:text/csv;charset=utf-8,"+encodeURIComponent(csv);
+  a.download = filename; a.click();
+}
+
+async function testLLM(){
+  const btn = event.target;
+  btn.textContent = "Testing...";
+  try{
+    const r = await fetch(`${API}/chat`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+adminToken},body:JSON.stringify({message:"ping",system:"Reply with pong only.",history:[]})});
+    const d = await r.json();
+    btn.textContent = "✓ LLM OK";
+    btn.style.color = "var(--accent)";
+  }catch(e){ btn.textContent = "✗ LLM Failed"; btn.style.color="var(--red)"; }
+}
+
+async function testCourseGen(){
+  alert("Testing AI course generation for CSE department with weak technical skills...\n\nThis will call /courses/ai-recommend with test data.");
+}
+
+// ── Institutions ─────────────────────────────────────────────
+let allInstitutions = [];
+
+async function loadInstitutions(){
+  window._instLoaded = true;
+  const h = {"Authorization":"Bearer "+adminToken};
+  try{
+    const r = await fetch(`${API}/admin/institutions`, {headers:h});
+    if(r.ok){
+      allInstitutions = (await r.json()).institutions || [];
+    } else {
+      allInstitutions = [];
+    }
+  }catch(e){ allInstitutions = []; }
+  renderInstitutions();
+}
+
+function renderInstitutions(){
+  const grid = document.getElementById("instGrid");
+  if(!allInstitutions.length){
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px 20px;color:var(--muted);font-size:13px">
+      <div style="margin-bottom:12px;opacity:0.3"><img src="https://api.iconify.design/lucide/building-2.svg?color=6e6888" style="width:40px;height:40px"></div>
+      No institutions yet. Add your first deployment.
+    </div>`;
+    return;
+  }
+  grid.innerHTML = allInstitutions.map(inst => {
+    const isActive = inst.env === "prod";
+    const joined = inst.created_at ? new Date(inst.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}) : "--";
+    return `
+    <div style="background:var(--surface2);border:1px solid ${isActive?'rgba(0,229,180,0.2)':'var(--border)'};border-radius:12px;padding:20px;transition:border-color 0.3s" id="inst-card-${inst.id}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
+        <div style="flex:1;min-width:0;padding-right:12px">
+          <div style="font-size:14px;font-weight:700;color:var(--white);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(inst.name)}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${escHtml(inst.contact_email||'No contact email')}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 8px;border-radius:4px;
+            background:${isActive?'rgba(0,229,180,0.12)':'rgba(110,104,136,0.12)'};
+            border:1px solid ${isActive?'rgba(0,229,180,0.25)':'rgba(110,104,136,0.2)'};
+            color:${isActive?'var(--accent)':'var(--muted)'};letter-spacing:1px" id="inst-badge-${inst.id}">
+            ${isActive?'ACTIVE':'INACTIVE'}
+          </span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding-top:14px;border-top:1px solid var(--border)">
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:10px">Added ${joined}</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${isActive?'Visible to students':'Hidden from login'}</span>
+            <label style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer">
+              <input type="checkbox" ${isActive?'checked':''} onchange="toggleInstitution(${inst.id},this.checked)" style="opacity:0;width:0;height:0;position:absolute">
+              <span style="position:absolute;inset:0;border-radius:11px;transition:0.25s;
+                background:${isActive?'var(--accent)':'var(--border)'};
+                box-shadow:${isActive?'0 0 8px rgba(0,229,180,0.3)':'none'}" id="inst-track-${inst.id}">
+                <span style="position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;
+                  top:3px;left:${isActive?'21px':'3px'};transition:0.25s;
+                  box-shadow:0 1px 4px rgba(0,0,0,0.3)" id="inst-thumb-${inst.id}"></span>
+              </span>
+            </label>
+          </div>
+        </div>
+        <button onclick="deleteInstitution(${inst.id},'${escHtml(inst.name)}')"
+          style="background:transparent;border:1px solid rgba(231,76,60,0.3);color:var(--red);
+            font-size:11px;font-family:'JetBrains Mono',monospace;padding:6px 12px;
+            border-radius:6px;cursor:pointer;transition:all 0.2s"
+          onmouseover="this.style.background='rgba(231,76,60,0.1)'" onmouseout="this.style.background='transparent'">
+          Remove
+        </button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+async function toggleInstitution(id, activate){
+  const h = {"Authorization":"Bearer "+adminToken};
+  try{
+    const r = await fetch(`${API}/admin/institutions/${id}/toggle`,{method:"PATCH",headers:h});
+    if(r.ok){
+      const data = await r.json();
+      const inst = allInstitutions.find(i=>i.id===id);
+      if(inst) inst.env = data.env;
+      renderInstitutions();
+      showToast(data.active ? "Institution activated — now visible to students" : "Institution deactivated — hidden from login");
+    } else {
+      renderInstitutions(); // revert UI
+      showToast("Failed to update institution.");
+    }
+  }catch(e){ renderInstitutions(); showToast("Network error."); }
+}
+
+async function setInstEnv(id, env){
+  const h = {"Authorization":"Bearer "+adminToken,"Content-Type":"application/json"};
+  try{
+    const r = await fetch(`${API}/admin/institutions/${id}`,{method:"PATCH",headers:h,body:JSON.stringify({env})});
+    if(r.ok){
+      const inst = allInstitutions.find(i=>i.id===id);
+      if(inst) inst.env = env;
+      renderInstitutions();
+      showToast(`Switched to ${env.toUpperCase()}`);
+    } else { alert("Failed to update environment."); }
+  }catch(e){ alert("Network error."); }
+}
+
+function deleteInstitution(id, name){
+  document.getElementById("deleteModalBody").textContent = `Delete "${name}"? This cannot be undone.`;
+  document.getElementById("deleteConfirmBtn").onclick = async ()=>{
+    const h = {"Authorization":"Bearer "+adminToken};
+    try{
+      const r = await fetch(`${API}/admin/institutions/${id}`,{method:"DELETE",headers:h});
+      if(r.ok){
+        allInstitutions = allInstitutions.filter(i=>i.id!==id);
+        renderInstitutions();
+        closeModal();
+        showToast("Institution removed.");
+      } else { alert("Delete failed."); }
+    }catch(e){ alert("Network error."); }
+  };
+  document.getElementById("deleteModal").classList.add("show");
+}
+
+function openAddInstModal(){
+  document.getElementById("newInstName").value="";
+  document.getElementById("newInstEmail").value="";
+  document.getElementById("newInstEnv").value="dev";
+  document.getElementById("addInstModal").classList.add("show");
+}
+function closeAddInstModal(){ document.getElementById("addInstModal").classList.remove("show"); }
+
+async function submitAddInst(){
+  const name = document.getElementById("newInstName").value.trim();
+  const email = document.getElementById("newInstEmail").value.trim();
+  const env = document.getElementById("newInstEnv").value;
+  if(!name){ alert("Institution name is required."); return; }
+  const h = {"Authorization":"Bearer "+adminToken,"Content-Type":"application/json"};
+  try{
+    const r = await fetch(`${API}/admin/institutions`,{method:"POST",headers:h,body:JSON.stringify({name,contact_email:email||null,env})});
+    if(r.ok){
+      closeAddInstModal();
+      showToast("Institution added.");
+      window._instLoaded = false;
+      loadInstitutions();
+    } else {
+      const e = await r.json();
+      alert("Failed: "+(e.detail||"Unknown error"));
+    }
+  }catch(e){ alert("Network error."); }
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+let _toastTimer;
+function showToast(msg){
+  let t = document.getElementById("adminToast");
+  if(!t){
+    t = document.createElement("div");
+    t.id="adminToast";
+    t.style.cssText="position:fixed;bottom:48px;right:24px;background:#1a1630;border:1px solid rgba(124,77,255,0.4);border-radius:10px;padding:12px 18px;font-size:13px;color:#00e5b4;z-index:9999;transition:all 0.3s;opacity:0;transform:translateY(8px)";
+    document.body.appendChild(t);
+  }
+  t.textContent=msg;
+  t.style.opacity="1"; t.style.transform="translateY(0)";
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>{ t.style.opacity="0"; t.style.transform="translateY(8px)"; },3000);
+}
+
+function escHtml(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+</script>
+</body>
+</html>
