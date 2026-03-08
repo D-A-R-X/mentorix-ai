@@ -404,8 +404,10 @@ def user_history(current_user: str = Depends(get_current_user)):
 @app.post("/user/profile")
 async def save_profile(data: dict, current_user: str = Depends(get_current_user)):
     conn = get_connection(); cur = conn.cursor()
-    cur.execute("""UPDATE users SET department=%s, year=%s, semester=%s WHERE email=%s""",
-      (data.get("dept",""), data.get("year",""), data.get("sem",""), current_user))
+    inst_id = data.get("institution_id") or None
+    if inst_id: inst_id = int(inst_id)
+    cur.execute("""UPDATE users SET department=%s, year=%s, semester=%s, institution_id=%s WHERE email=%s""",
+      (data.get("dept",""), data.get("year",""), data.get("sem",""), inst_id, current_user))
     conn.commit(); cur.close(); conn.close()
     return {"message": "Profile saved"}
 # ── Protected Routes ─────────────────────────────────────────────
@@ -932,26 +934,51 @@ def _migrate_suspended():
     try:
         conn = get_connection(); cur = conn.cursor()
         cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN DEFAULT FALSE")
+        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS institution_id INTEGER DEFAULT NULL")
         conn.commit(); cur.close(); conn.close()
     except Exception as e:
-        logger.warning(f"migrate is_suspended: {e}")
+        logger.warning(f"migrate_users: {e}")
 try: _migrate_suspended()
 except: pass
+
+# ── Public: list institutions (for student login page) ───────────────────────
+@app.get("/institutions")
+def get_public_institutions():
+    """No auth required — returns all institutions for student college selector."""
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT id, name, contact_email
+            FROM institutions
+            ORDER BY name ASC
+        """)
+        rows = [{"id": r[0], "name": r[1], "contact_email": r[2] or ""} for r in cur.fetchall()]
+        return {"institutions": rows}
+    finally:
+        cur.close(); conn.close()
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ADMIN ENDPOINTS
 # ══════════════════════════════════════════════════════════════════════════════
 
 def require_admin(current_user: str = Depends(get_current_user)):
-    """Allow only the admin account."""
+    """Allow only the admin account — matches by email OR by name 'admin'."""
     conn = get_connection(); cur = conn.cursor()
     try:
-        cur.execute("SELECT name FROM users WHERE email = %s", (current_user,))
+        cur.execute("SELECT name, email FROM users WHERE email = %s", (current_user,))
         row = cur.fetchone()
-        name = (row[0] if row else "") or ""
+        name  = (row[0] if row else "") or ""
+        email = (row[1] if row else current_user) or current_user
     finally:
         cur.close(); conn.close()
-    if current_user != "admin@mentorix.ai" and name.lower() != "admin":
+    is_admin = (
+        email.lower() == "admin@mentorix.ai"
+        or name.lower() == "admin"
+        or email.lower().startswith("admin@")
+        or name.lower().startswith("admin")
+    )
+    if not is_admin:
         raise HTTPException(status_code=403, detail="Admin access required.")
     return current_user
 
@@ -1215,6 +1242,22 @@ def admin_patch_institution(inst_id: int, data: InstitutionPatch, admin: str = D
         cur.close(); conn.close()
 
 
+@app.patch("/admin/institutions/{inst_id}/toggle")
+def admin_toggle_institution(inst_id: int, admin: str = Depends(require_admin)):
+    """Toggle institution active/inactive (prod = active, dev = inactive)."""
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        cur.execute("SELECT env FROM institutions WHERE id=%s", (inst_id,))
+        row = cur.fetchone()
+        if not row: raise HTTPException(status_code=404, detail="Institution not found.")
+        new_env = "dev" if row[0] == "prod" else "prod"
+        cur.execute("UPDATE institutions SET env=%s WHERE id=%s", (new_env, inst_id))
+        conn.commit()
+        return {"ok": True, "id": inst_id, "env": new_env, "active": new_env == "prod"}
+    finally:
+        cur.close(); conn.close()
+
+
 @app.delete("/admin/institutions/{inst_id}")
 def admin_delete_institution(inst_id: int, admin: str = Depends(require_admin)):
     conn = get_connection(); cur = conn.cursor()
@@ -1324,6 +1367,41 @@ def admin_logs(admin: str = Depends(require_admin)):
 
 
 # ═════════════════════════════════════════════════════════════════════════════
+
+
+# ── /admin/setup — create or reset the admin account ─────────────────────────
+class AdminSetup(BaseModel):
+    secret: str          # must match ADMIN_SETUP_SECRET env var
+    email: str
+    password: str
+    name: str = "Admin"
+
+@app.post("/admin/setup")
+async def admin_setup(data: AdminSetup):
+    import bcrypt, os
+    secret = os.getenv("ADMIN_SETUP_SECRET", "mentorix-setup-2025")
+    if data.secret != secret:
+        raise HTTPException(status_code=403, detail="Invalid setup secret.")
+    if len(data.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
+    pw_hash = bcrypt.hashpw(data.password.encode(), bcrypt.gensalt()).decode()
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        existing = get_user_by_email(data.email)
+        if existing:
+            cur.execute("UPDATE users SET password_hash=%s, name=%s, auth_provider='email' WHERE email=%s",
+                        (pw_hash, data.name, data.email))
+        else:
+            cur.execute(
+                "INSERT INTO users (email, password_hash, name, auth_provider) VALUES (%s,%s,%s,'email')",
+                (data.email, pw_hash, data.name)
+            )
+        conn.commit()
+        token = create_token(data.email)
+        return {"ok": True, "email": data.email, "token": token, "message": "Admin account ready."}
+    finally:
+        cur.close(); conn.close()
+
 if __name__ == "__main__":
     import uvicorn
     is_render = os.getenv("RENDER") is not None
