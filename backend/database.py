@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Optional
 
 logger = logging.getLogger("mentorix-api")
 
-DATABASE_URL = os.getenv("DATABASE_URL", "")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://mentorix_db_user:eGSul5Yl3hPi11eQRncFyhIxVBpdCx9o@dpg-d6l6katm5p6s73979qjg-a.virginia-postgres.render.com/mentorix_db")
 
 # ── Connection ───────────────────────────────────────────────────
 
