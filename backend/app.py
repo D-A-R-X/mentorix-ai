@@ -931,15 +931,19 @@ Rules:
 
 # ── is_suspended column migration ──────────────────────────────────────────
 def _migrate_suspended():
-    try:
-        conn = get_connection(); cur = conn.cursor()
-        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN DEFAULT FALSE")
-        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS institution_id INTEGER DEFAULT NULL")
-        conn.commit(); cur.close(); conn.close()
-    except Exception as e:
-        logger.warning(f"migrate_users: {e}")
+    conn = get_connection(); cur = conn.cursor()
+    for sql in [
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS institution_id INTEGER DEFAULT NULL",
+    ]:
+        try:
+            cur.execute(sql); conn.commit()
+        except Exception as e:
+            conn.rollback()
+            logger.warning(f"migration skipped: {e}")
+    cur.close(); conn.close()
 try: _migrate_suspended()
-except: pass
+except Exception as _me: logger.warning(f"migration outer: {_me}")
 
 # ── Public: list institutions (for student login page) ───────────────────────
 @app.get("/institutions")
@@ -1405,27 +1409,33 @@ async def admin_setup_get(secret: str, email: str, password: str, name: str = "A
     return await _do_admin_setup(secret, email, password, name)
 
 async def _do_admin_setup(secret: str, email: str, password: str, name: str):
-    import bcrypt as _bc, os
+    import bcrypt as _bc
     expected = os.getenv("ADMIN_SETUP_SECRET", "mentorix-setup-2025")
     if secret != expected:
         raise HTTPException(status_code=403, detail="Invalid setup secret.")
     if len(password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
-    pw_hash = _bc.hashpw(password.encode(), _bc.gensalt()).decode()
+        raise HTTPException(status_code=400, detail="Password must be at least 8 chars.")
+    try:
+        pw_hash = _bc.hashpw(password.encode(), _bc.gensalt()).decode()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"bcrypt error: {e}")
     conn = get_connection(); cur = conn.cursor()
     try:
-        existing = get_user_by_email(email)
-        if existing:
-            cur.execute("UPDATE users SET password_hash=%s, name=%s, auth_provider='email' WHERE email=%s",
-                        (pw_hash, name, email))
-        else:
-            cur.execute(
-                "INSERT INTO users (email, password_hash, name, auth_provider) VALUES (%s,%s,%s,'email')",
-                (email, pw_hash, name)
-            )
+        # UPSERT — works whether admin exists or not
+        cur.execute("""
+            INSERT INTO users (email, password_hash, name, auth_provider)
+            VALUES (%s, %s, %s, 'email')
+            ON CONFLICT (email)
+            DO UPDATE SET password_hash = EXCLUDED.password_hash,
+                          name = EXCLUDED.name,
+                          auth_provider = 'email'
+        """, (email.lower().strip(), pw_hash, name))
         conn.commit()
-        token = create_token(email)
-        return {"ok": True, "email": email, "token": token, "message": "Admin account ready. You can now log in to cronix-admin.html"}
+        token = create_token(email.lower().strip())
+        return {"ok": True, "email": email, "message": "Admin ready — log in to cronix-admin.html", "token": token}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"DB error: {e}")
     finally:
         cur.close(); conn.close()
 
@@ -1437,3 +1447,61 @@ if __name__ == "__main__":
     reload    = not is_render
     logger.info(f"Starting server on {host}:{port}")
     uvicorn.run("app:app", host=host, port=port, reload=reload)
+import bcrypt as _bcrypt
+
+class AdminSetup(BaseModel):
+
+    secret: str
+
+    email: str
+
+    password: str
+
+    name: str = "Admin"
+
+@app.post("/admin/setup")
+
+async def admin_setup(data: AdminSetup):
+
+    expected = os.getenv("ADMIN_SETUP_SECRET", "mentorix-setup-2025")
+
+    if data.secret != expected:
+
+        raise HTTPException(status_code=403, detail="Invalid setup secret.")
+
+    pw = _bcrypt.hashpw(data.password.encode(), _bcrypt.gensalt()).decode()
+
+    conn = get_connection(); cur = conn.cursor()
+
+    try:
+
+        cur.execute("""
+
+            INSERT INTO users (email, password_hash, name, auth_provider)
+
+            VALUES (%s,%s,%s,'email')
+
+            ON CONFLICT (email)
+
+            DO UPDATE SET password_hash=EXCLUDED.password_hash, name=EXCLUDED.name, auth_provider='email'
+
+        """, (data.email.lower(), pw, data.name))
+
+        conn.commit()
+
+        return {"ok": True, "message": "Admin ready. Log in to cronix-admin.html"}
+
+    except Exception as e:
+
+        conn.rollback(); raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+
+        cur.close(); conn.close()
+
+@app.get("/admin/setup")
+
+async def admin_setup_get(secret: str, email: str, password: str, name: str = "Admin"):
+
+    return await admin_setup(AdminSetup(secret=secret, email=email, password=password, name=name))
+
