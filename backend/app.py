@@ -1093,6 +1093,25 @@ def admin_get_users(admin: str = Depends(require_admin)):
         cur.close(); conn.close()
 
 
+@app.delete("/admin/users/by-email/{email:path}")
+def admin_delete_user_by_email(email: str, admin: str = Depends(require_admin)):
+    """Delete user by email — used by admin panel."""
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found.")
+        uid = row[0]
+        for tbl in ("voice_sessions","honor_events","assessments","course_completions"):
+            cur.execute(f"DELETE FROM {tbl} WHERE email = %s", (email,))
+        cur.execute("DELETE FROM users WHERE id = %s", (uid,))
+        conn.commit()
+        return {"ok": True, "deleted": email}
+    finally:
+        cur.close(); conn.close()
+
+
 @app.delete("/admin/users/{user_id}")
 def admin_delete_user(user_id: int, admin: str = Depends(require_admin)):
     conn = get_connection(); cur = conn.cursor()
@@ -1378,27 +1397,35 @@ class AdminSetup(BaseModel):
 
 @app.post("/admin/setup")
 async def admin_setup(data: AdminSetup):
-    import bcrypt, os
-    secret = os.getenv("ADMIN_SETUP_SECRET", "mentorix-setup-2025")
-    if data.secret != secret:
+    return await _do_admin_setup(data.secret, data.email, data.password, data.name)
+
+@app.get("/admin/setup")
+async def admin_setup_get(secret: str, email: str, password: str, name: str = "Admin"):
+    """GET version — call from browser: /admin/setup?secret=X&email=Y&password=Z"""
+    return await _do_admin_setup(secret, email, password, name)
+
+async def _do_admin_setup(secret: str, email: str, password: str, name: str):
+    import bcrypt as _bc, os
+    expected = os.getenv("ADMIN_SETUP_SECRET", "mentorix-setup-2025")
+    if secret != expected:
         raise HTTPException(status_code=403, detail="Invalid setup secret.")
-    if len(data.password) < 8:
+    if len(password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
-    pw_hash = bcrypt.hashpw(data.password.encode(), bcrypt.gensalt()).decode()
+    pw_hash = _bc.hashpw(password.encode(), _bc.gensalt()).decode()
     conn = get_connection(); cur = conn.cursor()
     try:
-        existing = get_user_by_email(data.email)
+        existing = get_user_by_email(email)
         if existing:
             cur.execute("UPDATE users SET password_hash=%s, name=%s, auth_provider='email' WHERE email=%s",
-                        (pw_hash, data.name, data.email))
+                        (pw_hash, name, email))
         else:
             cur.execute(
                 "INSERT INTO users (email, password_hash, name, auth_provider) VALUES (%s,%s,%s,'email')",
-                (data.email, pw_hash, data.name)
+                (email, pw_hash, name)
             )
         conn.commit()
-        token = create_token(data.email)
-        return {"ok": True, "email": data.email, "token": token, "message": "Admin account ready."}
+        token = create_token(email)
+        return {"ok": True, "email": email, "token": token, "message": "Admin account ready. You can now log in to cronix-admin.html"}
     finally:
         cur.close(); conn.close()
 

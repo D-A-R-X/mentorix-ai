@@ -437,6 +437,7 @@
       <div class="filter-bar">
         <input class="search-input" type="text" placeholder="Search by email or name..." id="userSearch" oninput="filterUsers()">
         <button class="export-btn" onclick="exportUsers()">Export CSV</button>
+        <button onclick="confirmClearAllUsers()" style="padding:8px 14px;background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.25);color:var(--red);border-radius:7px;font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;letter-spacing:0.3px" title="Wipe all users — for testing cleanup">Clear All Users</button>
       </div>
       <div class="card">
         <div class="table-wrap">
@@ -914,7 +915,7 @@ function renderUsers(data){
       <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent)">${u.honor_score||100}</span></td>
       <td style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="action-btn" onclick="viewUser('${u.email}')">View</button>
-        <button class="action-btn ${u.suspended?'':'warn'}" id="susp-${u.id}" onclick="toggleSuspend('${u.id}','${u.email}',${!!u.suspended})">${u.suspended?'✓ Grant Access':'⊘ Suspend'}</button>
+        <button class="action-btn ${u.suspended?'':'warn'}" id="susp-${u.id}" onclick="toggleSuspend('${u.id}','${u.email}',${!!u.suspended})">${u.suspended?'Reinstate':'Suspend'}</button>
         <button class="action-btn danger" onclick="confirmDelete('user','${u.email}','Are you sure you want to delete user ${u.email} and all their data?')">Delete</button>
       </td>
     </tr>`;
@@ -1116,6 +1117,20 @@ function resetHonor(email){ alert(`Honor score reset for ${email} — requires b
 
 // ── Delete Modal ─────────────────────────────────────────────
 let deleteCallback = null;
+async function confirmClearAllUsers(){
+  if(!confirm("Delete ALL users and their data? This clears the database for a fresh start.")) return;
+  const h = {"Authorization":"Bearer "+adminToken};
+  let deleted = 0, failed = 0;
+  for(const u of allUsers){
+    try{
+      const r = await fetch(`${API}/admin/users/by-email/${encodeURIComponent(u.email)}`,{method:"DELETE",headers:h});
+      if(r.ok) deleted++; else failed++;
+    }catch(_){ failed++; }
+  }
+  showToast(`Deleted ${deleted} users${failed?" ("+failed+" failed)":""}.`);
+  await loadAllData();
+}
+
 function confirmDelete(type, id, msg){
   document.getElementById("deleteModalBody").textContent = msg;
   document.getElementById("deleteConfirmBtn").onclick = ()=>{ doDelete(type,id); closeModal(); };
@@ -1126,7 +1141,7 @@ async function doDelete(type, id){
   const h = {"Authorization":"Bearer "+adminToken,"Content-Type":"application/json"};
   try{
     let url = "";
-    if(type==="user")    url = `${API}/admin/users/${id}`;
+    if(type==="user")    url = `${API}/admin/users/by-email/${encodeURIComponent(id)}`;
     if(type==="session") url = `${API}/admin/sessions/${id}`;
     const r = await fetch(url,{method:"DELETE",headers:h});
     if(!r.ok){ const e=await r.json(); throw new Error(e.detail||"Delete failed"); }
