@@ -1447,3 +1447,61 @@ if __name__ == "__main__":
     reload    = not is_render
     logger.info(f"Starting server on {host}:{port}")
     uvicorn.run("app:app", host=host, port=port, reload=reload)
+import bcrypt as _bcrypt
+
+class AdminSetup(BaseModel):
+
+    secret: str
+
+    email: str
+
+    password: str
+
+    name: str = "Admin"
+
+@app.post("/admin/setup")
+
+async def admin_setup(data: AdminSetup):
+
+    expected = os.getenv("ADMIN_SETUP_SECRET", "mentorix-setup-2025")
+
+    if data.secret != expected:
+
+        raise HTTPException(status_code=403, detail="Invalid setup secret.")
+
+    pw = _bcrypt.hashpw(data.password.encode(), _bcrypt.gensalt()).decode()
+
+    conn = get_connection(); cur = conn.cursor()
+
+    try:
+
+        cur.execute("""
+
+            INSERT INTO users (email, password_hash, name, auth_provider)
+
+            VALUES (%s,%s,%s,'email')
+
+            ON CONFLICT (email)
+
+            DO UPDATE SET password_hash=EXCLUDED.password_hash, name=EXCLUDED.name, auth_provider='email'
+
+        """, (data.email.lower(), pw, data.name))
+
+        conn.commit()
+
+        return {"ok": True, "message": "Admin ready. Log in to cronix-admin.html"}
+
+    except Exception as e:
+
+        conn.rollback(); raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+
+        cur.close(); conn.close()
+
+@app.get("/admin/setup")
+
+async def admin_setup_get(secret: str, email: str, password: str, name: str = "Admin"):
+
+    return await admin_setup(AdminSetup(secret=secret, email=email, password=password, name=name))
+
