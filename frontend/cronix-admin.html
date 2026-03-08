@@ -291,9 +291,12 @@
     </div>
     <h1>Sign In</h1>
     <p>Admin console — authorised personnel only</p>
-    <input class="login-input" type="text" id="adminUser" placeholder="Admin username" autocomplete="off">
-    <input class="login-input" type="password" id="adminPass" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
-    <button class="login-btn" onclick="doLogin()">Access Console</button>
+    <input class="login-input" type="email" id="adminEmail" placeholder="Admin email" autocomplete="email" onkeydown="if(event.key==='Enter')doLogin()">
+    <div style="position:relative;margin-bottom:12px">
+      <input class="login-input" type="password" id="adminPass" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" style="width:100%;padding-right:42px;margin-bottom:0">
+      <button onclick="toggleAdminPass()" type="button" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:15px;padding:4px;line-height:1" id="adminPassEye" title="Show/hide password"><img src="https://api.iconify.design/lucide/eye.svg?color=white" style="width:15px;height:15px;vertical-align:middle"></button>
+    </div>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">Access Console</button>
     <div class="login-err" id="loginErr"></div>
   </div>
 </div>
@@ -310,28 +313,28 @@
 
   <div class="nav-section">
     <div class="nav-label">Overview</div>
-    <div class="nav-item active" onclick="showPage('overview',this)"><span class="nav-icon">◉</span>Dashboard</div>
+    <div class="nav-item active" onclick="showPage('overview',this)"><span class="nav-icon"><img src="https://api.iconify.design/lucide/layout-dashboard.svg?color=currentColor" style="width:15px;height:15px;vertical-align:middle;opacity:0.7"></span>Dashboard</div>
   </div>
 
   <div class="nav-section">
     <div class="nav-label">Management</div>
-    <div class="nav-item" onclick="showPage('users',this)"><span class="nav-icon">👥</span>Users</div>
-    <div class="nav-item" onclick="showPage('sessions',this)"><span class="nav-icon">🎙</span>Sessions</div>
-    <div class="nav-item" onclick="showPage('assessments',this)"><span class="nav-icon">📋</span>Assessments</div>
-    <div class="nav-item" onclick="showPage('institutions',this)"><span class="nav-icon">🏛</span>Institutions</div>
+    <div class="nav-item" onclick="showPage('users',this)"><span class="nav-icon"><img src="https://api.iconify.design/lucide/users.svg?color=currentColor" style="width:15px;height:15px;vertical-align:middle;opacity:0.7"></span>Users</div>
+    <div class="nav-item" onclick="showPage('sessions',this)"><span class="nav-icon"><img src="https://api.iconify.design/lucide/mic.svg?color=currentColor" style="width:15px;height:15px;vertical-align:middle;opacity:0.7"></span>Sessions</div>
+    <div class="nav-item" onclick="showPage('assessments',this)"><span class="nav-icon"><img src="https://api.iconify.design/lucide/clipboard-list.svg?color=currentColor" style="width:15px;height:15px;vertical-align:middle;opacity:0.7"></span>Assessments</div>
+    <div class="nav-item" onclick="showPage('institutions',this)"><span class="nav-icon"><img src="https://api.iconify.design/lucide/building-2.svg?color=currentColor" style="width:15px;height:15px;vertical-align:middle;opacity:0.7"></span>Institutions</div>
   </div>
 
   <div class="nav-section">
     <div class="nav-label">Intelligence</div>
-    <div class="nav-item" onclick="showPage('analytics',this)"><span class="nav-icon">📊</span>Behavioral Analytics</div>
-    <div class="nav-item" onclick="showPage('recommendations',this)"><span class="nav-icon">🎯</span>Recommendations</div>
-    <div class="nav-item" onclick="showPage('mlmodel',this)"><span class="nav-icon">🤖</span>ML Model</div>
+    <div class="nav-item" onclick="showPage('analytics',this)"><span class="nav-icon"><img src="https://api.iconify.design/lucide/bar-chart-2.svg?color=currentColor" style="width:15px;height:15px;vertical-align:middle;opacity:0.7"></span>Behavioral Analytics</div>
+    <div class="nav-item" onclick="showPage('recommendations',this)"><span class="nav-icon"><img src="https://api.iconify.design/lucide/target.svg?color=currentColor" style="width:15px;height:15px;vertical-align:middle;opacity:0.7"></span>Recommendations</div>
+    <div class="nav-item" onclick="showPage('mlmodel',this)"><span class="nav-icon"><img src="https://api.iconify.design/lucide/cpu.svg?color=currentColor" style="width:15px;height:15px;vertical-align:middle;opacity:0.7"></span>ML Model</div>
   </div>
 
   <div class="nav-section">
     <div class="nav-label">System</div>
-    <div class="nav-item" onclick="showPage('system',this)"><span class="nav-icon">⚙️</span>System Status</div>
-    <div class="nav-item" onclick="showPage('honor',this)"><span class="nav-icon">⭐</span>Honor Scores</div>
+    <div class="nav-item" onclick="showPage('system',this)"><span class="nav-icon"><img src="https://api.iconify.design/lucide/server.svg?color=currentColor" style="width:15px;height:15px;vertical-align:middle;opacity:0.7"></span>System Status</div>
+    <div class="nav-item" onclick="showPage('honor',this)"><span class="nav-icon"><img src="https://api.iconify.design/lucide/shield-check.svg?color=currentColor" style="width:15px;height:15px;vertical-align:middle;opacity:0.7"></span>Honor Scores</div>
   </div>
 
   <div class="sidebar-footer">
@@ -361,7 +364,7 @@
         </div>
         <span class="env-label" style="color:var(--purple)">PROD</span>
       </div>
-      <button class="logout-btn" onclick="adminLogout()">Sign Out</button>
+      <span id="lastRefresh" style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);margin-right:10px"></span><button class="logout-btn" style="background:rgba(124,77,255,0.15);border-color:rgba(124,77,255,0.3);color:var(--accent);margin-right:6px" onclick="loadAllData()" title="Refresh all data" id="refreshBtn">⟳ Refresh</button><button class="logout-btn" onclick="adminLogout()">Sign Out</button>
     </div>
   </div>
 
@@ -650,7 +653,7 @@
 <!-- ── DELETE CONFIRM MODAL ── -->
 <div class="modal" id="deleteModal">
   <div class="modal-box">
-    <div class="modal-title">⚠️ Confirm Deletion</div>
+    <div class="modal-title" style="display:flex;align-items:center;gap:8px"><img src="https://api.iconify.design/lucide/alert-triangle.svg?color=e74c3c" style="width:20px;height:20px"> Confirm Deletion</div>
     <div class="modal-body" id="deleteModalBody">This action cannot be undone.</div>
     <div class="modal-actions">
       <button class="modal-cancel" onclick="closeModal()">Cancel</button>
@@ -686,25 +689,62 @@ let allUsers = [], allSessions = [], allAssessments = [], allHonor = [];
 let isProd = false;
 
 // ── Auth ──────────────────────────────────────────────────
-function doLogin(){
-  const u = document.getElementById("adminUser").value.trim();
-  const p = document.getElementById("adminPass").value;
-  // Simple admin credentials — change these before deploy
-  if(u === "admin" && p === "mentorix@cronix2025"){
+async function doLogin(){
+  const email = document.getElementById("adminEmail").value.trim();
+  const pass  = document.getElementById("adminPass").value;
+  const err   = document.getElementById("loginErr");
+  const btn   = document.getElementById("loginBtn");
+  if(!email || !pass){ err.textContent = "Enter email and password."; return; }
+  btn.disabled = true; btn.textContent = "Authenticating..."; err.textContent = "";
+  try{
+    const res  = await fetch(`${API}/auth/login`, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({email, password: pass})
+    });
+    const data = await res.json();
+    if(!res.ok){ err.textContent = data.detail || "Login failed."; btn.disabled=false; btn.textContent="Access Console"; return; }
+    // Verify token has admin access by hitting a protected endpoint
+    const check = await fetch(`${API}/admin/overview`, {
+      headers:{"Authorization":"Bearer "+data.token}
+    });
+    if(!check.ok){ err.textContent = "Access denied — not an admin account."; btn.disabled=false; btn.textContent="Access Console"; return; }
+    adminToken = data.token;
     document.getElementById("loginPage").style.display = "none";
-    document.getElementById("mainArea").style.display = "flex";
-    adminToken = localStorage.getItem("mentorix_token") || "";
+    document.getElementById("mainArea").style.display  = "flex";
     loadAllData();
-  } else {
-    document.getElementById("loginErr").textContent = "Invalid credentials.";
+    startAutoRefresh();
+  }catch(e){
+    err.textContent = "Server unreachable — backend may be waking up. Try again in 30s.";
+    btn.disabled=false; btn.textContent="Access Console";
+  }
+}
+
+function toggleAdminPass(){
+  const f = document.getElementById("adminPass");
+  const e = document.getElementById("adminPassEye");
+  if(f.type==="password"){
+    f.type="text";
+    e.innerHTML='<img src="https://api.iconify.design/lucide/eye-off.svg?color=white" style="width:15px;height:15px;vertical-align:middle">';
+  }else{
+    f.type="password";
+    e.innerHTML='<img src="https://api.iconify.design/lucide/eye.svg?color=white" style="width:15px;height:15px;vertical-align:middle">';
   }
 }
 
 function adminLogout(){
+  stopAutoRefresh();
+  adminToken = null;
   document.getElementById("loginPage").style.display = "flex";
-  document.getElementById("mainArea").style.display = "none";
+  document.getElementById("mainArea").style.display  = "none";
   document.getElementById("adminPass").value = "";
 }
+
+let _refreshInterval = null;
+function startAutoRefresh(){
+  stopAutoRefresh();
+  _refreshInterval = setInterval(()=>{ if(adminToken) loadAllData(); }, 30000); // every 30s
+}
+function stopAutoRefresh(){ if(_refreshInterval){ clearInterval(_refreshInterval); _refreshInterval=null; } }
 
 // ── Navigation ─────────────────────────────────────────────
 function showPage(id, el){
@@ -734,42 +774,52 @@ function showPage(id, el){
 // ── Data Loading ───────────────────────────────────────────
 async function loadAllData(){
   const h = {"Authorization":"Bearer "+adminToken};
+  const rb = document.getElementById("refreshBtn");
+  if(rb){ rb.textContent="⟳ Loading..."; rb.disabled=true; }
 
-  // Load overview stats from real endpoint
-  try{
-    const ov = await fetch(`${API}/admin/overview`, {headers:h});
-    if(ov.ok){
-      const ovd = await ov.json();
-      window._overviewData = ovd;
-    }
-  }catch(e){}
+  // Fetch all in parallel for speed
+  const [ovRes, usRes, sesRes, arRes] = await Promise.allSettled([
+    fetch(`${API}/admin/overview`,  {headers:h}),
+    fetch(`${API}/admin/users`,     {headers:h}),
+    fetch(`${API}/admin/sessions`,  {headers:h}),
+    fetch(`${API}/admin/assessments`,{headers:h}),
+  ]);
 
-  try{
-    // Load users
-    const ur = await fetch(`${API}/admin/users`, {headers:h});
-    if(ur.ok){ allUsers = (await ur.json()).users||[]; renderUsers(); }
-    else { loadUsersFromSessions(); }
-  }catch(e){ loadUsersFromSessions(); }
+  if(ovRes.status==="fulfilled" && ovRes.value.ok)
+    window._overviewData = await ovRes.value.json();
 
-  try{
-    const sr = await fetch(`${API}/admin/sessions`, {headers:h});
-    if(sr.ok){ allSessions = (await sr.json()).sessions||[]; }
-    else { allSessions = []; }
-  }catch(e){ allSessions = []; }
+  if(usRes.status==="fulfilled" && usRes.value.ok)
+    allUsers = (await usRes.value.json()).users || [];
+  else
+    allUsers = [];
 
-  try{
-    const ar = await fetch(`${API}/admin/assessments`, {headers:h});
-    if(ar.ok){ allAssessments = (await ar.json()).assessments||[]; }
-    else { allAssessments = []; }
-  }catch(e){ allAssessments = []; }
+  if(sesRes.status==="fulfilled" && sesRes.value.ok)
+    allSessions = (await sesRes.value.json()).sessions || [];
+  else
+    allSessions = [];
+
+  if(arRes.status==="fulfilled" && arRes.value.ok)
+    allAssessments = (await arRes.value.json()).assessments || [];
+  else
+    allAssessments = [];
+
+  // If users empty but sessions have emails, derive user list
+  if(!allUsers.length && allSessions.length) loadUsersFromSessions();
 
   renderOverview();
+  renderUsers();
   renderSessions();
   renderAssessments();
   renderAnalytics();
   renderSystemStatus();
   renderHonor();
-  document.getElementById("activitySpinner").style.display="none";
+
+  const sp = document.getElementById("activitySpinner");
+  if(sp) sp.style.display="none";
+  if(rb){ rb.textContent="⟳ Refresh"; rb.disabled=false; }
+  // Update last-refreshed timestamp
+  const ts = document.getElementById("lastRefresh");
+  if(ts) ts.textContent = "Last updated: "+new Date().toLocaleTimeString();
 }
 
 function loadUsersFromSessions(){
@@ -782,16 +832,25 @@ function loadUsersFromSessions(){
 // ── Overview ────────────────────────────────────────────────
 function renderOverview(){
   const ovd = window._overviewData || {};
-  document.getElementById("s-users").textContent = (ovd.total_users ?? allUsers.length) || "--";
-  const voice = allSessions.filter(s=>s.mode!=="hr_interview").length;
-  const hr = allSessions.filter(s=>s.mode==="hr_interview").length;
-  document.getElementById("s-sessions").textContent = ovd.total_sessions ?? (voice||"--");
-  document.getElementById("s-hr").textContent = hr||"--";
-  document.getElementById("s-assessments").textContent = allAssessments.length||"--";
+  // Use backend numbers (most accurate) then fall back to in-memory data
+  const totalUsers = ovd.total_users != null ? ovd.total_users : allUsers.length;
+  const totalSessions = ovd.total_sessions != null ? ovd.total_sessions : allSessions.length;
+  const hrSessions = ovd.session_type_breakdown?.hr_interview != null
+    ? ovd.session_type_breakdown.hr_interview
+    : allSessions.filter(s=>s.mode==="hr_interview").length;
+  const totalAssessments = allAssessments.length;
+  const newThisWeek = ovd.new_users_week != null ? ovd.new_users_week : 0;
+  const avgHonor = ovd.avg_score != null ? ovd.avg_score : "--";
 
-  const today = new Date().toDateString();
-  const activeToday = allSessions.filter(s=>s.created_at&&new Date(s.created_at).toDateString()===today).length;
-  document.getElementById("s-active").textContent = ovd.new_users_week ?? (activeToday||"0");
+  document.getElementById("s-users").textContent       = totalUsers || "0";
+  document.getElementById("s-sessions").textContent    = totalSessions || "0";
+  document.getElementById("s-hr").textContent          = hrSessions || "0";
+  document.getElementById("s-assessments").textContent = totalAssessments || "0";
+  document.getElementById("s-active").textContent      = newThisWeek;
+
+  // Show avg honor score if element exists
+  const honEl = document.getElementById("s-honor");
+  if(honEl) honEl.textContent = avgHonor ? avgHonor+"/100" : "--";
 
   // Recent activity — prefer real API data
   const rawRecent = ovd.recent_activity?.length ? ovd.recent_activity : [...allSessions].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,8);
@@ -799,7 +858,7 @@ function renderOverview(){
   if(!rawRecent.length){ tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No sessions yet</td></tr>`; return; }
   tbody.innerHTML = rawRecent.map(s=>{
     const d = s.created_at ? new Date(s.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : "--";
-    const mode = s.mode==="hr_interview"?"⚔️ HR Mode":"🎙 Voice";
+    const mode = s.mode==="hr_interview"?"HR Mode":"Voice";
     const name = s.user_name || s.email || "--";
     return `<tr>
       <td>${name}</td>
@@ -908,7 +967,7 @@ function renderSessions(data){
   if(!data.length){ tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">No sessions found</td></tr>`; return; }
   tbody.innerHTML = data.map(s=>{
     const d = s.created_at ? new Date(s.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}) : "--";
-    const modeLabel = s.mode==="hr_interview"?"⚔️ HR Mode":"🎙 Voice";
+    const modeLabel = s.mode==="hr_interview"?"HR Mode":"Voice";
     return `<tr>
       <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${s.email||"--"}</td>
       <td>${modeLabel}</td>
@@ -1140,44 +1199,74 @@ function renderInstitutions(){
   const grid = document.getElementById("instGrid");
   if(!allInstitutions.length){
     grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px 20px;color:var(--muted);font-size:13px">
-      <div style="font-size:32px;margin-bottom:12px;opacity:0.4">🏛</div>
-      No institutions yet. Add your first deployment client.
+      <div style="margin-bottom:12px;opacity:0.3"><img src="https://api.iconify.design/lucide/building-2.svg?color=6e6888" style="width:40px;height:40px"></div>
+      No institutions yet. Add your first deployment.
     </div>`;
     return;
   }
   grid.innerHTML = allInstitutions.map(inst => {
-    const isProd = inst.env === "prod";
-    const envColor = isProd ? "var(--accent)" : "var(--orange)";
-    const envBg = isProd ? "rgba(0,229,180,0.1)" : "rgba(243,156,18,0.1)";
-    const envBorder = isProd ? "rgba(0,229,180,0.25)" : "rgba(243,156,18,0.25)";
+    const isActive = inst.env === "prod";
     const joined = inst.created_at ? new Date(inst.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}) : "--";
     return `
-    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:20px" id="inst-card-${inst.id}">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
-        <div>
-          <div style="font-size:14px;font-weight:700;color:var(--white);margin-bottom:3px">${escHtml(inst.name)}</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">${escHtml(inst.contact_email||'No contact email')}</div>
+    <div style="background:var(--surface2);border:1px solid ${isActive?'rgba(0,229,180,0.2)':'var(--border)'};border-radius:12px;padding:20px;transition:border-color 0.3s" id="inst-card-${inst.id}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
+        <div style="flex:1;min-width:0;padding-right:12px">
+          <div style="font-size:14px;font-weight:700;color:var(--white);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(inst.name)}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${escHtml(inst.contact_email||'No contact email')}</div>
         </div>
-        <span id="inst-badge-${inst.id}" style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 10px;border-radius:4px;background:${envBg};border:1px solid ${envBorder};color:${envColor};letter-spacing:1px">${inst.env?.toUpperCase()}</span>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 8px;border-radius:4px;
+            background:${isActive?'rgba(0,229,180,0.12)':'rgba(110,104,136,0.12)'};
+            border:1px solid ${isActive?'rgba(0,229,180,0.25)':'rgba(110,104,136,0.2)'};
+            color:${isActive?'var(--accent)':'var(--muted)'};letter-spacing:1px" id="inst-badge-${inst.id}">
+            ${isActive?'ACTIVE':'INACTIVE'}
+          </span>
+        </div>
       </div>
-      <div style="font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
-        <strong style="color:var(--orange)">DEV</strong> = demo / trial &nbsp;·&nbsp; <strong style="color:var(--accent)">PROD</strong> = paid live deployment
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding-top:14px;border-top:1px solid var(--border)">
         <div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:8px">Added ${joined}</div>
-          <div style="display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden" id="inst-toggle-${inst.id}">
-            <button onclick="setInstEnv(${inst.id},'dev')"
-              style="font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 12px;border:none;cursor:pointer;transition:all 0.2s;background:${!isProd?'rgba(243,156,18,0.15)':'transparent'};color:${!isProd?'var(--orange)':'var(--muted)'}">DEV</button>
-            <button onclick="setInstEnv(${inst.id},'prod')"
-              style="font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 12px;border:none;cursor:pointer;transition:all 0.2s;background:${isProd?'rgba(0,229,180,0.15)':'transparent'};color:${isProd?'var(--accent)':'var(--muted)'}">PROD</button>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:10px">Added ${joined}</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${isActive?'Visible to students':'Hidden from login'}</span>
+            <label style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer">
+              <input type="checkbox" ${isActive?'checked':''} onchange="toggleInstitution(${inst.id},this.checked)" style="opacity:0;width:0;height:0;position:absolute">
+              <span style="position:absolute;inset:0;border-radius:11px;transition:0.25s;
+                background:${isActive?'var(--accent)':'var(--border)'};
+                box-shadow:${isActive?'0 0 8px rgba(0,229,180,0.3)':'none'}" id="inst-track-${inst.id}">
+                <span style="position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;
+                  top:3px;left:${isActive?'21px':'3px'};transition:0.25s;
+                  box-shadow:0 1px 4px rgba(0,0,0,0.3)" id="inst-thumb-${inst.id}"></span>
+              </span>
+            </label>
           </div>
         </div>
         <button onclick="deleteInstitution(${inst.id},'${escHtml(inst.name)}')"
-          style="background:transparent;border:1px solid rgba(231,76,60,0.3);color:var(--red);font-size:11px;font-family:'JetBrains Mono',monospace;padding:5px 12px;border-radius:6px;cursor:pointer">Remove</button>
+          style="background:transparent;border:1px solid rgba(231,76,60,0.3);color:var(--red);
+            font-size:11px;font-family:'JetBrains Mono',monospace;padding:6px 12px;
+            border-radius:6px;cursor:pointer;transition:all 0.2s"
+          onmouseover="this.style.background='rgba(231,76,60,0.1)'" onmouseout="this.style.background='transparent'">
+          Remove
+        </button>
       </div>
     </div>`;
   }).join("");
+}
+
+async function toggleInstitution(id, activate){
+  const h = {"Authorization":"Bearer "+adminToken};
+  try{
+    const r = await fetch(`${API}/admin/institutions/${id}/toggle`,{method:"PATCH",headers:h});
+    if(r.ok){
+      const data = await r.json();
+      const inst = allInstitutions.find(i=>i.id===id);
+      if(inst) inst.env = data.env;
+      renderInstitutions();
+      showToast(data.active ? "Institution activated — now visible to students" : "Institution deactivated — hidden from login");
+    } else {
+      renderInstitutions(); // revert UI
+      showToast("Failed to update institution.");
+    }
+  }catch(e){ renderInstitutions(); showToast("Network error."); }
 }
 
 async function setInstEnv(id, env){
@@ -1185,14 +1274,11 @@ async function setInstEnv(id, env){
   try{
     const r = await fetch(`${API}/admin/institutions/${id}`,{method:"PATCH",headers:h,body:JSON.stringify({env})});
     if(r.ok){
-      // Update local data and re-render just this card
       const inst = allInstitutions.find(i=>i.id===id);
       if(inst) inst.env = env;
       renderInstitutions();
       showToast(`Switched to ${env.toUpperCase()}`);
-    } else {
-      alert("Failed to update environment.");
-    }
+    } else { alert("Failed to update environment."); }
   }catch(e){ alert("Network error."); }
 }
 
