@@ -996,6 +996,14 @@ def get_public_institutions():
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ADMIN ENDPOINTS
+
+def _safe_dt(v) -> str:
+    """Convert datetime or TEXT timestamp to ISO string safely."""
+    if v is None:
+        return ""
+    if hasattr(v, "isoformat"):
+        return v.isoformat()
+    return str(v)
 # ══════════════════════════════════════════════════════════════════════════════
 
 def require_admin(current_user: str = Depends(get_current_user)):
@@ -1062,53 +1070,124 @@ def admin_overview(admin: str = Depends(require_admin)):
         cur.execute("SELECT COUNT(*) FROM voice_sessions")
         total_sessions = (cur.fetchone() or (0,))[0]
 
-        cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= NOW() - INTERVAL '7 days'")
-        new_users_week = (cur.fetchone() or (0,))[0]
+        # created_at is stored as TEXT — cast safely for date comparisons
+        try:
+            cur.execute("""
+                SELECT COUNT(*) FROM users
+                WHERE created_at::timestamptz >= NOW() - INTERVAL '7 days'
+            """)
+            new_users_week = (cur.fetchone() or (0,))[0]
+        except Exception:
+            new_users_week = 0
 
-        cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= NOW() - INTERVAL '1 day'")
-        active_today = (cur.fetchone() or (0,))[0]
+        try:
+            cur.execute("""
+                SELECT COUNT(*) FROM users
+                WHERE created_at::timestamptz >= NOW() - INTERVAL '1 day'
+            """)
+            active_today = (cur.fetchone() or (0,))[0]
+        except Exception:
+            active_today = 0
 
-        cur.execute("SELECT AVG(overall_score) FROM voice_sessions WHERE overall_score IS NOT NULL")
-        r = cur.fetchone()
-        avg_score = round(float(r[0]), 1) if r and r[0] else 0
+        try:
+            cur.execute("SELECT AVG(overall_score) FROM voice_sessions WHERE overall_score IS NOT NULL AND overall_score > 0")
+            r = cur.fetchone()
+            avg_score = round(float(r[0]), 1) if r and r[0] else 0
+        except Exception:
+            avg_score = 0
 
-        cur.execute("""
-            SELECT vs.id, u.name AS user_name, vs.email AS user_email,
-                   vs.mode, vs.created_at, vs.overall_score
-            FROM voice_sessions vs
-            LEFT JOIN users u ON u.email = vs.email
-            ORDER BY vs.created_at DESC LIMIT 10
-        """)
-        cols = [d[0] for d in (cur.description or [])]
-        recent_activity = []
-        for row in cur.fetchall():
-            d = dict(zip(cols, row))
-            if d.get("created_at"): d["created_at"] = d["created_at"].isoformat()
-            recent_activity.append(d)
+        # Recent activity from voice_sessions (has real TIMESTAMP)
+        try:
+            cur.execute("""
+                SELECT vs.id, COALESCE(u.name, vs.email) AS user_name, vs.email AS user_email,
+                       vs.mode, vs.created_at, vs.overall_score
+                FROM voice_sessions vs
+                LEFT JOIN users u ON u.email = vs.email
+                ORDER BY vs.created_at DESC LIMIT 10
+            """)
+            cols = [d[0] for d in (cur.description or [])]
+            recent_activity = []
+            for row in cur.fetchall():
+                d = dict(zip(cols, row))
+                ca = d.get("created_at")
+                if ca:
+                    d["created_at"] = ca.isoformat() if hasattr(ca, "isoformat") else str(ca)
+                d["action"] = d.get("mode", "voice")
+                d["name"] = d.get("user_name", "—")
+                d["time"] = d.get("created_at", "")
+                d["detail"] = f"Score: {d.get('overall_score') or '—'}"
+                recent_activity.append(d)
+        except Exception as e:
+            logger.warning(f"recent_activity failed: {e}")
+            recent_activity = []
 
-        cur.execute("""
-            SELECT DATE(created_at) AS day, COUNT(*) AS count
-            FROM users WHERE created_at >= NOW() - INTERVAL '14 days'
-            GROUP BY day ORDER BY day
-        """)
-        registrations_by_day = [{"day": str(r[0]), "count": r[1]} for r in cur.fetchall()]
+        # Registrations by day — cast TEXT created_at
+        try:
+            cur.execute("""
+                SELECT DATE(created_at::timestamptz) AS day, COUNT(*) AS cnt
+                FROM users
+                WHERE created_at::timestamptz >= NOW() - INTERVAL '14 days'
+                GROUP BY day ORDER BY day
+            """)
+            registrations_by_day = [{"date": str(r[0]), "count": r[1]} for r in cur.fetchall()]
+        except Exception as e:
+            logger.warning(f"registrations_by_day failed: {e}")
+            registrations_by_day = []
 
-        cur.execute("""
-            SELECT COALESCE(mode,'voice') AS mode, COUNT(*) AS count
-            FROM voice_sessions GROUP BY mode
-        """)
-        session_type_breakdown = {r[0]: r[1] for r in cur.fetchall()}
+        # Session type breakdown
+        try:
+            cur.execute("""
+                SELECT COALESCE(mode,'voice') AS mode, COUNT(*) AS count
+                FROM voice_sessions GROUP BY mode
+            """)
+            rows = cur.fetchall()
+            session_type_breakdown = {"voice": 0, "hr": 0}
+            for r in rows:
+                if r[0] == "hr_interview":
+                    session_type_breakdown["hr"] = r[1]
+                else:
+                    session_type_breakdown["voice"] = r[1]
+        except Exception:
+            session_type_breakdown = {"voice": 0, "hr": 0}
+
+        # Honor score average
+        try:
+            cur.execute("""
+                SELECT AVG(sub.score) FROM (
+                    SELECT COALESCE(MAX(running_score), 100) AS score
+                    FROM honor_events GROUP BY email
+                ) sub
+            """)
+            r = cur.fetchone()
+            avg_honor = round(float(r[0]), 0) if r and r[0] else 100
+        except Exception:
+            avg_honor = 100
+
+        # HR session count
+        try:
+            cur.execute("SELECT COUNT(*) FROM voice_sessions WHERE mode='hr_interview'")
+            hr_sessions = (cur.fetchone() or (0,))[0]
+        except Exception:
+            hr_sessions = 0
 
         return {
-            "total_users": total_users,
-            "total_sessions": total_sessions,
-            "new_users_week": new_users_week,
-            "active_today": active_today,
-            "avg_score": avg_score,
+            "stats": {
+                "total_users": total_users,
+                "total_sessions": total_sessions,
+                "active_7d": new_users_week,
+                "active_today": active_today,
+                "avg_score": avg_score,
+                "avg_honor": int(avg_honor),
+                "hr_sessions": hr_sessions,
+                "total_institutions": 0,
+            },
             "recent_activity": recent_activity,
             "registrations_by_day": registrations_by_day,
             "session_type_breakdown": session_type_breakdown,
         }
+    except Exception as e:
+        logger.error(f"admin_overview crashed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Overview error: {e}")
     finally:
         cur.close(); conn.close()
 
@@ -1138,7 +1217,7 @@ def admin_get_users(admin: str = Depends(require_admin)):
         users = []
         for row in cur.fetchall():
             d = dict(zip(cols, row))
-            if d.get("created_at"): d["created_at"] = d["created_at"].isoformat()
+            d["created_at"] = _safe_dt(d.get("created_at"))
             users.append(d)
         return {"users": users}
     finally:
@@ -1225,7 +1304,7 @@ def admin_get_sessions(admin: str = Depends(require_admin)):
         sessions = []
         for row in cur.fetchall():
             d = dict(zip(cols, row))
-            if d.get("created_at"): d["created_at"] = d["created_at"].isoformat()
+            d["created_at"] = _safe_dt(d.get("created_at"))
             sessions.append(d)
         return {"sessions": sessions}
     finally:
@@ -1257,7 +1336,7 @@ def admin_get_institutions(admin: str = Depends(require_admin)):
         rows = []
         for row in cur.fetchall():
             d = dict(zip(cols, row))
-            if d.get("created_at"): d["created_at"] = d["created_at"].isoformat()
+            d["created_at"] = _safe_dt(d.get("created_at"))
             rows.append(d)
         return {"institutions": rows}
     finally:
@@ -1366,7 +1445,7 @@ def admin_get_honor(admin: str = Depends(require_admin)):
         rows = []
         for row in cur.fetchall():
             d = dict(zip(cols, row))
-            if d.get("last_event"): d["last_event"] = d["last_event"].isoformat()
+            d["last_event"] = _safe_dt(d.get("last_event"))
             d["total_score"] = float(d["total_score"])
             rows.append(d)
         return {"honor": rows}
