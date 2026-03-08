@@ -687,6 +687,8 @@
 
 <script>
 const API = "https://mentorix-ai-backend.onrender.com";
+// Warm up backend on load (Render free tier cold starts)
+fetch(API+"/health").catch(()=>{});
 let adminToken = null;
 let allUsers = [], allSessions = [], allAssessments = [], allHonor = [];
 let isProd = false;
@@ -850,7 +852,8 @@ function renderOverview(){
   document.getElementById("s-sessions").textContent    = totalSessions || "0";
   document.getElementById("s-hr").textContent          = hrSessions || "0";
   document.getElementById("s-assessments").textContent = totalAssessments || "0";
-  document.getElementById("s-active").textContent      = newThisWeek;
+  const activeToday = ovd.active_today != null ? ovd.active_today : 0;
+  document.getElementById("s-active").textContent      = activeToday;
 
   // Show avg honor score if element exists
   const honEl = document.getElementById("s-honor");
@@ -973,10 +976,9 @@ function exportHonor(){
 }
 
 function exportUsers(){
-  const rows = [["Name","Email","Department","Sessions","Honor Score"]];
+  const rows = [["Name","Email","Institution","Department","Sessions","Honor Score","Status","Joined"]];
   allUsers.forEach(u=>{
-    const sessions = allSessions.filter(s=>s.email===u.email).length;
-    rows.push([u.name||"",u.email||"",u.department||"",sessions,u.honor_score||100]);
+    rows.push([u.name||"",u.email||"",u.institution_name||"Independent",u.department||"",u.session_count||0,parseFloat(u.honor_score||0).toFixed(1),u.is_suspended?"Suspended":"Active",u.created_at||""]);
   });
   downloadCSV(rows,"mentorix_users.csv");
 }
@@ -1018,14 +1020,14 @@ function filterSessions(){
   const q = document.getElementById("sessionSearch").value.toLowerCase();
   const m = document.getElementById("sessionModeFilter").value;
   renderSessions(allSessions.filter(s=>
-    (s.email||"").toLowerCase().includes(q) &&
+    ((s.email||"").toLowerCase().includes(q)||(s.user_name||"").toLowerCase().includes(q)||(s.institution_name||"").toLowerCase().includes(q)) &&
     (!m || s.mode===m || (m==="voice"&&s.mode!=="hr_interview"))
   ));
 }
 
 function exportSessions(){
-  const rows = [["Email","Mode","Exchanges","Overall Score","Tab Violations","Date"]];
-  allSessions.forEach(s=>rows.push([s.email||"",s.mode||"",s.exchange_count||0,s.overall_score||0,s.tab_warnings||0,s.created_at||""]));
+  const rows = [["Student Name","Email","Institution","Department","Mode","Exchanges","Score","Tab Violations","Date"]];
+  allSessions.forEach(s=>rows.push([s.user_name||"",s.user_email||s.email||"",s.institution_name||"",s.department||"",s.mode||"",s.exchange_count||0,s.overall_score||0,s.tab_warnings||0,s.created_at||""]));
   downloadCSV(rows,"mentorix_sessions.csv");
 }
 
@@ -1124,29 +1126,40 @@ async function renderSystemStatus(){
 }
 
 // ── Honor ────────────────────────────────────────────────────
-function renderHonor(data){
-  data = data || allUsers;
-  const tbody = document.getElementById("honorTable");
-  if(!data.length){ tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No data</td></tr>`; return; }
-  tbody.innerHTML = data.map(u=>{
-    const score = u.honor_score||100;
-    const col = score>=80?"var(--accent)":score>=50?"var(--orange)":"var(--red)";
-    return`<tr>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${u.email||"--"}</td>
-      <td><span style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;color:${col}">${score}</span><span style="font-size:10px;color:var(--muted)">/100</span></td>
-      <td>${u.honor_events||0}</td>
-      <td style="color:var(--muted)">${u.last_activity||"--"}</td>
-      <td><button class="action-btn" onclick="resetHonor('${u.email}')">Reset</button></td>
+function renderHonor(){
+  const el = document.getElementById("honorTable");
+  if(!el) return;
+  // Use /admin/honor data if available, else fall back to allUsers
+  const data = allHonor.length ? allHonor : allUsers.map(u=>({
+    name:u.name, email:u.email, institution_name:u.institution_name||"Independent",
+    department:u.department, total_score:parseFloat(u.honor_score||100), event_count:0
+  })).sort((a,b)=>b.total_score-a.total_score);
+  if(!data.length){
+    el.innerHTML=`<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:28px">No honor data yet</td></tr>`;
+    return;
+  }
+  const medals=["🥇","🥈","🥉"];
+  el.innerHTML = data.map((h,i)=>{
+    const score = parseFloat(h.total_score||0).toFixed(1);
+    const sc = parseFloat(score);
+    const sColor = sc>=80?"var(--accent)":sc>=50?"var(--orange)":"var(--red)";
+    return `<tr>
+      <td style="text-align:center;font-size:16px;width:48px">${medals[i]||`<span style='color:var(--muted);font-family:JetBrains Mono,monospace;font-size:11px'>#${i+1}</span>`}</td>
+      <td>
+        <div style="color:var(--white);font-weight:600;font-size:13px">${escHtml(h.name||"--")}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px">${escHtml(h.email||"--")}</div>
+      </td>
+      <td style="font-size:12px;color:var(--text)">${escHtml(h.institution_name||"Independent")}</td>
+      <td style="font-size:12px;color:var(--muted)">${escHtml(h.department||"--")}</td>
+      <td style="text-align:center"><span style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:800;color:${sColor}">${score}</span></td>
+      <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">${h.event_count||0}</td>
     </tr>`;
   }).join("");
 }
 
-function filterHonor(){
-  const q = document.getElementById("honorSearch").value.toLowerCase();
-  renderHonor(allUsers.filter(u=>(u.email||"").toLowerCase().includes(q)));
-}
+function filterHonor(){ renderHonor(); }
 
-function resetHonor(email){ alert(`Honor score reset for ${email} — requires backend endpoint integration.`); }
+
 
 // ── Delete Modal ─────────────────────────────────────────────
 let deleteCallback = null;
@@ -1377,18 +1390,21 @@ async function submitAddInst(){
 
 // ── Toast ─────────────────────────────────────────────────────
 let _toastTimer;
-function showToast(msg){
+function showToast(msg, type){
   let t = document.getElementById("adminToast");
   if(!t){
     t = document.createElement("div");
     t.id="adminToast";
-    t.style.cssText="position:fixed;bottom:48px;right:24px;background:#1a1630;border:1px solid rgba(124,77,255,0.4);border-radius:10px;padding:12px 18px;font-size:13px;color:#00e5b4;z-index:9999;transition:all 0.3s;opacity:0;transform:translateY(8px)";
+    t.style.cssText="position:fixed;bottom:48px;right:24px;background:#1a1630;border-radius:10px;padding:12px 18px;font-size:13px;z-index:9999;transition:all 0.3s;opacity:0;transform:translateY(8px);max-width:320px;line-height:1.5";
     document.body.appendChild(t);
   }
+  const isErr = type==="error";
+  t.style.border = isErr?"1px solid rgba(231,76,60,0.4)":"1px solid rgba(124,77,255,0.4)";
+  t.style.color  = isErr?"#e74c3c":"#00e5b4";
   t.textContent=msg;
   t.style.opacity="1"; t.style.transform="translateY(0)";
   clearTimeout(_toastTimer);
-  _toastTimer=setTimeout(()=>{ t.style.opacity="0"; t.style.transform="translateY(8px)"; },3000);
+  _toastTimer=setTimeout(()=>{ t.style.opacity="0"; t.style.transform="translateY(8px)"; },3500);
 }
 
 function escHtml(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }

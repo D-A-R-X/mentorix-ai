@@ -59,11 +59,34 @@ except Exception as e:
 # ── CORS ─────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=[
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://mentorix-ai.vercel.app",
+        "https://mentorix-ai-git-version-2-dev-darxs-projects.vercel.app",
+        "https://mentorix-ai-git-version-2-dev.vercel.app",
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
+
+# ── Explicit OPTIONS preflight handler ───────────────────────────────────────
+from fastapi import Response as _FResponse
+
+@app.options("/{rest_of_path:path}")
+async def preflight_handler(rest_of_path: str):
+    return _FResponse(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "https://mentorix-ai.vercel.app",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept",
+            "Access-Control-Max-Age": "600",
+        }
+    )
 
 # ── Bearer token security ────────────────────────────────────────
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -983,11 +1006,14 @@ def _ensure_extra_tables():
                 created_at TIMESTAMP DEFAULT NOW())""",
         """CREATE TABLE IF NOT EXISTS honor_events (
                 id SERIAL PRIMARY KEY, email TEXT NOT NULL,
-                event_type TEXT, delta NUMERIC DEFAULT 0,
-                running_score NUMERIC DEFAULT 0, note TEXT,
+                event_type TEXT NOT NULL, delta INTEGER NOT NULL DEFAULT 0,
+                running_score INTEGER NOT NULL DEFAULT 0, note TEXT,
                 created_at TIMESTAMP DEFAULT NOW())""",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN DEFAULT FALSE",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS institution_id INTEGER DEFAULT NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS department TEXT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS year TEXT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS semester TEXT",
     ]
     for sql in stmts:
         try:
@@ -1015,6 +1041,9 @@ def admin_overview(admin: str = Depends(require_admin)):
 
         cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= NOW() - INTERVAL '7 days'")
         new_users_week = (cur.fetchone() or (0,))[0]
+
+        cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= NOW() - INTERVAL '1 day'")
+        active_today = (cur.fetchone() or (0,))[0]
 
         cur.execute("SELECT AVG(overall_score) FROM voice_sessions WHERE overall_score IS NOT NULL")
         r = cur.fetchone()
@@ -1051,6 +1080,7 @@ def admin_overview(admin: str = Depends(require_admin)):
             "total_users": total_users,
             "total_sessions": total_sessions,
             "new_users_week": new_users_week,
+            "active_today": active_today,
             "avg_score": avg_score,
             "recent_activity": recent_activity,
             "registrations_by_day": registrations_by_day,
@@ -1067,7 +1097,7 @@ def admin_get_users(admin: str = Depends(require_admin)):
     try:
         cur.execute("""
             SELECT u.id, u.name, u.email, u.department, u.year, u.semester,
-                   u.auth_provider, u.created_at,
+                   u.auth_provider, u.created_at::text AS created_at,
                    COALESCE(u.is_suspended, FALSE) AS is_suspended,
                    COUNT(DISTINCT vs.id)           AS session_count,
                    COALESCE((SELECT SUM(he.delta) FROM honor_events he WHERE he.email=u.email), 0) AS honor_score,
@@ -1474,61 +1504,3 @@ if __name__ == "__main__":
     reload    = not is_render
     logger.info(f"Starting server on {host}:{port}")
     uvicorn.run("app:app", host=host, port=port, reload=reload)
-import bcrypt as _bcrypt
-
-class AdminSetup(BaseModel):
-
-    secret: str
-
-    email: str
-
-    password: str
-
-    name: str = "Admin"
-
-@app.post("/admin/setup")
-
-async def admin_setup(data: AdminSetup):
-
-    expected = os.getenv("ADMIN_SETUP_SECRET", "mentorix-setup-2025")
-
-    if data.secret != expected:
-
-        raise HTTPException(status_code=403, detail="Invalid setup secret.")
-
-    pw = _bcrypt.hashpw(data.password.encode(), _bcrypt.gensalt()).decode()
-
-    conn = get_connection(); cur = conn.cursor()
-
-    try:
-
-        cur.execute("""
-
-            INSERT INTO users (email, password_hash, name, auth_provider)
-
-            VALUES (%s,%s,%s,'email')
-
-            ON CONFLICT (email)
-
-            DO UPDATE SET password_hash=EXCLUDED.password_hash, name=EXCLUDED.name, auth_provider='email'
-
-        """, (data.email.lower(), pw, data.name))
-
-        conn.commit()
-
-        return {"ok": True, "message": "Admin ready. Log in to cronix-admin.html"}
-
-    except Exception as e:
-
-        conn.rollback(); raise HTTPException(status_code=500, detail=str(e))
-
-    finally:
-
-        cur.close(); conn.close()
-
-@app.get("/admin/setup")
-
-async def admin_setup_get(secret: str, email: str, password: str, name: str = "Admin"):
-
-    return await admin_setup(AdminSetup(secret=secret, email=email, password=password, name=name))
-
