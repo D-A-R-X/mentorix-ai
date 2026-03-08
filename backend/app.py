@@ -158,9 +158,18 @@ class AssessmentSubmission(BaseModel):
     current_course: Optional[str] = None
 # ── Middleware ───────────────────────────────────────────────────
 @app.middleware("http")
-async def log_requests(request: Request, call_next):
+async def add_cors_and_log(request: Request, call_next):
     start = time.time()
-    response = await call_next(request)
+    # Inject CORS on every response — including 500s — so browser sees real error
+    origin = request.headers.get("origin", "")
+    allow_origin = origin if _is_allowed_origin(origin) else "https://mentorix-ai.vercel.app"
+    try:
+        response = await call_next(request)
+    except Exception:
+        from fastapi.responses import JSONResponse as _JR
+        response = _JR({"detail": "Internal server error"}, status_code=500)
+    response.headers["Access-Control-Allow-Origin"] = allow_origin
+    response.headers["Access-Control-Allow-Credentials"] = "true"
     duration_ms = round((time.time() - start) * 1000, 2)
     logger.info(
         f"{request.method} {request.url.path} "
