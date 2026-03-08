@@ -364,7 +364,7 @@
         </div>
         <span class="env-label" style="color:var(--purple)">PROD</span>
       </div>
-      <span id="lastRefresh" style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);margin-right:10px"></span><button class="logout-btn" style="background:rgba(124,77,255,0.15);border-color:rgba(124,77,255,0.3);color:var(--accent);margin-right:6px" onclick="loadAllData()" title="Refresh all data" id="refreshBtn">⟳ Refresh</button><button class="logout-btn" onclick="adminLogout()">Sign Out</button>
+      <span id="lastRefresh" style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);margin-right:10px"></span><button class="logout-btn" style="background:rgba(124,77,255,0.15);border-color:rgba(124,77,255,0.3);color:var(--accent);margin-right:6px" onclick="loadAllData()" title="Refresh all data" id="refreshBtn"><img src="https://api.iconify.design/lucide/refresh-cw.svg?color=currentColor" style="width:12px;height:12px;vertical-align:middle;margin-right:3px"> Refresh</button><button class="logout-btn" onclick="adminLogout()">Sign Out</button>
     </div>
   </div>
 
@@ -442,7 +442,7 @@
       <div class="card">
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Name</th><th>Email</th><th>Dept</th><th>Sessions</th><th>Joined</th><th>Honor</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Name / Email</th><th>Institution / Dept</th><th>Sessions</th><th>Honor</th><th>Joined</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody id="usersTable"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Loading...</td></tr></tbody>
           </table>
         </div>
@@ -463,7 +463,7 @@
       <div class="card">
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Email</th><th>Mode</th><th>Exchanges</th><th>Overall</th><th>Tab Violations</th><th>Date</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Student</th><th>Institution / Dept</th><th>Mode</th><th>Exchanges</th><th>Score</th><th>Tabs</th><th>Date</th><th>Del</th></tr></thead>
             <tbody id="sessionsTable"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Loading...</td></tr></tbody>
           </table>
         </div>
@@ -595,20 +595,22 @@
 
     <!-- ── HONOR SCORES PAGE ── -->
     <div class="page" id="page-honor">
-      <div class="card">
-        <div class="filter-bar">
-          <input class="search-input" type="text" placeholder="Search by email..." id="honorSearch" oninput="filterHonor()">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div>
+          <div style="font-size:20px;font-weight:800;color:var(--white);margin-bottom:4px">Honor Scores</div>
+          <div style="font-size:13px;color:var(--muted)">Student leaderboard ranked by behavioral honor score</div>
         </div>
+        <button onclick="exportHonor()" class="export-btn">Export CSV</button>
+      </div>
+      <div class="card">
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Email</th><th>Honor Score</th><th>Events</th><th>Last Activity</th><th>Actions</th></tr></thead>
-            <tbody id="honorTable"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Loading...</td></tr></tbody>
+            <thead><tr><th>Rank</th><th>Student</th><th>Institution</th><th>Dept</th><th>Honor Score</th><th>Events</th></tr></thead>
+            <tbody id="honorTable"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Loading...</td></tr></tbody>
           </table>
         </div>
       </div>
     </div>
-
-    <!-- ── INSTITUTIONS PAGE ── -->
     <div class="page" id="page-institutions">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
         <div>
@@ -776,14 +778,14 @@ function showPage(id, el){
 async function loadAllData(){
   const h = {"Authorization":"Bearer "+adminToken};
   const rb = document.getElementById("refreshBtn");
-  if(rb){ rb.textContent="⟳ Loading..."; rb.disabled=true; }
+  if(rb){ rb.textContent="Loading..."; rb.disabled=true; }
 
   // Fetch all in parallel for speed
-  const [ovRes, usRes, sesRes, arRes] = await Promise.allSettled([
+  const [ovRes, usRes, sesRes, honRes] = await Promise.allSettled([
     fetch(`${API}/admin/overview`,  {headers:h}),
     fetch(`${API}/admin/users`,     {headers:h}),
     fetch(`${API}/admin/sessions`,  {headers:h}),
-    fetch(`${API}/admin/assessments`,{headers:h}),
+    fetch(`${API}/admin/honor`,     {headers:h}),
   ]);
 
   if(ovRes.status==="fulfilled" && ovRes.value.ok)
@@ -799,10 +801,11 @@ async function loadAllData(){
   else
     allSessions = [];
 
-  if(arRes.status==="fulfilled" && arRes.value.ok)
-    allAssessments = (await arRes.value.json()).assessments || [];
+  if(honRes.status==="fulfilled" && honRes.value.ok)
+    allHonor = (await honRes.value.json()).honor || [];
   else
-    allAssessments = [];
+    allHonor = [];
+  allAssessments = [];
 
   // If users empty but sessions have emails, derive user list
   if(!allUsers.length && allSessions.length) loadUsersFromSessions();
@@ -817,7 +820,7 @@ async function loadAllData(){
 
   const sp = document.getElementById("activitySpinner");
   if(sp) sp.style.display="none";
-  if(rb){ rb.textContent="⟳ Refresh"; rb.disabled=false; }
+  if(rb){ rb.textContent="Refresh"; rb.disabled=false; }
   // Update last-refreshed timestamp
   const ts = document.getElementById("lastRefresh");
   if(ts) ts.textContent = "Last updated: "+new Date().toLocaleTimeString();
@@ -905,18 +908,29 @@ function renderUsers(data){
   if(!data.length){ tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">No users found</td></tr>`; return; }
   tbody.innerHTML = data.map(u=>{
     const joined = u.created_at ? new Date(u.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}) : "--";
-    const sessions = allSessions.filter(s=>s.email===u.email).length;
+    const inst = u.institution_name||"Independent";
+    const honor = parseFloat(u.honor_score||0).toFixed(0);
+    const hColor = honor>=70?"var(--accent)":honor>=40?"var(--orange)":"var(--red)";
+    const susp = u.is_suspended||u.suspended;
     return `<tr>
-      <td>${u.name||u.email?.split("@")[0]||"--"}</td>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${u.email||"--"}</td>
-      <td>${u.department||"--"}</td>
-      <td>${sessions}</td>
-      <td style="color:var(--muted)">${joined}</td>
-      <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent)">${u.honor_score||100}</span></td>
-      <td style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="action-btn" onclick="viewUser('${u.email}')">View</button>
-        <button class="action-btn ${u.suspended?'':'warn'}" id="susp-${u.id}" onclick="toggleSuspend('${u.id}','${u.email}',${!!u.suspended})">${u.suspended?'Reinstate':'Suspend'}</button>
-        <button class="action-btn danger" onclick="confirmDelete('user','${u.email}','Are you sure you want to delete user ${u.email} and all their data?')">Delete</button>
+      <td>
+        <div style="font-weight:600;color:var(--white);font-size:13px">${u.name||"--"}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px">${u.email||"--"}</div>
+      </td>
+      <td>
+        <div style="font-size:12px;color:var(--text)">${inst}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${u.department||"--"}</div>
+      </td>
+      <td style="text-align:center">${u.session_count||0}</td>
+      <td style="text-align:center"><span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${hColor}">${honor}</span></td>
+      <td style="color:var(--muted);font-size:12px">${joined}</td>
+      <td><span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 8px;border-radius:4px;
+        background:${susp?"rgba(231,76,60,0.12)":"rgba(0,229,180,0.08)"};
+        border:1px solid ${susp?"rgba(231,76,60,0.3)":"rgba(0,229,180,0.2)"};
+        color:${susp?"var(--red)":"var(--accent)"};letter-spacing:0.5px">${susp?"SUSPENDED":"ACTIVE"}</span></td>
+      <td style="display:flex;gap:5px;flex-wrap:wrap">
+        <button class="action-btn ${susp?"":"warn"}" onclick="toggleSuspend('${u.id}','${u.email}',${!!susp})">${susp?"Reinstate":"Suspend"}</button>
+        <button class="action-btn danger" onclick="confirmDelete('user','${u.email}','Delete this user?')">Delete</button>
       </td>
     </tr>`;
   }).join("");
@@ -938,7 +952,7 @@ async function toggleSuspend(userId, email, isSuspended){
     ? `Grant access to ${email}?`
     : `Suspend ${email}? They will be locked out immediately.`;
   if(!confirm(msg)) return;
-  const h = {"Content-Type":"application/json","Authorization":`Bearer ${localStorage.getItem("mentorix_token")}`};
+  const h = {"Content-Type":"application/json","Authorization":`Bearer ${adminToken}`};
   try{
     const r = await fetch(`${API}/admin/users/${userId}/suspend`,{method:"PATCH",headers:h,body:JSON.stringify({suspended:!isSuspended})});
     if(r.ok){
@@ -950,6 +964,12 @@ async function toggleSuspend(userId, email, isSuspended){
       showToast("Action failed — check console","error");
     }
   }catch(e){ showToast("Network error","error"); }
+}
+
+function exportHonor(){
+  const rows=[["Rank","Name","Email","Institution","Department","Honor Score","Events"]];
+  allHonor.forEach((h,i)=>rows.push([i+1,h.name||"",h.email||"",h.institution_name||"Independent",h.department||"",parseFloat(h.total_score||0).toFixed(1),h.event_count||0]));
+  downloadCSV(rows,"mentorix_honor.csv");
 }
 
 function exportUsers(){
@@ -967,16 +987,29 @@ function renderSessions(data){
   const tbody = document.getElementById("sessionsTable");
   if(!data.length){ tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">No sessions found</td></tr>`; return; }
   tbody.innerHTML = data.map(s=>{
-    const d = s.created_at ? new Date(s.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}) : "--";
+    const d = s.created_at ? new Date(s.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : "--";
     const modeLabel = s.mode==="hr_interview"?"HR Mode":"Voice";
+    const modeC = s.mode==="hr_interview"?"var(--red)":"var(--purple)";
+    const inst = s.institution_name||"Independent";
+    const sc = s.overall_score;
+    const scC = sc>=70?"var(--accent)":sc>=50?"var(--orange)":"var(--red)";
     return `<tr>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${s.email||"--"}</td>
-      <td>${modeLabel}</td>
-      <td>${s.exchange_count||0}</td>
-      <td>${s.overall_score?`<span style="font-family:'JetBrains Mono',monospace;color:${s.overall_score>=70?"var(--accent)":s.overall_score>=50?"var(--orange)":"var(--red)"}">${s.overall_score}/100</span>`:"--"}</td>
-      <td>${s.tab_warnings>0?`<span style="color:var(--red)">${s.tab_warnings}</span>`:"0"}</td>
-      <td style="color:var(--muted)">${d}</td>
-      <td><button class="action-btn danger" onclick="confirmDelete('session','${s.id}','Delete this session record?')">Delete</button></td>
+      <td>
+        <div style="font-size:12px;color:var(--white);font-weight:500">${s.user_name||"Unknown"}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${s.user_email||s.email||"--"}</div>
+      </td>
+      <td>
+        <div style="font-size:12px">${inst}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)">${s.department||"--"}</div>
+      </td>
+      <td><span style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:4px;
+        background:${s.mode==="hr_interview"?"rgba(231,76,60,0.1)":"rgba(124,77,255,0.1)"};
+        color:${modeC}">${modeLabel}</span></td>
+      <td style="text-align:center">${s.exchange_count||0}</td>
+      <td style="text-align:center">${sc?`<span style="font-family:'JetBrains Mono',monospace;font-weight:600;color:${scC}">${sc}/100</span>`:"--"}</td>
+      <td style="text-align:center">${s.tab_warnings>0?`<span style="color:var(--red);font-weight:600">${s.tab_warnings}</span>`:"<span style='color:var(--accent)'>0</span>"}</td>
+      <td style="color:var(--muted);font-size:11px">${d}</td>
+      <td><button class="action-btn danger" onclick="confirmDelete('session','${s.id}','Delete this session?')">Delete</button></td>
     </tr>`;
   }).join("");
 }

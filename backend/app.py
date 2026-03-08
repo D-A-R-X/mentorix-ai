@@ -929,21 +929,7 @@ Rules:
         return {"courses": [], "track": ""}
 
 
-# ── is_suspended column migration ──────────────────────────────────────────
-def _migrate_suspended():
-    conn = get_connection(); cur = conn.cursor()
-    for sql in [
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN DEFAULT FALSE",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS institution_id INTEGER DEFAULT NULL",
-    ]:
-        try:
-            cur.execute(sql); conn.commit()
-        except Exception as e:
-            conn.rollback()
-            logger.warning(f"migration skipped: {e}")
-    cur.close(); conn.close()
-try: _migrate_suspended()
-except Exception as _me: logger.warning(f"migration outer: {_me}")
+
 
 # ── Public: list institutions (for student login page) ───────────────────────
 @app.get("/institutions")
@@ -987,27 +973,33 @@ def require_admin(current_user: str = Depends(get_current_user)):
     return current_user
 
 
-# Bootstrap institutions table
-def _ensure_institutions_table():
+# Bootstrap extra tables + columns
+def _ensure_extra_tables():
     conn = get_connection(); cur = conn.cursor()
-    try:
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS institutions (
-                id            SERIAL PRIMARY KEY,
-                name          TEXT NOT NULL,
-                contact_email TEXT,
-                env           TEXT DEFAULT 'dev',
-                created_at    TIMESTAMP DEFAULT NOW()
-            )
-        """)
-        conn.commit()
-    finally:
-        cur.close(); conn.close()
+    stmts = [
+        """CREATE TABLE IF NOT EXISTS institutions (
+                id SERIAL PRIMARY KEY, name TEXT NOT NULL,
+                contact_email TEXT, env TEXT DEFAULT 'dev',
+                created_at TIMESTAMP DEFAULT NOW())""",
+        """CREATE TABLE IF NOT EXISTS honor_events (
+                id SERIAL PRIMARY KEY, email TEXT NOT NULL,
+                event_type TEXT, delta NUMERIC DEFAULT 0,
+                running_score NUMERIC DEFAULT 0, note TEXT,
+                created_at TIMESTAMP DEFAULT NOW())""",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS institution_id INTEGER DEFAULT NULL",
+    ]
+    for sql in stmts:
+        try:
+            cur.execute(sql); conn.commit()
+        except Exception as e:
+            conn.rollback(); logger.warning(f"bootstrap skipped: {e}")
+    cur.close(); conn.close()
 
 try:
-    _ensure_institutions_table()
+    _ensure_extra_tables()
 except Exception as _ie:
-    logger.warning(f"institutions table init: {_ie}")
+    logger.warning(f"extra tables init: {_ie}")
 
 
 # ── /admin/overview ───────────────────────────────────────────────────────────
@@ -1078,12 +1070,15 @@ def admin_get_users(admin: str = Depends(require_admin)):
                    u.auth_provider, u.created_at,
                    COALESCE(u.is_suspended, FALSE) AS is_suspended,
                    COUNT(DISTINCT vs.id)           AS session_count,
-                   COALESCE(SUM(he.delta), 0)      AS honor_score
+                   COALESCE((SELECT SUM(he.delta) FROM honor_events he WHERE he.email=u.email), 0) AS honor_score,
+                   COALESCE(u.institution_id, 0)   AS institution_id,
+                   COALESCE(i.name, '')             AS institution_name
             FROM users u
             LEFT JOIN voice_sessions vs ON vs.email = u.email
-            LEFT JOIN honor_events   he ON he.email = u.email
+            LEFT JOIN institutions   i  ON i.id = u.institution_id
             GROUP BY u.id, u.name, u.email, u.department, u.year,
-                     u.semester, u.auth_provider, u.created_at, u.is_suspended
+                     u.semester, u.auth_provider, u.created_at, u.is_suspended,
+                     u.institution_id, i.name
             ORDER BY u.created_at DESC
         """)
         cols = [d[0] for d in (cur.description or [])]
@@ -1164,9 +1159,12 @@ def admin_get_sessions(admin: str = Depends(require_admin)):
         cur.execute("""
             SELECT vs.id, u.name AS user_name, vs.email AS user_email,
                    vs.mode, vs.created_at, vs.exchange_count,
-                   vs.overall_score, vs.tab_warnings
+                   vs.overall_score, vs.tab_warnings,
+                   COALESCE(i.name, 'Independent') AS institution_name,
+                   u.department
             FROM voice_sessions vs
             LEFT JOIN users u ON u.email = vs.email
+            LEFT JOIN institutions i ON i.id = u.institution_id
             ORDER BY vs.created_at DESC
             LIMIT 500
         """)
@@ -1290,6 +1288,35 @@ def admin_delete_institution(inst_id: int, admin: str = Depends(require_admin)):
             raise HTTPException(status_code=404, detail="Institution not found.")
         conn.commit()
         return {"ok": True}
+    finally:
+        cur.close(); conn.close()
+
+
+# ── /admin/honor ──────────────────────────────────────────────────────────────
+@app.get("/admin/honor")
+def admin_get_honor(admin: str = Depends(require_admin)):
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT u.name, u.email, u.department,
+                   COALESCE(i.name,'Independent') AS institution_name,
+                   COALESCE(SUM(he.delta),0) AS total_score,
+                   COUNT(he.id) AS event_count,
+                   MAX(he.created_at) AS last_event
+            FROM users u
+            LEFT JOIN honor_events he ON he.email = u.email
+            LEFT JOIN institutions i  ON i.id = u.institution_id
+            GROUP BY u.name, u.email, u.department, i.name
+            ORDER BY total_score DESC
+        """)
+        cols = [d[0] for d in (cur.description or [])]
+        rows = []
+        for row in cur.fetchall():
+            d = dict(zip(cols, row))
+            if d.get("last_event"): d["last_event"] = d["last_event"].isoformat()
+            d["total_score"] = float(d["total_score"])
+            rows.append(d)
+        return {"honor": rows}
     finally:
         cur.close(); conn.close()
 
