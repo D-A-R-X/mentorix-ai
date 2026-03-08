@@ -268,7 +268,7 @@ def google_login(request: Request):
 
 
 @app.get("/auth/google/callback")
-async def google_callback(code: Optional[str] = None, error: Optional[str] = None, request: Optional[Request] = None):
+async def google_callback(request: Request, code: Optional[str] = None, error: Optional[str] = None):
     from fastapi.responses import RedirectResponse
 
     if error or not code:
