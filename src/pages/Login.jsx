@@ -95,10 +95,15 @@ export default function Login() {
         return
       }
 
-      // Store pending and show institution picker
-      setPendingGoogle({ token, email, name: decoded, hasProfile })
-      setTab('in')          // switch to a neutral tab state
-      setInstModal(true)    // open institution modal immediately
+      // Store pending — load institutions then open modal
+      setPendingGoogle({ token, email, name: decoded, hasProfile });
+      (async () => {
+        try {
+          const res = await institutionsApi.list()
+          setInstitutions(Array.isArray(res) ? res : (res.institutions || []))
+        } catch {}
+        setInstModal(true)
+      })()
     }
   }, [])
 
@@ -463,7 +468,7 @@ export default function Login() {
               })}
               {!institutions.length && <p style={{ textAlign: 'center', color: '#94A3B8', padding: '24px 0', fontSize: 13 }}>No institutions found.</p>}
             </div>
-            <Btn onClick={() => setInstModal(false)} fullWidth>
+            <Btn onClick={() => pendingGoogle ? completeGoogleLogin() : setInstModal(false)} fullWidth>
               {pendingGoogle
                 ? (selectedInst ? `Continue with ${selectedInst.name}` : 'Skip & Continue')
                 : (selectedInst ? `Continue with ${selectedInst.name}` : 'Skip')}
