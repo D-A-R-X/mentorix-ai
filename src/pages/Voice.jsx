@@ -217,96 +217,107 @@ export default function Voice() {
 
   // ── START MIC — the critical function ─────────────────────────────────────
   const startMic = async () => {
-    setMicStatus('requesting')
-    setTranscript(''); txRef.current = ''
+  setMicStatus('requesting')
+  setTranscript(''); txRef.current = ''
 
-    // 1. Check API support
-    const SRClass = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SRClass) {
+  // 1. Check browser support
+  const SRClass = window.SpeechRecognition || window.webkitSpeechRecognition
+  if (!SRClass) {
+    setMicStatus('error')
+    toast('Speech recognition not available. Switching to type mode.', 'warn')
+    setInputMode('type')
+    return
+  }
+
+  // 2. Request mic permission with a 6-second timeout
+  // (Chrome silently hangs if mic is blocked at OS/site level)
+  try {
+    const stream = await Promise.race([
+      navigator.mediaDevices.getUserMedia({ audio: true }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 6000)
+      ),
+    ])
+    stream.getTracks().forEach(t => t.stop())
+  } catch (err) {
+    setMicStatus('error')
+    if (err.message === 'timeout') {
+      toast(
+        'Mic permission timed out. Click the 🔒 icon in the address bar → Allow microphone → refresh.',
+        'error'
+      )
+    } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      toast(
+        'Microphone blocked. Click the 🔒 icon in the address bar → Allow microphone → refresh.',
+        'error'
+      )
+    } else {
+      toast(`Mic error: ${err.message}`, 'error')
+    }
+    return
+  }
+
+  // 3. Kill any existing recognition
+  killRecog()
+
+  // 4. Create new recognition instance
+  const SR = new SRClass()
+  SR.continuous     = true
+  SR.interimResults = true
+  SR.lang           = 'en-IN'
+  recogRef.current  = SR
+
+  SR.onstart = () => {
+    setMicStatus('active')
+    setPhase('listening')
+    resetInactive()
+  }
+
+  SR.onresult = (e) => {
+    let finalText = '', interimText = ''
+    for (let i = 0; i < e.results.length; i++) {
+      if (e.results[i].isFinal) finalText   += e.results[i][0].transcript + ' '
+      else                      interimText += e.results[i][0].transcript
+    }
+    const full = (finalText + interimText).trim()
+    setTranscript(full)
+    txRef.current = full
+    resetInactive()
+  }
+
+  SR.onerror = (e) => {
+    console.warn('SR error:', e.error)
+    if (e.error === 'no-speech') {
+      setMicStatus('idle') // non-fatal
+    } else if (e.error === 'not-allowed') {
       setMicStatus('error')
-      toast('Speech recognition not available. Switching to type mode.', 'warn')
-      setInputMode('type')
-      return
-    }
-
-    // 2. Request mic permission
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      stream.getTracks().forEach(t => t.stop()) // release stream — SR handles its own
-    } catch (err) {
+      toast('Mic access denied. Allow microphone in browser settings.', 'error')
+    } else if (e.error === 'network') {
       setMicStatus('error')
-      const msg = err.name === 'NotAllowedError'
-        ? 'Microphone blocked. Click the 🔒 icon in the address bar → Allow microphone, then refresh.'
-        : `Mic error: ${err.message}`
-      toast(msg, 'error')
-      return
-    }
-
-    // 3. Kill any existing recognition
-    killRecog()
-
-    // 4. Create new recognition instance
-    const SR = new SRClass()
-    SR.continuous     = true
-    SR.interimResults = true
-    SR.lang           = 'en-IN'
-    recogRef.current  = SR
-
-    SR.onstart = () => {
-      setMicStatus('active')
-      setPhase('listening')
-      resetInactive()
-    }
-
-    SR.onresult = (e) => {
-      // Build transcript from all results
-      let finalText   = ''
-      let interimText = ''
-      for (let i = 0; i < e.results.length; i++) {
-        if (e.results[i].isFinal) finalText   += e.results[i][0].transcript + ' '
-        else                      interimText += e.results[i][0].transcript
-      }
-      const full = (finalText + interimText).trim()
-      setTranscript(full)
-      txRef.current = full
-      resetInactive()
-    }
-
-    SR.onerror = (e) => {
-      console.warn('SR error:', e.error)
-      setMicStatus('error')
-      if (e.error === 'no-speech') {
-        // non-fatal — just show hint
-        setMicStatus('idle')
-      } else if (e.error === 'not-allowed') {
-        toast('Mic access denied. Please allow microphone in browser settings.', 'error')
-      } else if (e.error === 'network') {
-        toast('Network error with speech recognition. Check your connection.', 'error')
-      }
-    }
-
-    SR.onend = () => {
-      // Auto-restart if still in listening phase
-      if (phaseRef.current === 'listening' && recogRef.current === SR) {
-        try {
-          SR.start()
-          setMicStatus('active')
-        } catch (err) {
-          setMicStatus('idle')
-        }
-      } else {
-        setMicStatus('idle')
-      }
-    }
-
-    // 5. Start
-    try {
-      SR.start()
-    } catch (err) {
-      setMicStatus('error')
-      toast('Could not start microphone: ' + err.message, 'error')
+      toast('Network error with speech recognition.', 'error')
+    } else {
+      setMicStatus('idle')
     }
   }
+
+  SR.onend = () => {
+    // Auto-restart if still in listening phase
+    if (phaseRef.current === 'listening' && recogRef.current === SR) {
+      try { SR.start(); setMicStatus('active') }
+      catch { setMicStatus('idle') }
+    } else {
+      setMicStatus('idle')
+    }
+  }
+
+  // 5. Start
+  try {
+    SR.start()
+  } catch (err) {
+    setMicStatus('error')
+    toast('Could not start microphone: ' + err.message, 'error')
+  }
+}
 
   // ── Submit answer and move on ─────────────────────────────────────────────
   const submitAnswer = async () => {
@@ -394,7 +405,8 @@ export default function Voice() {
 
     try {
       await voiceApi.save({
-        answers: all, tab_switches: tabRef.current,
+        answers: all, tab_warnings: tabRef.current,
+                      tab_switches: tabRef.current,
         forced_end: forced || incomplete,
         questions_answered: all.length,
         summary: forced ? `Forced end: ${all.length}/${totalQ}` : incomplete ? `Incomplete: ${all.length}/${totalQ}` : `Completed: ${all.length}/${totalQ}`,
