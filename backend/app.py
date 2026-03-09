@@ -2029,18 +2029,28 @@ Produce the action plan JSON."""
             # ── Read actions ──────────────────────────────────────────────────
             if action == "list_users":
                 filter_by = params.get("filter_by", "")
-                value     = params.get("value", "")
-                if filter_by == "institution_id":
-                    cur.execute("SELECT id,name,email,auth_provider,created_at,institution_id FROM users WHERE institution_id = %s", (value,))
-                elif filter_by == "email_domain":
-                    cur.execute("SELECT id,name,email,auth_provider,created_at,institution_id FROM users WHERE email ILIKE %s", (f"%@{value}",))
-                elif filter_by == "name":
-                    cur.execute("SELECT id,name,email,auth_provider,created_at,institution_id FROM users WHERE name ILIKE %s", (f"%{value}%",))
-                else:
-                    cur.execute("SELECT id,name,email,auth_provider,created_at,institution_id FROM users ORDER BY created_at DESC LIMIT 100")
-                cols = [d[0] for d in (cur.description or [])]
-                outcome["data"] = [dict(zip(cols, r)) for r in cur.fetchall()]
+                value     = str(params.get("value", "")).strip()
 
+                if filter_by == "institution_id":
+                    if value in ("", "null", "None", "0"):
+                        cur.execute("SELECT id,name,email,auth_provider,created_at,institution_id FROM users WHERE institution_id IS NULL ORDER BY created_at DESC LIMIT 50")
+                    else:
+                        try:
+                            cur.execute("SELECT id,name,email,auth_provider,created_at,institution_id FROM users WHERE institution_id = %s ORDER BY created_at DESC LIMIT 50", (int(value),))
+                        except ValueError:
+                            cur.execute("SELECT id,name,email,auth_provider,created_at,institution_id FROM users ORDER BY created_at DESC LIMIT 50")
+                elif filter_by == "email" and value:
+                    cur.execute("SELECT id,name,email,auth_provider,created_at,institution_id FROM users WHERE email ILIKE %s ORDER BY created_at DESC LIMIT 50", (f"%{value}%",))
+                elif filter_by == "name" and value:
+                    cur.execute("SELECT id,name,email,auth_provider,created_at,institution_id FROM users WHERE name ILIKE %s ORDER BY created_at DESC LIMIT 50", (f"%{value}%",))
+                elif filter_by and value:
+                    allowed = {"email", "name", "auth_provider"}
+                    if filter_by in allowed:
+                        cur.execute(f"SELECT id,name,email,auth_provider,created_at,institution_id FROM users WHERE {filter_by} ILIKE %s ORDER BY created_at DESC LIMIT 50", (f"%{value}%",))
+                    else:
+                        cur.execute("SELECT id,name,email,auth_provider,created_at,institution_id FROM users ORDER BY created_at DESC LIMIT 50")
+                else:
+                    cur.execute("SELECT id,name,email,auth_provider,created_at,institution_id FROM users ORDER BY created_at DESC LIMIT 50")
             elif action == "show_stats":
                 cur.execute("SELECT COUNT(*) FROM users")
                 total_users = (cur.fetchone() or (0,))[0]
