@@ -207,7 +207,7 @@ export default function Onboarding() {
                 {instLoading
                   ? <div style={{ textAlign: 'center', padding: 16 }}><Spinner size={18} /></div>
                   : <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 220, overflowY: 'auto' }}>
-                      {institutions.filter(i => i.env === 'prod').map(inst => {
+                      {institutions.map(inst => {
                         const sel = form.institution_id === inst.id
                         return (
                           <div key={inst.id} className="inst-card" onClick={() => selectInst(inst)} style={{
