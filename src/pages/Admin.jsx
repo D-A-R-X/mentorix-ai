@@ -128,13 +128,6 @@ function Modal({ show, title, body, onCancel, onConfirm, confirmLabel = 'Delete'
         <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
           <button onClick={onCancel} style={{ padding:'8px 16px', borderRadius:8, border:`1px solid ${C.border}`, color:C.muted, background:'transparent', cursor:'pointer', fontSize:13 }}>Cancel</button>
           <button onClick={onConfirm} style={{ padding:'8px 16px', borderRadius:8, border:`1px solid ${confirmColor}55`, color:confirmColor, background:`${confirmColor}10`, cursor:'pointer', fontSize:13, fontWeight:600 }}>{confirmLabel}</button>
-          {/* ════ AI COMMAND ════ */}
-          {activeSection === 'ai_command' && (
-            <div style={{ height: 'calc(100vh - 160px)', display: 'flex', flexDirection: 'column' }}>
-              <AdminAI />
-            </div>
-          )}
-
         </div>
       </div>
     </div>
@@ -214,6 +207,7 @@ export default function Admin() {
 
   // Filters
   const [userQ,      setUserQ]      = useState('')
+  const [emailDomainQ, setEmailDomainQ] = useState('')
   const [sessQ,      setSessQ]      = useState('')
   const [sessModeF,  setSessModeF]  = useState('')
   const [honorQ,     setHonorQ]     = useState('')
@@ -310,7 +304,13 @@ export default function Admin() {
   }
 
   // ── Filtered data ──────────────────────────────────────────────────────────
-  const filtUsers    = users.filter(u => !userQ || (u.email+u.name||'').toLowerCase().includes(userQ.toLowerCase()))
+  const filtUsers    = users.filter(u => {
+    const q = userQ.toLowerCase()
+    const dq = emailDomainQ.toLowerCase().trim()
+    const matchQ = !q || (u.email+u.name||'').toLowerCase().includes(q)
+    const matchDomain = !dq || (u.email||'').toLowerCase().includes(dq)
+    return matchQ && matchDomain
+  })
   const filtSessions = sessions.filter(s => {
     const q = sessQ.toLowerCase()
     const ok  = !q || (s.user_email||s.email||s.user_name||'').toLowerCase().includes(q)
@@ -487,6 +487,8 @@ export default function Admin() {
             <div style={{ animation:'adm-up 0.3s ease' }}>
               <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap' }}>
                 <input value={userQ} onChange={e=>setUserQ(e.target.value)} placeholder="Search by email or name…" style={{ ...input, flex:1, minWidth:180 }} />
+                <input value={emailDomainQ} onChange={e=>setEmailDomainQ(e.target.value)} placeholder="Filter by email key (e.g. dsce)…" style={{ ...input, width:220 }} title="Filters users whose email contains this text — e.g. type 'dsce' to find surya.j22@dsce.ac.in" />
+                {emailDomainQ && <button onClick={()=>setEmailDomainQ('')} style={{ ...btnSm, padding:'8px 12px', color:C.muted, borderColor:C.border }}>Clear</button>}
                 <button onClick={()=>downloadCSV([['Name','Email','Institution','Dept','Sessions','Honor','Status','Joined'],...users.map(u=>[u.name,u.email,u.institution_name||'Independent',u.department,u.session_count,parseFloat(u.honor_score||0).toFixed(1),u.is_suspended?'Suspended':'Active',u.created_at])],'mentorix_users.csv')} style={{ ...btnSm, padding:'8px 14px', color:C.green, borderColor:C.greenBorder, background:C.greenBg }}>
                   
                 </button>
@@ -869,6 +871,13 @@ export default function Admin() {
                   }} style={{ width:'100%', marginTop:14, padding:'9px', background:C.blueBg, border:`1px solid ${C.blueBorder}`, borderRadius:8, fontSize:12, color:C.blue, cursor:'pointer', fontWeight:500 }}>Test LLM Endpoint</button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ════ AI COMMAND ════ */}
+          {page==='ai_command' && (
+            <div style={{ height:'calc(100vh - 120px)', display:'flex', flexDirection:'column', animation:'adm-up 0.3s ease' }}>
+              <AdminAI />
             </div>
           )}
 
