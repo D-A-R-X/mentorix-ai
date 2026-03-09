@@ -15,17 +15,16 @@ import pickle
 from llm_client import call_llm
 
 import random
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import random
 from typing import Dict
 
 # ── In-memory OTP store: { email: { otp, name, password_hash, expires_at } } ──
 _otp_store: Dict[str, dict] = {}
 OTP_TTL = 300  # 5 minutes
 
-GMAIL_USER         = os.getenv("GMAIL_USER", "")
-GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "")
+BREVO_API_KEY  = os.getenv("BREVO_API_KEY", "")
+BREVO_SENDER   = os.getenv("BREVO_SENDER", "noreply@mentorix.ai")
+BREVO_SENDER_NAME = os.getenv("BREVO_SENDER_NAME", "Mentorix AI")
 import numpy as np
 from assessment import get_all_questions, score_assessment
 from database import init_db, save_assessment, get_user_history, create_user, get_user_by_email, get_connection
@@ -414,17 +413,17 @@ async def send_otp(data: SendOtpRequest):
         "expires_at": time.time() + OTP_TTL,
     }
 
-    # Send email via Gmail SMTP
-    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
-        logger.warning("GMAIL credentials not set — OTP not sent (dev mode)")
+    # Send email via Brevo (HTTPS API — works on Render free tier)
+    if not BREVO_API_KEY:
+        logger.warning("BREVO_API_KEY not set — OTP not sent (dev mode)")
         logger.info(f"DEV OTP for {email}: {otp}")
-        return {"sent": True, "dev_otp": otp}  # dev only
+        return {"sent": True, "dev_otp": otp}
 
     first_name = (data.name or "").strip().split()[0]
     html_body  = f"""
     <div style="font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#fff;border-radius:12px;border:1px solid #E2E8F0">
       <div style="margin-bottom:24px">
-        <span style="font-weight:800;font-size:18px;color:#0F172A">Mentorix<span style="color:#2563EB">.</span>AI</span>
+        <span style="font-weight:800;font-size:20px;color:#0F172A">Mentorix<span style="color:#2563EB">.</span>AI</span>
       </div>
       <h2 style="font-size:20px;font-weight:700;color:#0F172A;margin:0 0 8px">Verify your email</h2>
       <p style="color:#64748B;font-size:14px;line-height:1.6;margin:0 0 24px">
@@ -440,19 +439,24 @@ async def send_otp(data: SendOtpRequest):
     """
 
     try:
-        msg                    = MIMEMultipart("alternative")
-        msg["Subject"]         = "Your Mentorix AI verification code"
-        msg["From"]            = f"Mentorix AI <{GMAIL_USER}>"
-        msg["To"]              = email
-        msg.attach(MIMEText(html_body, "html"))
-
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-            server.sendmail(GMAIL_USER, email, msg.as_string())
-
-        logger.info(f"OTP sent to {email} via Gmail")
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                "https://api.brevo.com/v3/smtp/email",
+                headers={
+                    "api-key":      BREVO_API_KEY,
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "sender":      {"name": BREVO_SENDER_NAME, "email": BREVO_SENDER},
+                    "to":          [{"email": email, "name": (data.name or "").strip()}],
+                    "subject":     "Your Mentorix AI verification code",
+                    "htmlContent": html_body,
+                },
+            )
+            resp.raise_for_status()
+        logger.info(f"OTP sent to {email} via Brevo")
     except Exception as e:
-        logger.error(f"Gmail SMTP error: {e}")
+        logger.error(f"Brevo error: {e}")
         raise HTTPException(status_code=503, detail="Could not send verification email. Try again.")
 
     return {"sent": True}
