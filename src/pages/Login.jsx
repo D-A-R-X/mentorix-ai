@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { LogoMark, Icon, Btn, Spinner, Modal, useToast } from '../components/ui/index.jsx'
 import { useAuth } from '../hooks/useAuth.jsx'
@@ -287,69 +287,125 @@ export default function Login() {
             <div style={{ flex: 1, height: 1, background: '#E2E8F0' }} />
           </div>
 
-          {/* Fields */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {tab === 'up' && (
-              <div>
-                <label style={lStyle}>Full Name</label>
-                <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Your full name" style={iStyle} />
+          {/* ── OTP STEP (after Send Verification Code) ── */}
+          {otpSent ? (
+            <div>
+              <div style={{ marginBottom: 20, padding: '14px 16px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 10 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#1D4ED8', marginBottom: 2 }}>Check your inbox</div>
+                <div style={{ fontSize: 13, color: '#3B82F6' }}>A 6-digit code was sent to <strong>{otpEmail}</strong></div>
               </div>
-            )}
-            <div>
-              <label style={lStyle}>Email Address</label>
-              <input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="you@college.edu" style={iStyle} autoComplete="email" />
-            </div>
-            <div>
-              <label style={lStyle}>Password</label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type={showPw ? 'text' : 'password'}
-                  value={form.password}
-                  onChange={e => set('password', e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && submit()}
-                  placeholder="••••••••"
-                  style={{ ...iStyle, paddingRight: 42 }}
-                  autoComplete={tab === 'in' ? 'current-password' : 'new-password'}
-                />
-                <button onClick={() => setShowPw(v => !v)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, padding: 0 }}>
-                  <Icon name={showPw ? 'eye-off' : 'eye'} size={16} color="#94A3B8" />
+
+              <label style={lStyle}>Verification Code</label>
+              <input
+                value={otp}
+                onChange={e => { setOtp(e.target.value.replace(/\D/g, '').slice(0, 6)); setError('') }}
+                onKeyDown={e => e.key === 'Enter' && submit()}
+                placeholder="000000"
+                maxLength={6}
+                autoFocus
+                style={{
+                  ...iStyle,
+                  fontSize: 28, fontWeight: 700, letterSpacing: 12,
+                  textAlign: 'center', color: '#2563EB',
+                }}
+              />
+
+              {error && (
+                <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA', fontSize: 13, color: '#DC2626' }}>
+                  {error}
+                </div>
+              )}
+
+              <button onClick={submit} disabled={loading || otp.length !== 6} style={{
+                width: '100%', marginTop: 16, padding: '11px', borderRadius: 8, border: 'none',
+                cursor: (loading || otp.length !== 6) ? 'not-allowed' : 'pointer',
+                background: otp.length === 6 ? '#2563EB' : '#94A3B8', color: '#fff',
+                fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                opacity: loading ? 0.7 : 1, transition: 'all 0.2s',
+              }}>
+                {loading ? <><Spinner size={15} /> Verifying…</> : 'Verify & Create Account'}
+              </button>
+
+              <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                <button onClick={() => { setOtpSent(false); setOtp(''); setError('') }} style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: 0 }}>
+                  ← Change email
                 </button>
+                <ResendTimer email={otpEmail} name={form.name} password={form.password} onResent={() => setError('')} />
               </div>
             </div>
 
-            {/* Institution picker */}
-            <button onClick={openInstModal} style={{
-              width: '100%', padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
-              border: `1px solid ${selectedInst ? '#BFDBFE' : '#E2E8F0'}`,
-              background: selectedInst ? '#EFF6FF' : '#F8F9FC',
-              display: 'flex', alignItems: 'center', gap: 8,
-              transition: 'all 0.15s', fontFamily: 'Inter, sans-serif',
-            }}>
-              <Icon name="building" size={15} color={selectedInst ? '#2563EB' : '#94A3B8'} />
-              <span style={{ flex: 1, fontSize: 14, color: selectedInst ? '#1D4ED8' : '#94A3B8', textAlign: 'left' }}>
-                {selectedInst ? selectedInst.name : 'Select institution (optional)'}
-              </span>
-              <Icon name="chevron-down" size={14} color="#94A3B8" />
-            </button>
-          </div>
+          ) : (
+            /* ── NORMAL FORM ── */
+            <div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {tab === 'up' && (
+                  <div>
+                    <label style={lStyle}>Full Name</label>
+                    <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Your full name" style={iStyle} />
+                  </div>
+                )}
+                <div>
+                  <label style={lStyle}>Email Address</label>
+                  <input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="you@college.edu" style={iStyle} autoComplete="email" />
+                </div>
+                <div>
+                  <label style={lStyle}>Password</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showPw ? 'text' : 'password'}
+                      value={form.password}
+                      onChange={e => set('password', e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && submit()}
+                      placeholder="••••••••"
+                      style={{ ...iStyle, paddingRight: 42 }}
+                      autoComplete={tab === 'in' ? 'current-password' : 'new-password'}
+                    />
+                    <button onClick={() => setShowPw(v => !v)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, padding: 0 }}>
+                      <Icon name={showPw ? 'eye-off' : 'eye'} size={16} color="#94A3B8" />
+                    </button>
+                  </div>
+                </div>
 
-          {error && (
-            <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA', fontSize: 13, color: '#DC2626' }}>
-              {error}
+                {/* Institution picker */}
+                {tab === 'up' && (
+                  <button onClick={openInstModal} style={{
+                    width: '100%', padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
+                    border: `1px solid ${selectedInst ? '#BFDBFE' : '#E2E8F0'}`,
+                    background: selectedInst ? '#EFF6FF' : '#F8F9FC',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    transition: 'all 0.15s', fontFamily: 'Inter, sans-serif',
+                  }}>
+                    <Icon name="building" size={15} color={selectedInst ? '#2563EB' : '#94A3B8'} />
+                    <span style={{ flex: 1, fontSize: 14, color: selectedInst ? '#1D4ED8' : '#94A3B8', textAlign: 'left' }}>
+                      {selectedInst ? selectedInst.name : 'Select institution (optional)'}
+                    </span>
+                    <Icon name="chevron-down" size={14} color="#94A3B8" />
+                  </button>
+                )}
+              </div>
+
+              {error && (
+                <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA', fontSize: 13, color: '#DC2626' }}>
+                  {error}
+                </div>
+              )}
+
+              <button onClick={submit} disabled={loading} style={{
+                width: '100%', marginTop: 16, padding: '11px', borderRadius: 8, border: 'none',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                background: '#2563EB', color: '#fff',
+                fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600,
+                boxShadow: '0 1px 3px rgba(37,99,235,0.3)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                opacity: loading ? 0.7 : 1, transition: 'opacity 0.2s',
+              }}>
+                {loading
+                  ? <><Spinner size={15} /> Please wait…</>
+                  : tab === 'in' ? 'Sign In' : 'Send Verification Code'}
+              </button>
             </div>
           )}
-
-          <button onClick={submit} disabled={loading} style={{
-            width: '100%', marginTop: 16, padding: '11px', borderRadius: 8, border: 'none',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            background: '#2563EB', color: '#fff',
-            fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600,
-            boxShadow: '0 1px 3px rgba(37,99,235,0.3)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            opacity: loading ? 0.7 : 1, transition: 'opacity 0.2s',
-          }}>
-            {loading ? <><Spinner size={15} /> Please wait…</> : (tab === 'in' ? 'Sign In' : 'Create Account')}
-          </button>
         </div>
       </div>
 
