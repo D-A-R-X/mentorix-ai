@@ -189,10 +189,10 @@ export default function Admin() {
             {/* ── OVERVIEW ─────────────────────────────────────────────── */}
             {tab === 'overview' && currentData && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 16 }}>
-                {Object.entries(currentData).map(([k, v]) => (
+                {Object.entries(currentData).filter(([k,v]) => typeof v !== 'object' || v === null).map(([k, v]) => (
                   <Card key={k}>
-                    <div style={{ fontSize: 11, color: '#94A3B8', fontFamily: 'Inter, monospace', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>{k.replace(/_/g, ' ')}</div>
-                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 28, fontWeight: 800, color: '#0F172A' }}>{String(v)}</div>
+                    <div style={{ fontSize: 11, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>{k.replace(/_/g, ' ')}</div>
+                    <div style={{ fontSize: 28, fontWeight: 700, color: '#0F172A' }}>{v === null ? '0' : String(v)}</div>
                   </Card>
                 ))}
               </div>
