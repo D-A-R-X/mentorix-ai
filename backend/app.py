@@ -91,7 +91,7 @@ from fastapi import Response as _FResponse
 @app.options("/{rest_of_path:path}")
 async def preflight_handler(request: Request, rest_of_path: str):
     origin = request.headers.get("origin", "")
-    allow = origin if _is_allowed_origin(origin) else "https://mentorix-ai.vercel.app"
+    allow = origin if _is_allowed_origin(origin) else "https://mentorix-ai.netlify.app"
     return _FResponse(
         status_code=200,
         headers={
@@ -163,7 +163,7 @@ async def add_cors_and_log(request: Request, call_next):
     start = time.time()
     # Inject CORS on every response — including 500s — so browser sees real error
     origin = request.headers.get("origin", "")
-    allow_origin = origin if _is_allowed_origin(origin) else "https://mentorix-ai.vercel.app"
+    allow_origin = origin if _is_allowed_origin(origin) else "https://mentorix-ai.netlify.app"
     try:
         response = await call_next(request)
     except Exception:
