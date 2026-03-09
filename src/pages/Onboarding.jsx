@@ -46,6 +46,8 @@ export default function Onboarding() {
     sem:            '',
     institution_id: null,
     inst_name:      '',
+    cgpa:           '',
+    backlogs:       '0',
   })
 
   // ── Prefill from stored profile or backend ────────────────────────────────
@@ -111,6 +113,8 @@ export default function Onboarding() {
         year:           form.year,
         sem:            form.sem,
         institution_id: form.institution_id || null,
+        cgpa:           form.cgpa || null,
+        backlogs:       parseInt(form.backlogs) || 0,
       }
       // Use the correct endpoint — /user/profile
       const token = localStorage.getItem('mentorix_token')
@@ -126,7 +130,7 @@ export default function Onboarding() {
       // Update local profile cache + autofill store
       const merged = { ...getProfile(), ...payload, name: form.name, inst_name: form.inst_name }
       storeProfile(merged)
-      saveAutofill({ name: form.name, dept: form.dept, year: form.year, sem: form.sem, institution_id: form.institution_id, inst_name: form.inst_name })
+      saveAutofill({ name: form.name, dept: form.dept, year: form.year, sem: form.sem, institution_id: form.institution_id, inst_name: form.inst_name, cgpa: form.cgpa, backlogs: form.backlogs })
 
       setStep(3)
     } catch (e) {
@@ -229,7 +233,7 @@ export default function Onboarding() {
                           </div>
                         )
                       })}
-                      {institutions.filter(i => i.env === 'prod').length === 0 && (
+                      {institutions.length === 0 && (
                         <div style={{ textAlign: 'center', color: C.muted, fontSize: 13, padding: '16px 0' }}>No institutions available yet.</div>
                       )}
                     </div>
@@ -290,6 +294,39 @@ export default function Onboarding() {
                   </div>
                 </div>
               </div>
+
+                {/* CGPA + Backlogs */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div>
+                    <label style={lStyle}>CGPA <span style={{ color:C.muted, fontWeight:400 }}>(optional)</span></label>
+                    <input
+                      value={form.cgpa}
+                      onChange={e => {
+                        const v = e.target.value
+                        if (v === '' || (/^\d*\.?\d{0,2}$/.test(v) && parseFloat(v||0) <= 10)) set('cgpa', v)
+                      }}
+                      placeholder="e.g. 8.5"
+                      inputMode="decimal"
+                      style={{ ...iStyle, cursor:'text' }}
+                    />
+                    <div style={{ fontSize:11, color:C.muted, marginTop:4 }}>Out of 10</div>
+                  </div>
+                  <div>
+                    <label style={lStyle}>Active Backlogs</label>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6 }}>
+                      {['0','1','2','3','4','5','6','7+'].map(b => (
+                        <div key={b} onClick={() => set('backlogs', b)} style={{
+                          padding:'8px 4px', borderRadius:7, cursor:'pointer', fontSize:13,
+                          fontWeight:600, textAlign:'center',
+                          border:`1px solid ${form.backlogs===b ? C.blueBorder : C.border}`,
+                          background: form.backlogs===b ? C.blueBg : C.bg,
+                          color: form.backlogs===b ? C.blue : C.text,
+                          transition:'all 0.15s',
+                        }}>{b}</div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
 
               {error && (
                 <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA', fontSize: 13, color: '#DC2626' }}>
