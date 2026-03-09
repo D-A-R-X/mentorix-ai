@@ -78,7 +78,7 @@ function Modal({ show, title, body, onCancel, onConfirm, confirmLabel = 'Delete'
   return (
     <div onClick={onCancel} style={{ position:'fixed',inset:0,zIndex:600,background:'rgba(15,23,42,0.45)',backdropFilter:'blur(3px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
       <div onClick={e => e.stopPropagation()} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:28, maxWidth:420, width:'100%', boxShadow:'0 8px 32px rgba(0,0,0,0.12)' }}>
-        <div style={{ fontSize:16, fontWeight:700, color:C.navy, marginBottom:8 }} style={{ display:'flex', alignItems:'center', gap:8 }}><Ic n='warning' size={18} color={C.red}/>{title}</div>
+        <div style={{ fontSize:16, fontWeight:700, color:C.navy, marginBottom:8, display:'flex', alignItems:'center', gap:8 }}><Ic n='warning' size={18} color={C.red}/>{title}</div>
         <div style={{ fontSize:13, color:C.text, lineHeight:1.7, marginBottom:22 }}>{body}</div>
         <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
           <button onClick={onCancel} style={{ padding:'8px 16px', borderRadius:8, border:`1px solid ${C.border}`, color:C.muted, background:'transparent', cursor:'pointer', fontSize:13 }}>Cancel</button>
@@ -207,7 +207,7 @@ export default function Admin() {
         <div style={{ marginBottom:16 }}><Ic n='banstop' size={52} color={C.red}/></div>
         <div style={{ fontSize:18, fontWeight:700, color:C.navy, marginBottom:8 }}>Admin access required</div>
         <div style={{ fontSize:13, color:C.muted, marginBottom:24 }}>Signed in as {email}</div>
-        <button onClick={()=>nav('/dashboard')} style={{ padding:'10px 24px', background:C.blue, border:'none', borderRadius:8, color:'#fff', cursor:'pointer', fontSize:14, fontWeight:600 }} style={{ display:'flex',alignItems:'center',gap:5 }}><Ic n='arrowleft' size={13} color={C.muted}/> Dashboard</button>
+        <button onClick={()=>nav('/dashboard')} style={{ padding:'10px 24px', background:C.blue, border:'none', borderRadius:8, color:'#fff', cursor:'pointer', fontSize:14, fontWeight:600, display:'flex', alignItems:'center', gap:5 }}><Ic n='arrowleft' size={13} color="#fff"/> Dashboard</button>
       </div>
     </div>
   )
