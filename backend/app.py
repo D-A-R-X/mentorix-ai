@@ -15,18 +15,17 @@ import pickle
 from llm_client import call_llm
 
 import random
-try:
-    import resend
-except ImportError:
-    resend = None
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from typing import Dict
 
 # ── In-memory OTP store: { email: { otp, name, password_hash, expires_at } } ──
 _otp_store: Dict[str, dict] = {}
 OTP_TTL = 300  # 5 minutes
 
-RESEND_API_KEY   = os.getenv("RESEND_API_KEY", "")
-RESEND_FROM      = os.getenv("RESEND_FROM", "Mentorix AI <onboarding@resend.dev>")
+GMAIL_USER         = os.getenv("GMAIL_USER", "")
+GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "")
 import numpy as np
 from assessment import get_all_questions, score_assessment
 from database import init_db, save_assessment, get_user_history, create_user, get_user_by_email, get_connection
@@ -415,43 +414,45 @@ async def send_otp(data: SendOtpRequest):
         "expires_at": time.time() + OTP_TTL,
     }
 
-    # Send email via Resend
-    if not RESEND_API_KEY:
-        logger.warning("RESEND_API_KEY not set — OTP not sent (dev mode)")
+    # Send email via Gmail SMTP
+    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
+        logger.warning("GMAIL credentials not set — OTP not sent (dev mode)")
         logger.info(f"DEV OTP for {email}: {otp}")
-        return {"sent": True, "dev_otp": otp}  # dev only — remove in prod
+        return {"sent": True, "dev_otp": otp}  # dev only
+
+    first_name = (data.name or "").strip().split()[0]
+    html_body  = f"""
+    <div style="font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#fff;border-radius:12px;border:1px solid #E2E8F0">
+      <div style="margin-bottom:24px">
+        <span style="font-weight:800;font-size:18px;color:#0F172A">Mentorix<span style="color:#2563EB">.</span>AI</span>
+      </div>
+      <h2 style="font-size:20px;font-weight:700;color:#0F172A;margin:0 0 8px">Verify your email</h2>
+      <p style="color:#64748B;font-size:14px;line-height:1.6;margin:0 0 24px">
+        Hi {first_name}, here is your Mentorix AI verification code. It expires in 5 minutes.
+      </p>
+      <div style="background:#F8F9FC;border:2px dashed #BFDBFE;border-radius:12px;padding:24px;text-align:center;margin-bottom:24px">
+        <span style="font-size:36px;font-weight:800;letter-spacing:10px;color:#2563EB">{otp}</span>
+      </div>
+      <p style="color:#94A3B8;font-size:12px;margin:0">
+        If you didn't request this, ignore this email. Code expires in 5 minutes.
+      </p>
+    </div>
+    """
 
     try:
-        resend.api_key = RESEND_API_KEY
-        resend.Emails.send({
-            "from":    RESEND_FROM,
-            "to":      [email],
-            "subject": "Your Mentorix AI verification code",
-            "html": f"""
-            <div style="font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#fff;border-radius:12px;border:1px solid #E2E8F0">
-              <div style="display:flex;align-items:center;gap:10px;margin-bottom:24px">
-                <div style="width:36px;height:36px;background:#2563EB;border-radius:8px;display:flex;align-items:center;justify-content:center">
-                  <span style="color:#fff;font-weight:800;font-size:18px">M</span>
-                </div>
-                <span style="font-weight:800;font-size:16px;color:#0F172A;letter-spacing:-0.02em">Mentorix<span style="color:#2563EB">.</span>AI</span>
-              </div>
-              <h2 style="font-size:20px;font-weight:700;color:#0F172A;margin:0 0 8px">Verify your email</h2>
-              <p style="color:#64748B;font-size:14px;line-height:1.6;margin:0 0 24px">
-                Hi {(data.name or "").strip().split()[0]}, use this code to complete your Mentorix AI registration. It expires in 5 minutes.
-              </p>
-              <div style="background:#F8F9FC;border:2px dashed #BFDBFE;border-radius:12px;padding:24px;text-align:center;margin-bottom:24px">
-                <span style="font-size:36px;font-weight:800;letter-spacing:10px;color:#2563EB">{otp}</span>
-              </div>
-              <p style="color:#94A3B8;font-size:12px;margin:0">
-                If you didn't request this, you can safely ignore this email.<br>
-                This code expires in 5 minutes.
-              </p>
-            </div>
-            """,
-        })
-        logger.info(f"OTP sent to {email}")
+        msg                    = MIMEMultipart("alternative")
+        msg["Subject"]         = "Your Mentorix AI verification code"
+        msg["From"]            = f"Mentorix AI <{GMAIL_USER}>"
+        msg["To"]              = email
+        msg.attach(MIMEText(html_body, "html"))
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+            server.sendmail(GMAIL_USER, email, msg.as_string())
+
+        logger.info(f"OTP sent to {email} via Gmail")
     except Exception as e:
-        logger.error(f"Resend error: {e}")
+        logger.error(f"Gmail SMTP error: {e}")
         raise HTTPException(status_code=503, detail="Could not send verification email. Try again.")
 
     return {"sent": True}
