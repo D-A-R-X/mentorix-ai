@@ -6,31 +6,19 @@ import { voiceApi } from '../lib/api'
 
 const MAX_W = 3
 const MAX_Q = 8
-const INACTIVITY_MS = 45000
+const INACTIVITY_MS = 50000
 const API = import.meta.env.VITE_API_URL || 'https://mentorix-ai-backend.onrender.com'
 
-const QUESTIONS_BY_DEPT = {
-  CSE: [
-    "Explain a data structure you've used in a project and why you chose it.",
-    "What's the difference between process and thread? Give a real example.",
-    "Walk me through how you'd design a URL shortener.",
-    "What is time complexity? Analyse a sorting algorithm you know.",
-    "Describe a bug you fixed that took the longest — what was the root cause?",
-    "What is REST? How does it differ from GraphQL?",
-    "Explain OOP with a real-world analogy.",
-    "Where do you see AI fitting into software development in 5 years?",
-  ],
-  default: [
-    "Tell me about your current academic focus and what you find most challenging.",
-    "What projects have you worked on recently? Walk me through your approach.",
-    "How do you manage your time between studies and other activities?",
-    "Describe a technical problem you solved recently.",
-    "What are your career goals after graduation?",
-    "How do you stay updated with new developments in your field?",
-    "What skills do you feel you need to improve most?",
-    "Where do you see yourself in 5 years?",
-  ]
-}
+const QUESTIONS = [
+  "Tell me about your current academic focus and what you find most challenging.",
+  "What projects have you worked on recently? Walk me through your approach.",
+  "How do you manage your time between studies and other activities?",
+  "Describe a technical problem you solved recently.",
+  "What are your career goals after graduation?",
+  "How do you stay updated with new developments in your field?",
+  "What skills do you feel you need to improve most?",
+  "Where do you see yourself in 5 years?",
+]
 
 // ── Typewriter ────────────────────────────────────────────────────────────────
 function TypewriterText({ text, speed = 22 }) {
@@ -39,459 +27,398 @@ function TypewriterText({ text, speed = 22 }) {
     setShown('')
     if (!text) return
     let i = 0
-    const timer = setInterval(() => {
-      i++
-      setShown(text.slice(0, i))
-      if (i >= text.length) clearInterval(timer)
-    }, speed)
-    return () => clearInterval(timer)
+    const t = setInterval(() => { i++; setShown(text.slice(0, i)); if (i >= text.length) clearInterval(t) }, speed)
+    return () => clearInterval(t)
   }, [text])
   return <span>{shown}</span>
 }
 
-// ── Spectrogram ───────────────────────────────────────────────────────────────
-function Spectrogram({ active, speaking }) {
-  const canvasRef = useRef(null)
-  const animRef   = useRef(null)
-  const barsRef   = useRef(Array(32).fill(0.05))
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    const W = canvas.width, H = canvas.height, N = 32
-
-    function draw() {
-      ctx.clearRect(0, 0, W, H)
-      barsRef.current = barsRef.current.map(p => {
-        const target = (active || speaking) ? Math.random() * 0.8 + 0.1 : 0.04
-        return p + (target - p) * 0.25
-      })
-      for (let i = 0; i < N; i++) {
-        const h   = barsRef.current[i] * H
-        const x   = (W / N) * i + 2
-        const bw  = W / N - 4
-        const c1  = speaking ? 'rgba(124,77,255,0.9)' : 'rgba(37,99,235,0.9)'
-        const c2  = speaking ? 'rgba(124,77,255,0.2)' : 'rgba(5,150,105,0.4)'
-        const g   = ctx.createLinearGradient(0, H - h, 0, H)
-        g.addColorStop(0, c1); g.addColorStop(1, c2)
-        ctx.fillStyle = g
-        ctx.beginPath()
-        ctx.roundRect(x, H - h, bw, h, 3)
-        ctx.fill()
-      }
-      animRef.current = requestAnimationFrame(draw)
-    }
-    draw()
-    return () => cancelAnimationFrame(animRef.current)
-  }, [active, speaking])
-
+// ── Animated bars (pure CSS, no canvas) ─────────────────────────────────────
+function SoundBars({ active }) {
   return (
-    <canvas ref={canvasRef} width={300} height={72}
-      style={{ borderRadius: 8, background: '#F8F9FC', border: '1px solid #F1F4F9' }} />
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, height: 40 }}>
+      {[0,1,2,3,4,5,6,7,8,9,10,11].map(i => (
+        <div key={i} style={{
+          width: 4, borderRadius: 2,
+          background: active ? '#2563EB' : '#CBD5E1',
+          height: active ? undefined : 6,
+          minHeight: 6,
+          maxHeight: 32,
+          animation: active ? `bar-bounce 0.9s ease-in-out infinite ${(i * 0.07).toFixed(2)}s` : 'none',
+        }} />
+      ))}
+      <style>{`
+        @keyframes bar-bounce {
+          0%,100% { height: 6px; }
+          50%      { height: 28px; }
+        }
+      `}</style>
+    </div>
   )
 }
 
-// ── Browser TTS — best female voice ──────────────────────────────────────────
-function browserSpeak(text, onEnd) {
-  if (!('speechSynthesis' in window)) { onEnd?.(); return }
-  window.speechSynthesis.cancel()
+// ── Browser TTS with female voice preference ──────────────────────────────────
+let _ttsAudio = null
 
-  function doSpeak() {
-    const u      = new SpeechSynthesisUtterance(text)
-    const voices = window.speechSynthesis.getVoices()
-
-    // Priority list of female voices
-    const femaleNames = [
-      'Google UK English Female',
-      'Microsoft Zira - English (United States)',
-      'Microsoft Hazel - English (Great Britain)',
-      'Samantha',
-      'Karen',
-      'Moira',
-      'Tessa',
-      'Victoria',
-      'Allison',
-      'Ava',
-    ]
-
-    let chosen = null
-    for (const name of femaleNames) {
-      chosen = voices.find(v => v.name === name)
-      if (chosen) break
-    }
-    // Fallback: any English female
-    if (!chosen) {
-      chosen = voices.find(v =>
-        v.lang.startsWith('en') &&
-        /female|woman|girl/i.test(v.name)
-      )
-    }
-    // Fallback: any en-GB (usually female by default)
-    if (!chosen) chosen = voices.find(v => v.lang === 'en-GB')
-    // Fallback: any English
-    if (!chosen) chosen = voices.find(v => v.lang.startsWith('en'))
-
-    if (chosen) u.voice = chosen
-    u.rate   = 0.87
-    u.pitch  = 1.2
-    u.volume = 1
-    u.onend   = onEnd
-    u.onerror = onEnd
-    window.speechSynthesis.speak(u)
-  }
-
-  const voices = window.speechSynthesis.getVoices()
-  if (voices.length === 0) {
-    window.speechSynthesis.addEventListener('voiceschanged', doSpeak, { once: true })
-  } else {
-    doSpeak()
-  }
+function stopAllAudio() {
+  if (_ttsAudio) { try { _ttsAudio.pause(); _ttsAudio.src = '' } catch {} _ttsAudio = null }
+  try { window.speechSynthesis?.cancel() } catch {}
 }
 
-// ── ElevenLabs TTS with browser fallback ─────────────────────────────────────
-let _audioEl = null
-
-async function ariaSpeak(text, token, onStart, onEnd) {
-  // Stop previous audio
-  if (_audioEl) { _audioEl.pause(); _audioEl.src = ''; _audioEl = null }
-  window.speechSynthesis?.cancel()
-
-  onStart?.()
-
+async function ariaSpeak(text, token, onDone) {
+  stopAllAudio()
+  // Try ElevenLabs backend first
   try {
     const res = await fetch(API + '/voice/tts', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token,
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       body: JSON.stringify({ text }),
     })
-    if (!res.ok) throw new Error('no tts')
-    const blob = await res.blob()
-    const url  = URL.createObjectURL(blob)
-    const audio = new Audio(url)
-    _audioEl = audio
-    audio.onended = () => { URL.revokeObjectURL(url); _audioEl = null; onEnd?.() }
-    audio.onerror = () => { URL.revokeObjectURL(url); _audioEl = null; browserSpeak(text, onEnd) }
-    audio.play().catch(() => { browserSpeak(text, onEnd) })
-  } catch {
-    browserSpeak(text, onEnd)
-  }
+    if (res.ok) {
+      const blob  = await res.blob()
+      const url   = URL.createObjectURL(blob)
+      const audio = new Audio(url)
+      _ttsAudio   = audio
+      audio.onended = () => { URL.revokeObjectURL(url); _ttsAudio = null; onDone?.() }
+      audio.onerror = () => { URL.revokeObjectURL(url); _ttsAudio = null; fallbackSpeak(text, onDone) }
+      await audio.play()
+      return
+    }
+  } catch {}
+  fallbackSpeak(text, onDone)
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
+function fallbackSpeak(text, onDone) {
+  if (!window.speechSynthesis) { onDone?.(); return }
+  window.speechSynthesis.cancel()
+  const go = () => {
+    const utt    = new SpeechSynthesisUtterance(text)
+    const voices = window.speechSynthesis.getVoices()
+    // Best female voices in priority order
+    const want   = ['Google UK English Female','Microsoft Zira - English (United States)',
+                    'Microsoft Hazel - English (Great Britain)','Samantha','Karen','Moira','Tessa','Ava']
+    let v = null
+    for (const name of want) { v = voices.find(x => x.name === name); if (v) break }
+    if (!v) v = voices.find(x => x.lang.startsWith('en') && /female|woman/i.test(x.name))
+    if (!v) v = voices.find(x => x.lang === 'en-GB')
+    if (!v) v = voices.find(x => x.lang.startsWith('en'))
+    if (v) utt.voice = v
+    utt.rate  = 0.88; utt.pitch = 1.18; utt.volume = 1
+    utt.onend = onDone; utt.onerror = onDone
+    window.speechSynthesis.speak(utt)
+  }
+  if (window.speechSynthesis.getVoices().length === 0) {
+    window.speechSynthesis.onvoiceschanged = go
+  } else { go() }
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
 export default function Voice() {
   const { user }  = useAuth()
   const nav       = useNavigate()
   const toast     = useToast()
   const token     = localStorage.getItem('mentorix_token') || ''
 
-  const [phase,       setPhase]       = useState('intro')   // intro | question | listening | feedback | done
-  const [qIndex,      setQIndex]      = useState(0)
+  // ── State ─────────────────────────────────────────────────────────────────
+  const [phase,       setPhase]       = useState('intro')
+  // phases: intro → speaking → listening → saving_answer → feedback_speaking → done
+
+  const [qIdx,        setQIdx]        = useState(0)
   const [answers,     setAnswers]     = useState([])
   const [transcript,  setTranscript]  = useState('')
   const [inputMode,   setInputMode]   = useState('voice')
-  const [typedAnswer, setTypedAnswer] = useState('')
-  const [tabWarnings, setTabWarnings] = useState(0)
+  const [typed,       setTyped]       = useState('')
+  const [tabWarns,    setTabWarns]    = useState(0)
   const [saving,      setSaving]      = useState(false)
-  const [aiReply,     setAiReply]     = useState('')
-  const [isSpeaking,  setIsSpeaking]  = useState(false)
-  const [isListening, setIsListening] = useState(false)
-  const [micError,    setMicError]    = useState('')
+  const [ariaText,    setAriaText]    = useState('')
+  const [micStatus,   setMicStatus]   = useState('idle')
+  // micStatus: idle | requesting | active | error
 
-  // Refs — always current values without stale closure
+  // ── Refs ──────────────────────────────────────────────────────────────────
   const recogRef      = useRef(null)
-  const inactivityRef = useRef(null)
+  const inactiveRef   = useRef(null)
   const answersRef    = useRef([])
-  const tabWarnRef    = useRef(0)
+  const tabRef        = useRef(0)
   const phaseRef      = useRef('intro')
-  const transcriptRef = useRef('')
+  const txRef         = useRef('')        // always-current transcript
+  const qIdxRef       = useRef(0)
 
-  const dept      = user?.department || user?.dept || 'default'
-  const questions = QUESTIONS_BY_DEPT[dept] || QUESTIONS_BY_DEPT.default
-  const totalQ    = Math.min(MAX_Q, questions.length)
-  const progress  = ((qIndex + 1) / totalQ) * 100
+  const totalQ = Math.min(MAX_Q, QUESTIONS.length)
 
-  // Keep refs in sync
-  useEffect(() => { answersRef.current   = answers },     [answers])
-  useEffect(() => { tabWarnRef.current   = tabWarnings }, [tabWarnings])
-  useEffect(() => { phaseRef.current     = phase },       [phase])
-  useEffect(() => { transcriptRef.current = transcript }, [transcript])
+  // Sync refs
+  useEffect(() => { answersRef.current = answers },   [answers])
+  useEffect(() => { phaseRef.current   = phase },     [phase])
+  useEffect(() => { txRef.current      = transcript }, [transcript])
+  useEffect(() => { qIdxRef.current    = qIdx },      [qIdx])
+  useEffect(() => { tabRef.current     = tabWarns },  [tabWarns])
 
-  // ── Tab-switch anti-cheat ─────────────────────────────────────────────────
+  // ── Tab switch detection ───────────────────────────────────────────────────
   useEffect(() => {
     const fn = () => {
       if (!document.hidden) return
       const p = phaseRef.current
-      if (p !== 'listening' && p !== 'question' && p !== 'feedback') return
-      const w = tabWarnRef.current + 1
-      setTabWarnings(w); tabWarnRef.current = w
-      if (w >= MAX_W) {
-        toast(`Session terminated: ${MAX_W} tab violations`, 'error')
-        endSession(true)
-      } else {
-        toast(`⚠️ Warning ${w}/${MAX_W}: do not leave this tab`, 'warn')
-      }
+      if (!['speaking','listening','saving_answer','feedback_speaking'].includes(p)) return
+      const w = tabRef.current + 1
+      setTabWarns(w); tabRef.current = w
+      if (w >= MAX_W) { toast('Session ended: too many tab switches', 'error'); doEndSession(true) }
+      else toast(`Warning ${w}/${MAX_W}: stay on this tab`, 'warn')
     }
     document.addEventListener('visibilitychange', fn)
     return () => document.removeEventListener('visibilitychange', fn)
   }, [])
 
-  // ── Abandon detection on page close ──────────────────────────────────────
+  // ── Page close ────────────────────────────────────────────────────────────
   useEffect(() => {
     const fn = () => {
-      const p = phaseRef.current
-      const a = answersRef.current
-      if ((p === 'listening' || p === 'question' || p === 'feedback') && a.length < MAX_Q) {
-        // Save with penalty flag
-        voiceApi.save({
-          answers: a,
-          tab_switches: tabWarnRef.current,
-          forced_end: true,
-          incomplete: true,
-          department: user?.department,
-          questions_answered: a.length,
-          summary: `Abandoned after ${a.length} questions.`,
-          transcript: a.map(x => `Q: ${x.question}\nA: ${x.answer}`).join('\n\n'),
-          scores: {},
-          overall: Math.max(0, a.length * 5 - 10),  // penalty
-          exchange_count: a.length,
-          mode: 'voice',
-        }).catch(() => {})
-      }
+      const active = ['speaking','listening','saving_answer','feedback_speaking'].includes(phaseRef.current)
+      if (!active || answersRef.current.length === 0) return
+      voiceApi.save({
+        answers: answersRef.current, tab_switches: tabRef.current, forced_end: true,
+        questions_answered: answersRef.current.length,
+        summary: 'Session abandoned.', transcript: '', scores: {},
+        overall: Math.max(0, answersRef.current.length * 4 - 8),
+        exchange_count: answersRef.current.length, mode: 'voice',
+      }).catch(() => {})
     }
     window.addEventListener('beforeunload', fn)
     return () => window.removeEventListener('beforeunload', fn)
   }, [])
 
-  // ── Inactivity timer ──────────────────────────────────────────────────────
-  const resetInactivity = useCallback(() => {
-    clearTimeout(inactivityRef.current)
-    inactivityRef.current = setTimeout(() => {
+  // ── Inactivity ────────────────────────────────────────────────────────────
+  const resetInactive = useCallback(() => {
+    clearTimeout(inactiveRef.current)
+    inactiveRef.current = setTimeout(() => {
       if (phaseRef.current === 'listening') {
-        toast('No response detected — ending session', 'warn')
-        speak(
-          "I notice you haven't responded. That's okay — let me save your progress. Come back when you're ready!",
-          () => endSession(false)
-        )
+        toast('No speech detected — ending session', 'warn')
+        speak("I haven't heard from you — that's okay! Let me save your progress. Come back whenever you're ready!", () => doEndSession(false))
       }
     }, INACTIVITY_MS)
   }, [])
 
-  // ── Cleanup on unmount ────────────────────────────────────────────────────
+  // ── Cleanup ───────────────────────────────────────────────────────────────
   useEffect(() => () => {
-    stopRecognition()
-    if (_audioEl) { _audioEl.pause(); _audioEl = null }
-    window.speechSynthesis?.cancel()
-    clearTimeout(inactivityRef.current)
+    killRecog()
+    stopAllAudio()
+    clearTimeout(inactiveRef.current)
   }, [])
 
-  // ── Speak wrapper ─────────────────────────────────────────────────────────
-  const speak = (text, onEnd) => {
-    setIsSpeaking(true)
-    ariaSpeak(
-      text, token,
-      () => setIsSpeaking(true),
-      () => { setIsSpeaking(false); onEnd?.() }
-    )
+  // ── Speak ─────────────────────────────────────────────────────────────────
+  const speak = (text, onDone) => {
+    setAriaText(text)
+    ariaSpeak(text, token, onDone)
   }
 
-  // ── Speech recognition ────────────────────────────────────────────────────
-  const stopRecognition = () => {
-    try { recogRef.current?.stop() } catch {}
+  // ── Kill recognition ───────────────────────────────────────────────────────
+  const killRecog = () => {
+    if (!recogRef.current) return
+    try { recogRef.current.onresult = null; recogRef.current.onerror = null; recogRef.current.onend = null; recogRef.current.stop() } catch {}
     recogRef.current = null
   }
 
-  const startListening = async () => {
-    setMicError('')
+  // ── START MIC — the critical function ─────────────────────────────────────
+  const startMic = async () => {
+    setMicStatus('requesting')
+    setTranscript(''); txRef.current = ''
 
-    // Check browser support
+    // 1. Check API support
     const SRClass = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SRClass) {
-      setMicError('Speech recognition not supported in this browser. Use Type Mode.')
+      setMicStatus('error')
+      toast('Speech recognition not available. Switching to type mode.', 'warn')
       setInputMode('type')
       return
     }
 
-    // Request mic permission explicitly first
+    // 2. Request mic permission
     try {
-      await navigator.mediaDevices.getUserMedia({ audio: true })
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      stream.getTracks().forEach(t => t.stop()) // release stream — SR handles its own
     } catch (err) {
-      setMicError('Microphone permission denied. Please allow mic access and try again.')
+      setMicStatus('error')
+      const msg = err.name === 'NotAllowedError'
+        ? 'Microphone blocked. Click the 🔒 icon in the address bar → Allow microphone, then refresh.'
+        : `Mic error: ${err.message}`
+      toast(msg, 'error')
       return
     }
 
-    // Stop any existing recognition
-    stopRecognition()
-    setTranscript('')
-    transcriptRef.current = ''
+    // 3. Kill any existing recognition
+    killRecog()
 
-    const recog = new SRClass()
-    recog.continuous     = true
-    recog.interimResults = true
-    recog.lang           = 'en-IN'
+    // 4. Create new recognition instance
+    const SR = new SRClass()
+    SR.continuous     = true
+    SR.interimResults = true
+    SR.lang           = 'en-IN'
+    recogRef.current  = SR
 
-    recog.onstart = () => {
-      setIsListening(true)
-      setMicError('')
+    SR.onstart = () => {
+      setMicStatus('active')
+      setPhase('listening')
+      resetInactive()
     }
 
-    recog.onresult = (e) => {
-      let final = '', interim = ''
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const t = e.results[i][0].transcript
-        if (e.results[i].isFinal) final += t
-        else interim += t
+    SR.onresult = (e) => {
+      // Build transcript from all results
+      let finalText   = ''
+      let interimText = ''
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) finalText   += e.results[i][0].transcript + ' '
+        else                      interimText += e.results[i][0].transcript
       }
-      const combined = (transcriptRef.current + ' ' + final).trim() + (interim ? ' ' + interim : '')
-      setTranscript(combined.trim())
-      transcriptRef.current = (transcriptRef.current + ' ' + final).trim()
-      resetInactivity()
+      const full = (finalText + interimText).trim()
+      setTranscript(full)
+      txRef.current = full
+      resetInactive()
     }
 
-    recog.onerror = (e) => {
-      setIsListening(false)
-      if (e.error === 'not-allowed') {
-        setMicError('Microphone access denied. Please allow mic and refresh.')
-      } else if (e.error === 'no-speech') {
-        setMicError('No speech detected. Tap mic to try again.')
+    SR.onerror = (e) => {
+      console.warn('SR error:', e.error)
+      setMicStatus('error')
+      if (e.error === 'no-speech') {
+        // non-fatal — just show hint
+        setMicStatus('idle')
+      } else if (e.error === 'not-allowed') {
+        toast('Mic access denied. Please allow microphone in browser settings.', 'error')
+      } else if (e.error === 'network') {
+        toast('Network error with speech recognition. Check your connection.', 'error')
+      }
+    }
+
+    SR.onend = () => {
+      // Auto-restart if still in listening phase
+      if (phaseRef.current === 'listening' && recogRef.current === SR) {
+        try {
+          SR.start()
+          setMicStatus('active')
+        } catch (err) {
+          setMicStatus('idle')
+        }
       } else {
-        setMicError(`Mic error: ${e.error}. Tap to retry.`)
+        setMicStatus('idle')
       }
     }
 
-    recog.onend = () => {
-      setIsListening(false)
-      // Auto-restart if still in listening phase (continuous mode sometimes stops)
-      if (phaseRef.current === 'listening' && recogRef.current === recog) {
-        try { recog.start() } catch {}
-      }
+    // 5. Start
+    try {
+      SR.start()
+    } catch (err) {
+      setMicStatus('error')
+      toast('Could not start microphone: ' + err.message, 'error')
     }
-
-    recog.start()
-    recogRef.current = recog
-    resetInactivity()
   }
 
-  // ── Get AI feedback ───────────────────────────────────────────────────────
-  const getAiFeedback = async (question, answer) => {
+  // ── Submit answer and move on ─────────────────────────────────────────────
+  const submitAnswer = async () => {
+    killRecog()
+    clearTimeout(inactiveRef.current)
+    setMicStatus('idle')
+
+    const ans       = inputMode === 'voice' ? txRef.current : typed
+    const newAnswer = { question: QUESTIONS[qIdxRef.current], answer: ans, timestamp: new Date().toISOString() }
+    const newAll    = [...answersRef.current, newAnswer]
+    setAnswers(newAll); answersRef.current = newAll
+    setPhase('saving_answer')
+
+    // Get AI feedback
+    let feedback = ''
     try {
       const res = await fetch(API + '/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + token,
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
         body: JSON.stringify({
-          messages: [{ role: 'user', content: answer || '(no response given)' }],
-          system: `You are Aria, a warm caring female AI mentor. A student just answered: "${question}". Give a 1-2 sentence warm acknowledgement and one gentle, specific tip. Be emotionally supportive. Max 30 words total.`,
+          messages: [{ role: 'user', content: ans || '(no answer given)' }],
+          system: `You are Aria, a warm, emotionally supportive female AI mentor. A student just answered: "${QUESTIONS[qIdxRef.current]}". Give a 1-2 sentence warm reaction with one gentle tip. Be personal and encouraging. Under 35 words.`,
           max_tokens: 80,
         }),
       })
-      const d = await res.json()
-      return d.reply || ''
-    } catch { return '' }
+      const d  = await res.json()
+      feedback = d.reply || ''
+    } catch {}
+
+    const nextIdx = qIdxRef.current + 1
+
+    if (feedback) {
+      setPhase('feedback_speaking')
+      speak(feedback, () => {
+        if (nextIdx >= totalQ) doEndSession(false, newAll)
+        else { setQIdx(nextIdx); qIdxRef.current = nextIdx; doAskQuestion(nextIdx) }
+      })
+    } else {
+      if (nextIdx >= totalQ) doEndSession(false, newAll)
+      else { setQIdx(nextIdx); qIdxRef.current = nextIdx; doAskQuestion(nextIdx) }
+    }
   }
 
-  // ── Session flow ──────────────────────────────────────────────────────────
-  const startSession = () => {
-    setPhase('question')
-    askQuestion(0)
-  }
+  // ── Ask question ──────────────────────────────────────────────────────────
+  const doAskQuestion = (idx) => {
+    setTranscript(''); txRef.current = ''
+    setTyped(''); setAriaText('')
+    setMicStatus('idle'); setPhase('speaking')
 
-  const askQuestion = (idx) => {
-    if (idx >= MAX_Q || idx >= questions.length) { endSession(false); return }
-    setQIndex(idx)
-    setTranscript(''); transcriptRef.current = ''
-    setTypedAnswer('')
-    setAiReply('')
-    setMicError('')
-    setPhase('question')
-
-    speak(questions[idx], () => {
+    speak(QUESTIONS[idx], () => {
       setPhase('listening')
-      resetInactivity()
-      if (inputMode === 'voice') startListening()
+      if (inputMode === 'voice') startMic()
+      else resetInactive()
     })
   }
 
-  const submitAnswer = async () => {
-    stopRecognition()
-    clearTimeout(inactivityRef.current)
-
-    const ans       = inputMode === 'voice' ? transcriptRef.current : typedAnswer
-    const newAnswer = { question: questions[qIndex], answer: ans, timestamp: new Date().toISOString() }
-    const newAll    = [...answersRef.current, newAnswer]
-    setAnswers(newAll); answersRef.current = newAll
-
-    setPhase('feedback')
-
-    const feedback = await getAiFeedback(questions[qIndex], ans)
-    if (feedback) {
-      setAiReply(feedback)
-      speak(feedback, () => goNext(newAll))
-    } else {
-      goNext(newAll)
-    }
+  const startSession = () => {
+    setQIdx(0); qIdxRef.current = 0
+    doAskQuestion(0)
   }
 
-  const goNext = (all) => {
-    if (qIndex + 1 >= MAX_Q || qIndex + 1 >= questions.length) {
-      endSession(false, all)
-    } else {
-      setTimeout(() => askQuestion(qIndex + 1), 300)
-    }
-  }
-
-  const endSession = async (forced = false, finalAnswers) => {
-    stopRecognition()
-    if (_audioEl) { _audioEl.pause(); _audioEl = null }
-    window.speechSynthesis?.cancel()
-    clearTimeout(inactivityRef.current)
+  // ── End session ───────────────────────────────────────────────────────────
+  const doEndSession = async (forced, finalAnswers) => {
+    killRecog()
+    stopAllAudio()
+    clearTimeout(inactiveRef.current)
+    setMicStatus('idle')
     setPhase('done')
     setSaving(true)
 
     const all        = finalAnswers ?? answersRef.current
     const incomplete = all.length < totalQ
-    const penalty    = forced || (incomplete && all.length < 3)
-
-    const farewell = all.length === 0
-      ? "You didn't respond this time — and that's okay. Every session is a step forward. I believe in you!"
-      : forced
-      ? "We had to end early. Keep practicing — you're building resilience with every attempt!"
-      : incomplete
-      ? `You answered ${all.length} questions. Good effort — try to complete the full session next time!`
-      : `Amazing work completing all ${all.length} questions! I'm genuinely proud of your dedication!`
-
-    setAiReply(farewell)
-    speak(farewell)
-
-    // Honor: penalty if forced or incomplete (<3 answers)
-    const overall = penalty
-      ? Math.max(0, all.length * 5 - 10)           // deduct: low score triggers backend penalty
+    const overall    = forced || (incomplete && all.length < 3)
+      ? Math.max(0, all.length * 4 - 8)
       : Math.min(100, 50 + all.length * 6)
+
+    const msg = all.length === 0
+      ? "You didn't respond this time — that's okay! Come back when you're ready. I'm always here for you!"
+      : forced || incomplete
+      ? `Session saved with ${all.length} answers. Try to complete the full session for a better honor score!`
+      : `You answered all ${all.length} questions — incredible work! I'm so proud of your effort today!`
+
+    setAriaText(msg)
+    speak(msg)
 
     try {
       await voiceApi.save({
-        answers:            all,
-        tab_switches:       tabWarnRef.current,
-        forced_end:         forced || incomplete,   // triggers backend early_session_exit if exchanges < 4
-        department:         user?.department,
+        answers: all, tab_switches: tabRef.current,
+        forced_end: forced || incomplete,
         questions_answered: all.length,
-        summary:            forced ? `Forced end after ${all.length} questions.`
-                          : incomplete ? `Incomplete: ${all.length}/${totalQ} answered.`
-                          : `Completed all ${all.length} questions.`,
-        transcript:         all.map(x => `Q: ${x.question}\nA: ${x.answer}`).join('\n\n'),
-        scores:             {},
-        overall,
-        exchange_count:     all.length,
-        mode:               'voice',
+        summary: forced ? `Forced end: ${all.length}/${totalQ}` : incomplete ? `Incomplete: ${all.length}/${totalQ}` : `Completed: ${all.length}/${totalQ}`,
+        transcript: all.map(x => `Q: ${x.question}\nA: ${x.answer}`).join('\n\n'),
+        scores: {}, overall, exchange_count: all.length, mode: 'voice',
       })
-    } catch (e) { console.error('save error', e) }
+    } catch (e) { console.error(e) }
     finally { setSaving(false) }
   }
+
+  // ── Derived UI state ──────────────────────────────────────────────────────
+  const isSpeaking  = phase === 'speaking' || phase === 'feedback_speaking'
+  const isListening = phase === 'listening' && micStatus === 'active'
+  const progress    = ((qIdx + 1) / totalQ) * 100
+
+  const micBtnColor = micStatus === 'active'  ? '#DC2626'
+                    : micStatus === 'error'    ? '#D97706'
+                    : micStatus === 'requesting' ? '#94A3B8'
+                    : '#2563EB'
+
+  const micBtnLabel = micStatus === 'active'     ? '● Recording — tap to restart'
+                    : micStatus === 'requesting'  ? 'Requesting permission…'
+                    : micStatus === 'error'       ? 'Error — tap to retry'
+                    : 'Tap to start recording'
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -499,49 +426,46 @@ export default function Voice() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         * { box-sizing: border-box; }
-        @keyframes pulse   { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.96)} }
-        @keyframes ripple  { 0%{box-shadow:0 0 0 0 rgba(37,99,235,0.35)} 100%{box-shadow:0 0 0 18px rgba(37,99,235,0)} }
-        @keyframes fadeUp  { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-        .mic-circle { transition: background 0.2s, box-shadow 0.2s; }
-        .mic-circle:hover { filter: brightness(1.08); }
-        .mic-circle:active { transform: scale(0.94); }
-        textarea:focus { outline: none; border-color: #93C5FD !important; box-shadow: 0 0 0 3px rgba(37,99,235,0.1) !important; }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes spin { to { transform: rotate(360deg) } }
+        .mic-btn { transition: transform 0.15s, box-shadow 0.15s; }
+        .mic-btn:hover  { transform: scale(1.06) !important; }
+        .mic-btn:active { transform: scale(0.93) !important; }
+        textarea:focus  { outline: none; border-color: #93C5FD !important; }
       `}</style>
 
       <div style={{ width: '100%', maxWidth: 560 }}>
 
-        {/* ── Header ── */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <button onClick={() => nav('/dashboard')} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: 13 }}>
-            <Icon name="arrow-left" size={15} color="#94A3B8" /> Dashboard
+            <Icon name="arrow-left" size={14} color="#94A3B8" /> Dashboard
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <LogoMark size={22} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <LogoMark size={20} />
             <span style={{ fontWeight: 700, fontSize: 14, color: '#0F172A' }}>Voice Session</span>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
-            {tabWarnings > 0 && <Badge color="rose">{tabWarnings}/{MAX_W} warns</Badge>}
-            {phase !== 'intro' && phase !== 'done' && (
-              <Badge color="muted">{qIndex + 1}/{totalQ}</Badge>
-            )}
+            {tabWarns > 0 && <Badge color="rose">{tabWarns}/{MAX_W}</Badge>}
+            {phase !== 'intro' && phase !== 'done' && <Badge color="muted">{qIdx + 1}/{totalQ}</Badge>}
           </div>
         </div>
 
-        {/* ── Card ── */}
-        <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 20, padding: 'clamp(24px,5vw,40px)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', animation: 'fadeUp 0.3s ease' }}>
+        {/* Card */}
+        <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 20, padding: 'clamp(22px,5vw,38px)', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', animation: 'fadeUp 0.3s ease' }}>
 
-          {/* ══ INTRO ══ */}
+          {/* ═══ INTRO ═══ */}
           {phase === 'intro' && (
             <div style={{ textAlign: 'center' }}>
-              <div style={{ width: 90, height: 90, borderRadius: '50%', background: 'linear-gradient(135deg,#EFF6FF,#F0FDF4)', border: '2px solid #BFDBFE', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 20px rgba(37,99,235,0.12)' }}>
-                <Icon name="mic" size={38} color="#2563EB" />
+              <div style={{ width: 88, height: 88, borderRadius: '50%', background: '#EFF6FF', border: '2px solid #BFDBFE', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 18px rgba(37,99,235,0.12)' }}>
+                <Icon name="mic" size={36} color="#2563EB" />
               </div>
               <h2 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', marginBottom: 8 }}>Meet Aria</h2>
               <p style={{ color: '#64748B', fontSize: 14, lineHeight: 1.7, marginBottom: 6 }}>
-                Your AI mentor will ask <strong style={{ color: '#0F172A' }}>{totalQ} questions</strong>, listen to your voice, and give warm personalised feedback after each one.
+                Your AI mentor asks <strong style={{ color: '#0F172A' }}>{totalQ} questions</strong>, listens to your answers, and gives warm personalised feedback after each one.
               </p>
               <p style={{ color: '#CBD5E1', fontSize: 12, marginBottom: 28 }}>
-                Tab switches monitored — max {MAX_W} allowed. Incomplete sessions reduce your honor score.
+                Tab switches monitored — max {MAX_W}. Incomplete sessions reduce your Honor Score.
               </p>
 
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginBottom: 28 }}>
@@ -564,176 +488,186 @@ export default function Voice() {
             </div>
           )}
 
-          {/* ══ QUESTION / LISTENING / FEEDBACK ══ */}
-          {(phase === 'question' || phase === 'listening' || phase === 'feedback') && (
+          {/* ═══ ACTIVE SESSION ═══ */}
+          {['speaking', 'listening', 'saving_answer', 'feedback_speaking'].includes(phase) && (
             <div>
-              {/* Progress */}
-              <div style={{ height: 3, background: '#F1F4F9', borderRadius: 2, marginBottom: 22, overflow: 'hidden' }}>
+              {/* Progress bar */}
+              <div style={{ height: 3, background: '#F1F4F9', borderRadius: 2, marginBottom: 20, overflow: 'hidden' }}>
                 <div style={{ height: '100%', background: 'linear-gradient(90deg,#2563EB,#059669)', width: `${progress}%`, transition: 'width 0.5s ease' }} />
               </div>
 
-              {/* Status badges */}
-              <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-                <Badge color="blue">Q{qIndex + 1} of {totalQ}</Badge>
-                {phase === 'question' && isSpeaking  && <Badge color="teal">Aria speaking…</Badge>}
-                {phase === 'listening' && !isListening && !isSpeaking && <Badge color="muted">Tap mic to start</Badge>}
-                {phase === 'listening' && isListening  && <Badge color="blue">🔴 Listening…</Badge>}
-                {phase === 'feedback'  && <Badge color="teal">Aria responding…</Badge>}
+              {/* Status row */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+                <Badge color="blue">Q{qIdx + 1} / {totalQ}</Badge>
+                {phase === 'speaking'          && <Badge color="teal">Aria is speaking…</Badge>}
+                {phase === 'listening' && micStatus === 'active'      && <Badge color="blue">🔴 Recording</Badge>}
+                {phase === 'listening' && micStatus === 'requesting'  && <Badge color="muted">Requesting mic…</Badge>}
+                {phase === 'listening' && micStatus === 'idle'        && <Badge color="muted">Tap mic to start</Badge>}
+                {phase === 'listening' && micStatus === 'error'       && <Badge color="rose">Mic error</Badge>}
+                {phase === 'saving_answer'     && <Badge color="muted">Processing…</Badge>}
+                {phase === 'feedback_speaking' && <Badge color="teal">Aria responding…</Badge>}
               </div>
 
-              {/* Question text */}
-              <p style={{ fontSize: 18, fontWeight: 600, color: '#0F172A', lineHeight: 1.5, marginBottom: 20 }}>
-                <TypewriterText text={questions[qIndex]} speed={20} />
+              {/* Question */}
+              <p style={{ fontSize: 18, fontWeight: 600, color: '#0F172A', lineHeight: 1.55, marginBottom: 20 }}>
+                <TypewriterText text={QUESTIONS[qIdx]} speed={18} />
               </p>
 
-              {/* Aria speaking waveform */}
+              {/* Aria speaking animation */}
               {isSpeaking && (
                 <div style={{ marginBottom: 20, textAlign: 'center' }}>
-                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
-                    <Spectrogram active={false} speaking={true} />
-                  </div>
-                  <div style={{ fontSize: 12, color: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#7C3AED', animation: 'pulse 1.2s infinite' }} />
+                  <SoundBars active={true} />
+                  <div style={{ fontSize: 12, color: '#7C3AED', marginTop: 8 }}>
                     Aria is speaking…
                   </div>
                 </div>
               )}
 
-              {/* Aria feedback bubble */}
-              {aiReply && !isSpeaking && phase === 'feedback' && (
+              {/* Aria feedback bubble (after answer) */}
+              {phase === 'feedback_speaking' && ariaText && (
                 <div style={{ marginBottom: 18, padding: '14px 16px', background: '#EFF6FF', borderRadius: 12, border: '1px solid #BFDBFE', animation: 'fadeUp 0.3s ease' }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#2563EB', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Aria</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#2563EB', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Aria</div>
                   <p style={{ margin: 0, fontSize: 14, color: '#1D4ED8', lineHeight: 1.6 }}>
-                    <TypewriterText text={aiReply} speed={16} />
+                    <TypewriterText text={ariaText} speed={16} />
                   </p>
                 </div>
               )}
 
-              {/* ── Listening UI ── */}
-              {phase === 'listening' && !isSpeaking && (
+              {/* ── Voice listening UI ── */}
+              {phase === 'listening' && inputMode === 'voice' && (
+                <div style={{ textAlign: 'center' }}>
+
+                  {/* Sound bars */}
+                  <div style={{ marginBottom: 14 }}>
+                    <SoundBars active={isListening} />
+                  </div>
+
+                  {/* Transcript display */}
+                  <div style={{
+                    background: '#F8F9FC', borderRadius: 12, padding: '14px 16px', marginBottom: 18,
+                    minHeight: 80, textAlign: 'left',
+                    border: `1.5px solid ${isListening ? '#BFDBFE' : '#F1F4F9'}`,
+                    transition: 'border-color 0.3s',
+                  }}>
+                    {micStatus === 'requesting' ? (
+                      <p style={{ margin: 0, color: '#94A3B8', fontSize: 13, fontStyle: 'italic' }}>
+                        🎤 Requesting microphone permission…
+                      </p>
+                    ) : micStatus === 'error' ? (
+                      <p style={{ margin: 0, color: '#DC2626', fontSize: 13 }}>
+                        ❌ Mic error — check permissions and tap the button again
+                      </p>
+                    ) : transcript ? (
+                      <p style={{ margin: 0, color: '#0F172A', fontSize: 14, lineHeight: 1.6 }}>{transcript}</p>
+                    ) : (
+                      <p style={{ margin: 0, color: '#CBD5E1', fontSize: 14, fontStyle: 'italic' }}>
+                        {isListening ? '🎤 Listening… speak your answer' : 'Tap the mic button below to start recording'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* THE MIC BUTTON */}
+                  <div style={{ marginBottom: 18 }}>
+                    <button
+                      className="mic-btn"
+                      onClick={startMic}
+                      disabled={micStatus === 'requesting'}
+                      style={{
+                        width: 80, height: 80, borderRadius: '50%', border: 'none',
+                        cursor: micStatus === 'requesting' ? 'wait' : 'pointer',
+                        background: micBtnColor,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto',
+                        boxShadow: micStatus === 'active'
+                          ? '0 0 0 10px rgba(220,38,38,0.12), 0 4px 24px rgba(220,38,38,0.4)'
+                          : '0 4px 20px rgba(37,99,235,0.3)',
+                        opacity: micStatus === 'requesting' ? 0.7 : 1,
+                      }}
+                    >
+                      {micStatus === 'requesting'
+                        ? <div style={{ width: 26, height: 26, border: '3px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                        : <Icon name="mic" size={32} color="#fff" />
+                      }
+                    </button>
+                    <p style={{ margin: '10px 0 0', fontSize: 12, color: micStatus === 'active' ? '#DC2626' : '#94A3B8', fontWeight: micStatus === 'active' ? 600 : 400 }}>
+                      {micBtnLabel}
+                    </p>
+                  </div>
+
+                  {/* Bottom actions */}
+                  <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                    <Btn variant="secondary" size="sm" onClick={startMic} disabled={micStatus === 'requesting'}>
+                      <Icon name="refresh-cw" size={13} color="#64748B" /> Re-record
+                    </Btn>
+                    <Btn onClick={submitAnswer}>
+                      <Icon name="arrow-right" size={13} color="#fff" />
+                      {transcript.trim() ? 'Submit & Next' : 'Skip'}
+                    </Btn>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Type mode UI ── */}
+              {phase === 'listening' && inputMode === 'type' && (
                 <div>
-                  {inputMode === 'voice' ? (
-                    <div style={{ textAlign: 'center' }}>
-                      {/* Waveform */}
-                      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-                        <Spectrogram active={isListening} speaking={false} />
-                      </div>
+                  <textarea
+                    value={typed} onChange={e => setTyped(e.target.value)}
+                    placeholder="Type your answer here…" rows={5} autoFocus
+                    style={{ width: '100%', padding: '12px 14px', background: '#F8F9FC', border: '1px solid #E2E8F0', borderRadius: 10, color: '#0F172A', fontSize: 14, lineHeight: 1.6, fontFamily: 'Inter, sans-serif', resize: 'vertical', marginBottom: 14 }}
+                  />
+                  <Btn onClick={submitAnswer} fullWidth>
+                    <Icon name="arrow-right" size={13} color="#fff" />
+                    {typed.trim() ? 'Submit & Next' : 'Skip Question'}
+                  </Btn>
+                </div>
+              )}
 
-                      {/* Transcript box */}
-                      <div style={{ background: '#F8F9FC', borderRadius: 10, padding: '12px 16px', marginBottom: 18, minHeight: 72, textAlign: 'left', border: `1px solid ${isListening ? '#BFDBFE' : '#F1F4F9'}`, transition: 'border-color 0.2s' }}>
-                        <p style={{ margin: 0, color: transcript ? '#0F172A' : '#CBD5E1', fontSize: 14, lineHeight: 1.6, fontStyle: transcript ? 'normal' : 'italic' }}>
-                          {transcript || (isListening ? 'Listening… speak now' : 'Tap the mic button below to start recording')}
-                        </p>
-                      </div>
-
-                      {/* Error message */}
-                      {micError && (
-                        <div style={{ marginBottom: 12, padding: '10px 14px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, fontSize: 13, color: '#DC2626' }}>
-                          {micError}
-                        </div>
-                      )}
-
-                      {/* BIG MIC BUTTON — this is the main interaction */}
-                      <div style={{ marginBottom: 20 }}>
-                        <button
-                          className="mic-circle"
-                          onClick={startListening}
-                          style={{
-                            width: 76, height: 76, borderRadius: '50%', border: 'none', cursor: 'pointer',
-                            background: isListening
-                              ? 'linear-gradient(135deg,#DC2626,#B91C1C)'
-                              : 'linear-gradient(135deg,#2563EB,#1D4ED8)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            margin: '0 auto',
-                            boxShadow: isListening
-                              ? '0 0 0 8px rgba(220,38,38,0.15), 0 4px 20px rgba(220,38,38,0.4)'
-                              : '0 4px 20px rgba(37,99,235,0.35)',
-                            animation: isListening ? 'ripple 1.5s infinite' : 'none',
-                          }}
-                        >
-                          <Icon name="mic" size={30} color="#fff" />
-                        </button>
-                        <div style={{ fontSize: 12, color: isListening ? '#2563EB' : '#94A3B8', marginTop: 10, fontWeight: isListening ? 600 : 400 }}>
-                          {isListening ? '● Recording — tap to restart' : 'Tap to start recording'}
-                        </div>
-                      </div>
-
-                      {/* Action buttons */}
-                      <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-                        <Btn onClick={startListening} variant="secondary" size="sm">
-                          <Icon name="refresh-cw" size={13} color="#64748B" /> Re-record
-                        </Btn>
-                        <Btn
-                          onClick={submitAnswer}
-                          style={{ opacity: !transcript.trim() ? 0.5 : 1 }}
-                        >
-                          <Icon name="arrow-right" size={13} color="#fff" />
-                          {transcript.trim() ? 'Submit & Next' : 'Skip Question'}
-                        </Btn>
-                      </div>
-                    </div>
-                  ) : (
-                    /* Type mode */
-                    <div>
-                      <textarea
-                        value={typedAnswer}
-                        onChange={e => setTypedAnswer(e.target.value)}
-                        placeholder="Type your answer here…"
-                        rows={5}
-                        autoFocus
-                        style={{
-                          width: '100%', padding: '12px 14px', background: '#F8F9FC',
-                          border: '1px solid #E2E8F0', borderRadius: 10, color: '#0F172A',
-                          fontSize: 14, lineHeight: 1.6, fontFamily: 'Inter, sans-serif',
-                          resize: 'vertical', marginBottom: 14, transition: 'all 0.2s',
-                        }}
-                      />
-                      <Btn onClick={submitAnswer} fullWidth>
-                        <Icon name="arrow-right" size={13} color="#fff" />
-                        {typedAnswer.trim() ? 'Submit & Next' : 'Skip Question'}
-                      </Btn>
-                    </div>
-                  )}
+              {/* Processing indicator */}
+              {phase === 'saving_answer' && (
+                <div style={{ textAlign: 'center', padding: '20px 0', color: '#94A3B8', fontSize: 14 }}>
+                  <div style={{ width: 28, height: 28, border: '3px solid #E2E8F0', borderTopColor: '#2563EB', borderRadius: '50%', margin: '0 auto 10px', animation: 'spin 0.8s linear infinite' }} />
+                  Getting Aria's feedback…
                 </div>
               )}
             </div>
           )}
 
-          {/* ══ DONE ══ */}
+          {/* ═══ DONE ═══ */}
           {phase === 'done' && (
-            <div style={{ textAlign: 'center', padding: '6px 0' }}>
-              <div style={{ width: 80, height: 80, borderRadius: '50%', background: answers.length >= totalQ ? '#ECFDF5' : '#FEF3C7', border: `2px solid ${answers.length >= totalQ ? '#A7F3D0' : '#FDE68A'}`, margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name={answers.length >= totalQ ? 'check-circle' : 'alert-circle'} size={36} color={answers.length >= totalQ ? '#059669' : '#D97706'} />
+            <div style={{ textAlign: 'center', paddingTop: 4 }}>
+              <div style={{ width: 80, height: 80, borderRadius: '50%', background: answers.length >= totalQ ? '#ECFDF5' : '#FEF3C7', border: `2px solid ${answers.length >= totalQ ? '#A7F3D0' : '#FDE68A'}`, margin: '0 auto 18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name={answers.length >= totalQ ? 'check-circle' : 'alert-circle'} size={34} color={answers.length >= totalQ ? '#059669' : '#D97706'} />
               </div>
 
               <h2 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', marginBottom: 8 }}>
-                {answers.length >= totalQ ? 'Session Complete! 🎉' : answers.length === 0 ? 'Session Saved' : `${answers.length}/${totalQ} Answered`}
+                {answers.length >= totalQ ? 'Session Complete! 🎉' : answers.length === 0 ? 'No Responses' : `${answers.length}/${totalQ} Answered`}
               </h2>
 
-              {answers.length < totalQ && answers.length > 0 && (
-                <div style={{ margin: '0 auto 16px', padding: '10px 14px', background: '#FEF3C7', borderRadius: 10, border: '1px solid #FDE68A', maxWidth: 380, fontSize: 13, color: '#92400E' }}>
-                  ⚠️ Incomplete sessions reduce your Honor Score. Try to complete all {totalQ} questions next time.
+              {answers.length > 0 && answers.length < totalQ && (
+                <div style={{ margin: '0 auto 16px', padding: '10px 16px', background: '#FEF3C7', borderRadius: 10, border: '1px solid #FDE68A', fontSize: 13, color: '#92400E', maxWidth: 380 }}>
+                  ⚠️ Incomplete session — Honor Score reduced. Complete all {totalQ} questions next time.
                 </div>
               )}
 
-              {aiReply && (
+              {ariaText && (
                 <div style={{ margin: '0 auto 18px', padding: '14px 18px', background: '#EFF6FF', borderRadius: 12, border: '1px solid #BFDBFE', maxWidth: 420, textAlign: 'left' }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#2563EB', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Aria</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#2563EB', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Aria</div>
                   <p style={{ margin: 0, fontSize: 14, color: '#1D4ED8', lineHeight: 1.6 }}>
-                    <TypewriterText text={aiReply} speed={18} />
+                    <TypewriterText text={ariaText} speed={18} />
                   </p>
                 </div>
               )}
 
               <p style={{ color: '#94A3B8', fontSize: 13, marginBottom: 4 }}>
-                {answers.length > 0 ? <>Answered <strong style={{ color: '#0F172A' }}>{answers.length}</strong> of {totalQ} questions</> : 'No responses recorded.'}
+                {answers.length > 0
+                  ? <>Answered <strong style={{ color: '#0F172A' }}>{answers.length}</strong> of {totalQ} questions</>
+                  : 'No responses recorded this session.'}
               </p>
               <p style={{ color: '#CBD5E1', fontSize: 12, marginBottom: 26 }}>
-                {saving ? 'Saving to your profile…' : '✓ Saved to your profile'}
+                {saving ? 'Saving…' : '✓ Saved to your profile'}
               </p>
 
               <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-                <Btn variant="secondary" onClick={() => { setPhase('intro'); setQIndex(0); setAnswers([]); answersRef.current = []; setAiReply('') }}>
+                <Btn variant="secondary" onClick={() => { setPhase('intro'); setQIdx(0); qIdxRef.current = 0; setAnswers([]); answersRef.current = []; setAriaText(''); setTranscript(''); txRef.current = '' }}>
                   <Icon name="refresh-cw" size={13} color="#64748B" /> New Session
                 </Btn>
                 <Btn onClick={() => nav('/dashboard')}>
@@ -744,10 +678,10 @@ export default function Voice() {
           )}
         </div>
 
-        {/* End early link */}
-        {(phase === 'listening' || phase === 'question') && (
+        {/* End early */}
+        {['speaking','listening','saving_answer','feedback_speaking'].includes(phase) && (
           <div style={{ textAlign: 'center', marginTop: 14 }}>
-            <button onClick={() => endSession(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#CBD5E1', fontSize: 12 }}>
+            <button onClick={() => doEndSession(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#CBD5E1', fontSize: 12 }}>
               End session early
             </button>
           </div>
