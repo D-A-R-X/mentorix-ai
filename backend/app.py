@@ -78,7 +78,7 @@ def _is_allowed_origin(origin: str) -> bool:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https://mentorix-ai.*\.vercel\.app|http://(localhost|127\.0\.0\.1):\d+",
+    allow_origin_regex=r"https://mentorix-ai.*\.vercel\.app|https://mentorix-ai\.netlify\.app|http://(localhost|127\.0\.0\.1):\d+",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept"],
