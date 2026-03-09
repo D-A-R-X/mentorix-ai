@@ -390,9 +390,12 @@ async def send_otp(data: SendOtpRequest):
 
     email = data.email.strip().lower()
 
-    # Check already registered
-    if get_user_by_email(email):
+    # Check already registered in DB (completed signup)
+    existing = get_user_by_email(email)
+    if existing:
         raise HTTPException(status_code=400, detail="An account with this email already exists. Please sign in.")
+    # If pending OTP exists, overwrite it (allow resend)
+    # _otp_store[email] will be overwritten below — no action needed
 
     if len(data.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
@@ -461,6 +464,15 @@ async def send_otp(data: SendOtpRequest):
 
     return {"sent": True}
 
+
+
+@app.delete("/auth/cancel-registration/{email:path}")
+async def cancel_registration(email: str):
+    """Remove a stuck pending OTP entry so user can re-register."""
+    email = email.strip().lower()
+    if email in _otp_store:
+        del _otp_store[email]
+    return {"ok": True, "message": "Pending registration cleared. You can register again."}
 
 @app.post("/auth/verify-otp")
 async def verify_otp(data: VerifyOtpRequest):
