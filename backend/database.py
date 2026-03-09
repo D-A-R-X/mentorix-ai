@@ -28,7 +28,7 @@ def init_db():
             name          TEXT,
             picture       TEXT,
             auth_provider TEXT NOT NULL DEFAULT 'email',
-            created_at    TEXT NOT NULL
+            created_at    TEXT
         )
     """)
 
@@ -40,7 +40,7 @@ def init_db():
             stability_score REAL NOT NULL,
             scan_result     TEXT,
             track           TEXT NOT NULL DEFAULT 'unknown',
-            created_at      TEXT NOT NULL
+            created_at      TEXT
         )
     """)
     cur.execute("""
@@ -115,6 +115,15 @@ def migrate_db():
             conn.commit()
         except Exception:
             conn.rollback()
+
+    # Migration: fix created_at columns
+    try:
+        cur.execute("ALTER TABLE users ALTER COLUMN created_at DROP NOT NULL")
+        cur.execute("ALTER TABLE users ALTER COLUMN created_at SET DEFAULT NOW()")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+
     cur.close()
     conn.close()
 
