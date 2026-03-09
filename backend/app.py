@@ -1810,28 +1810,37 @@ async def admin_ai_command(
     cur  = conn.cursor()
 
     # ── 1. Fetch live context so the LLM knows what's in the DB ──────────────
+    users, insts, sessions, honor = [], [], [], []
     try:
         cur.execute("SELECT id, name, email, auth_provider, created_at, institution_id FROM users ORDER BY created_at DESC LIMIT 200")
         cols  = [d[0] for d in (cur.description or [])]
-        users = [dict(zip(cols, r)) for r in cur.fetchall()]
-
+        users = [dict(zip(cols, r)) for r in (cur.fetchall() or [])]
+    except Exception as e:
+        conn.rollback()
+        logger.warning(f"AI context users fetch error: {e}")
+    try:
         cur.execute("SELECT id, name, env, contact_email FROM institutions")
         cols  = [d[0] for d in (cur.description or [])]
-        insts = [dict(zip(cols, r)) for r in cur.fetchall()]
-
-        cur.execute("SELECT id, user_email, exchange_count, overall_score, mode, created_at FROM voice_sessions ORDER BY created_at DESC LIMIT 100")
-        cols     = [d[0] for d in cur.description]
-        sessions = [dict(zip(cols, r)) for r in cur.fetchall()]
-
+        insts = [dict(zip(cols, r)) for r in (cur.fetchall() or [])]
+    except Exception as e:
+        conn.rollback()
+        logger.warning(f"AI context insts fetch error: {e}")
+    try:
+        cur.execute("SELECT id, email, exchange_count, overall_score, mode, created_at FROM voice_sessions ORDER BY created_at DESC LIMIT 100")
+        cols     = [d[0] for d in (cur.description or [])]
+        sessions = [dict(zip(cols, r)) for r in (cur.fetchall() or [])]
+    except Exception as e:
+        conn.rollback()
+        logger.warning(f"AI context sessions fetch error: {e}")
+    try:
         cur.execute("""
             SELECT email, COALESCE(SUM(delta), 0) AS score
             FROM honor_events GROUP BY email ORDER BY score DESC LIMIT 50
         """)
-        honor = [{"email": r[0], "score": r[1]} for r in cur.fetchall()]
-
+        honor = [{"email": r[0], "score": r[1]} for r in (cur.fetchall() or [])]
     except Exception as e:
-        logger.warning(f"AI context fetch error: {e}")
-        users, insts, sessions, honor = [], [], [], []
+        conn.rollback()
+        logger.warning(f"AI context honor fetch error: {e}")
 
     context_summary = f"""
 CURRENT DATABASE STATE:
