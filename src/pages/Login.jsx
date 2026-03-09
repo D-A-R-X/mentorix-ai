@@ -21,6 +21,10 @@ export default function Login() {
   useToast()
 
   const [tab,          setTab]          = useState('in')
+  const [otpSent,      setOtpSent]      = useState(false)
+  const [otp,          setOtp]          = useState('')
+  const [otpEmail,     setOtpEmail]     = useState('')
+  const [resendTimer,  setResendTimer]  = useState(0)
   const [form,         setForm]         = useState({ email: '', password: '', name: '' })
   const [loading,      setLoading]      = useState(false)
   const [showPw,       setShowPw]       = useState(false)
@@ -79,26 +83,71 @@ export default function Login() {
     }
   }
 
+  // Resend countdown timer
+  useEffect(() => {
+    if (resendTimer <= 0) return
+    const t = setTimeout(() => setResendTimer(v => v - 1), 1000)
+    return () => clearTimeout(t)
+  }, [resendTimer])
+
   const submit = async () => {
+    // ── OTP verification step ─────────────────────────────────────────────
+    if (otpSent) {
+      if (!otp.trim() || otp.trim().length !== 6) { setError('Enter the 6-digit code sent to your email'); return }
+      setLoading(true); setError('')
+      try {
+        const data = await authApi.verifyOtp(otpEmail, otp.trim())
+        if (selectedInst) setInstitution(selectedInst.id, selectedInst.name)
+        login(data)
+        if (data.is_admin) nav('/admin', { replace: true })
+        else nav('/onboarding', { replace: true })
+      } catch (e) {
+        setError(e.message || 'Incorrect code. Please try again.')
+      } finally { setLoading(false) }
+      return
+    }
+
+    // ── Sign in ───────────────────────────────────────────────────────────
+    if (tab === 'in') {
+      if (!form.email || !form.password) { setError('Email and password are required'); return }
+      setLoading(true); setError('')
+      try {
+        const data = await authApi.login(form.email.trim().toLowerCase(), form.password)
+        if (selectedInst) setInstitution(selectedInst.id, selectedInst.name)
+        login(data)
+        if (data.is_admin) nav('/admin', { replace: true })
+        else if (!data.profile) nav('/onboarding', { replace: true })
+        else nav('/dashboard', { replace: true })
+      } catch (e) {
+        setError(e.message || 'Authentication failed')
+      } finally { setLoading(false) }
+      return
+    }
+
+    // ── Register: send OTP first ──────────────────────────────────────────
     if (!form.email || !form.password) { setError('Email and password are required'); return }
-    if (tab === 'up' && form.name.trim().length < 2) { setError('Full name is required'); return }
-    if (tab === 'up' && form.password.length < 8)    { setError('Password must be at least 8 characters'); return }
+    if (form.name.trim().length < 2)   { setError('Full name is required'); return }
+    if (form.password.length < 8)      { setError('Password must be at least 8 characters'); return }
     setLoading(true); setError('')
     try {
-      const data = tab === 'in'
-        ? await authApi.login(form.email.trim().toLowerCase(), form.password)
-        : await authApi.register(form.email.trim().toLowerCase(), form.password, form.name.trim())
-      if (selectedInst) setInstitution(selectedInst.id, selectedInst.name)
-      login(data)
-      saveAutofill(form.email.trim().toLowerCase())
-      if (data.is_admin)    nav('/admin',      { replace: true })
-      else if (!data.profile) nav('/onboarding', { replace: true })
-      else nav('/dashboard', { replace: true })
+      await authApi.sendOtp(form.email.trim().toLowerCase(), form.name.trim(), form.password)
+      setOtpEmail(form.email.trim().toLowerCase())
+      setOtpSent(true)
+      setResendTimer(60)
     } catch (e) {
-      setError(e.message || 'Authentication failed')
-    } finally {
-      setLoading(false)
-    }
+      setError(e.message || 'Could not send verification email.')
+    } finally { setLoading(false) }
+  }
+
+  const resendOtp = async () => {
+    if (resendTimer > 0) return
+    setLoading(true); setError('')
+    try {
+      await authApi.sendOtp(otpEmail, form.name.trim(), form.password)
+      setResendTimer(60)
+    } catch (e) {
+      setError(e.message || 'Could not resend code.')
+    } finally { setLoading(false) }
   }
 
   const iStyle = {
@@ -180,7 +229,7 @@ export default function Login() {
           </p>
 
           {/* Tabs */}
-          <div style={{ display: 'flex', background: '#F1F4F9', borderRadius: 8, padding: 3, marginBottom: 24, gap: 2 }}>
+          <div style={{ display: otpSent ? 'none' : 'flex', background: '#F1F4F9', borderRadius: 8, padding: 3, marginBottom: 24, gap: 2 }}>
             {[{ id: 'in', label: 'Sign In' }, { id: 'up', label: 'Create Account' }].map(t => (
               <button key={t.id} className="tab-btn" onClick={() => { setTab(t.id); setError('') }} style={{
                 flex: 1, padding: '8px', borderRadius: 6, border: 'none', cursor: 'pointer',
