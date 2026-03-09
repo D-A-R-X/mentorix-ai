@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LogoMark, ScoreRing, Icon, Btn, Card, Badge, Spinner, useToast } from '../components/ui/index.jsx'
 import { useAuth } from '../hooks/useAuth.jsx'
-import { userApi, coursesApi, groqChat } from '../lib/api'
+import { userApi, coursesApi } from '../lib/api'
 
 const NAV = [
   { id: 'overview', label: 'Overview',  icon: 'layout-dashboard' },
@@ -10,6 +10,8 @@ const NAV = [
   { id: 'courses',  label: 'Courses',   icon: 'book-open' },
   { id: 'chat',     label: 'AI Chat',   icon: 'message-circle' },
 ]
+
+const API = import.meta.env.VITE_API_URL || 'https://mentorix-ai-backend.onrender.com'
 
 export default function Dashboard() {
   const { user, logout } = useAuth()
@@ -21,10 +23,10 @@ export default function Dashboard() {
   const [honor,     setHonor]     = useState(null)
   const [courses,   setCourses]   = useState([])
   const [loading,   setLoading]   = useState(true)
-  const [chatMsgs,  setChatMsgs]  = useState([{ role: 'assistant', content: "Hi! I'm your AI mentor. Ask me anything about academics, placement, or career planning." }])
+  const [chatMsgs,  setChatMsgs]  = useState([{ role: 'assistant', content: "Hi! I'm Aria, your AI mentor. Ask me anything about academics, placement, or career planning." }])
   const [chatInput, setChatInput] = useState('')
   const [chatBusy,  setChatBusy]  = useState(false)
-  const [groqKey,   setGroqKey]   = useState(() => localStorage.getItem('mentorix_groq_key') || '')
+
   const chatEndRef = useRef(null)
 
   useEffect(() => {
@@ -37,20 +39,33 @@ export default function Dashboard() {
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chatMsgs])
 
-  const saveKey = k => { setGroqKey(k); localStorage.setItem('mentorix_groq_key', k) }
-
   const sendChat = async () => {
-    if (!chatInput.trim()) return
-    if (!groqKey) { toast('Enter your Groq API key to enable chat', 'warn'); return }
-    const msg = chatInput.trim(); setChatInput('')
+    if (!chatInput.trim() || chatBusy) return
+    const msg = chatInput.trim()
+    setChatInput('')
     setChatMsgs(m => [...m, { role: 'user', content: msg }])
     setChatBusy(true)
     try {
-      const sys = `You are a helpful academic mentor for ${user?.name || 'a student'} studying ${user?.department || user?.dept || 'engineering'}. Be concise and encouraging.`
-      const reply = await groqChat([{ role: 'system', content: sys }, ...chatMsgs.slice(-8), { role: 'user', content: msg }], groqKey)
+      const res = await fetch(API + '/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + localStorage.getItem('mentorix_token'),
+        },
+        body: JSON.stringify({
+          messages: [...chatMsgs.slice(-8), { role: 'user', content: msg }],
+          system: 'You are Aria, a warm and helpful AI academic mentor for ' + (user?.name || 'a student') + ' studying ' + (user?.department || user?.dept || 'engineering') + '. Be concise, encouraging and supportive.',
+          max_tokens: 300,
+        }),
+      })
+      const data = await res.json()
+      const reply = data.reply || data.content || data.text || 'I could not respond right now. Please try again.'
       setChatMsgs(m => [...m, { role: 'assistant', content: reply }])
-    } catch { setChatMsgs(m => [...m, { role: 'assistant', content: 'Sorry, something went wrong. Check your Groq API key.' }]) }
-    finally { setChatBusy(false) }
+    } catch {
+      setChatMsgs(m => [...m, { role: 'assistant', content: 'Could not connect to AI. Please try again.' }])
+    } finally {
+      setChatBusy(false)
+    }
   }
 
   const honorScore       = honor?.honor_score ?? honor?.score ?? 0
@@ -278,14 +293,16 @@ export default function Dashboard() {
             {/* AI CHAT */}
             {tab === 'chat' && (
               <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 150px)' }}>
-                {!groqKey && (
-                  <div style={{ marginBottom: 14, padding: '12px 16px', borderRadius: 10, background: '#FFFBEB', border: '1px solid #FDE68A', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <Icon name="key" size={15} color="#D97706" />
-                    <span style={{ fontSize: 13, color: '#D97706', flex: 1 }}>Paste your Groq API key to enable AI chat</span>
-                    <input placeholder="gsk_..." value={groqKey} onChange={e => saveKey(e.target.value)} style={{ padding: '6px 12px', background: '#fff', border: '1px solid #FDE68A', borderRadius: 6, color: '#0F172A', fontSize: 13, width: 260 }} />
-                  </div>
-                )}
                 <Card style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0 }}>
+                  <div style={{ padding: '14px 20px', borderBottom: '1px solid #F1F4F9', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#EFF6FF', border: '1px solid #BFDBFE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon name="message-circle" size={15} color="#2563EB" />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>Aria — AI Mentor</div>
+                      <div style={{ fontSize: 11, color: '#059669' }}>● Online</div>
+                    </div>
+                  </div>
                   <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {chatMsgs.map((m, i) => (
                       <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
@@ -294,12 +311,21 @@ export default function Dashboard() {
                         </div>
                       </div>
                     ))}
-                    {chatBusy && <div style={{ display: 'flex' }}><div style={{ padding: '11px 15px', background: '#F8F9FC', borderRadius: 12, border: '1px solid #E2E8F0' }}><Spinner size={15} /></div></div>}
+                    {chatBusy && (
+                      <div style={{ display: 'flex' }}>
+                        <div style={{ padding: '11px 15px', background: '#F8F9FC', borderRadius: 12, border: '1px solid #E2E8F0', display: 'flex', gap: 4, alignItems: 'center' }}>
+                          <Spinner size={14} />
+                          <span style={{ fontSize: 12, color: '#94A3B8' }}>Aria is typing…</span>
+                        </div>
+                      </div>
+                    )}
                     <div ref={chatEndRef} />
                   </div>
                   <div style={{ padding: '12px 16px', borderTop: '1px solid #F1F4F9', display: 'flex', gap: 8 }}>
-                    <input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendChat()}
-                      placeholder="Ask your AI mentor..." style={{ flex: 1, padding: '10px 14px', background: '#F8F9FC', border: '1px solid #E2E8F0', borderRadius: 8, color: '#0F172A', fontSize: 14 }} />
+                    <input value={chatInput} onChange={e => setChatInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendChat()}
+                      placeholder="Ask Aria anything…"
+                      style={{ flex: 1, padding: '10px 14px', background: '#F8F9FC', border: '1px solid #E2E8F0', borderRadius: 8, color: '#0F172A', fontSize: 14, fontFamily: 'Inter, sans-serif' }} />
                     <Btn onClick={sendChat} loading={chatBusy}><Icon name="send" size={14} color="#fff" /></Btn>
                   </div>
                 </Card>
