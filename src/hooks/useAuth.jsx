@@ -9,22 +9,30 @@ import { userApi } from '../lib/api'
 const AuthCtx = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [ready,     setReady]     = useState(false)
+  const [ready,      setReady]      = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [user,      setUser]      = useState(null)
+  const [user,       setUser]       = useState(null)
 
-  // ── Bootstrap from localStorage on mount ─────────────────────────────────
+  // ── Bootstrap ─────────────────────────────────────────────────────────────
   useEffect(() => {
     const token = getToken()
     if (token) {
       const cached = getProfile()
-      setUser(cached || { name: getName(), email: getEmail() })
+      const email  = getEmail()
+      const isAdminEmail = (
+        email?.toLowerCase() === 'admin@mentorix.ai' ||
+        email?.toLowerCase().startsWith('admin@')
+      )
+      setUser({ name: getName(), email, ...cached, is_admin: cached?.is_admin || isAdminEmail })
       setIsLoggedIn(true)
-      // Best-effort background refresh — /user/sessions gives name+dept
       userApi.sessions()
         .then(d => {
           if (d?.profile) {
-            const merged = { name: getName(), email: getEmail(), ...d.profile }
+            const merged = {
+              name: getName(), email: getEmail(),
+              ...d.profile,
+              is_admin: cached?.is_admin || isAdminEmail,
+            }
             storeProfile(merged)
             setUser(merged)
           }
@@ -34,17 +42,15 @@ export function AuthProvider({ children }) {
     setReady(true)
   }, [])
 
-  // ── Called after /auth/login or /auth/register ───────────────────────────
-  // Backend returns: { token, name, email }
-  // Google OAuth returns via URL params: ?token=...&email=...&name=...
+  // ── Login ─────────────────────────────────────────────────────────────────
   const login = (data) => {
-    // Normalise: backend uses `token`, not `access_token`
     const tok = data.token || data.access_token
     setSession({ token: tok, email: data.email, name: data.name })
     if (data.institution_id) setInstitution(data.institution_id, data.institution_name || '')
     const userObj = {
-      name:  data.name,
-      email: data.email,
+      name:     data.name,
+      email:    data.email,
+      is_admin: data.is_admin || false,
       ...(data.profile || {}),
     }
     storeProfile(userObj)
@@ -59,17 +65,23 @@ export function AuthProvider({ children }) {
     setIsLoggedIn(false)
   }
 
-  // ── Pull fresh profile from backend ──────────────────────────────────────
+  // ── Refresh ───────────────────────────────────────────────────────────────
   const refreshUser = async () => {
     try {
       const d = await userApi.sessions()
       if (d?.profile) {
-        const merged = { name: getName(), email: getEmail(), ...d.profile }
+        const email = getEmail()
+        const isAdminEmail = email?.toLowerCase() === 'admin@mentorix.ai' || email?.toLowerCase().startsWith('admin@')
+        const merged = {
+          name: getName(), email,
+          ...d.profile,
+          is_admin: user?.is_admin || isAdminEmail,
+        }
         storeProfile(merged)
         setUser(merged)
         return merged
       }
-    } catch { /* silently ignore — user still logged in */ }
+    } catch {}
     return null
   }
 

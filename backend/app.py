@@ -409,7 +409,13 @@ async def login(data: LoginRequest):
 
     token = create_token(data.email)
     logger.info(f"user logged in email={data.email}")
-    return {"token": token, "name": user.get("name") or data.email.split("@")[0], "email": data.email}
+    _name = user.get("name") or data.email.split("@")[0]
+    _is_admin = (
+        data.email.lower() == "admin@mentorix.ai"
+        or _name.lower() == "admin"
+        or data.email.lower().startswith("admin@")
+    )
+    return {"token": token, "name": _name, "email": data.email, "is_admin": _is_admin}
 
 # ── Course completion routes ─────────────────────────────────────
 
@@ -921,7 +927,11 @@ async def save_voice_session(
             for _ in range(min(tab_warn, 3)):
                 add_honor_event(current_user, "hr_tab_violation", "tab switch during HR")
         else:
-            if exchanges >= 3:
+            if data.forced_end and exchanges < 3:
+                # Incomplete voice session penalty
+                add_honor_event(current_user, "early_session_exit",
+                                f"voice abandoned after {exchanges} exchanges", override_delta=-4)
+            elif exchanges >= 3:
                 d = +6 if overall >= 70 else +2
                 add_honor_event(current_user, "voice_session_complete",
                                 f"overall={overall}", override_delta=d)
