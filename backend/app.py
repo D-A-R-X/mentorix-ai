@@ -419,7 +419,7 @@ async def send_otp(data: SendOtpRequest):
         logger.info(f"DEV OTP for {email}: {otp}")
         return {"sent": True, "dev_otp": otp}
 
-    first_name = (data.name or "").strip().split()[0]
+    first_name = ((data.name or "").strip().split() or [""])[0]
     html_body  = f"""
     <div style="font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#fff;border-radius:12px;border:1px solid #E2E8F0">
       <div style="margin-bottom:24px">
@@ -1797,18 +1797,21 @@ async def admin_ai_command(
     # ── 1. Fetch live context so the LLM knows what's in the DB ──────────────
     try:
         cur.execute("SELECT id, name, email, auth_provider, created_at, institution_id FROM users ORDER BY created_at DESC LIMIT 200")
-        cols  = [d[0] for d in cur.description]
+        cols  = [d[0] for d in (cur.description or [])]
         users = [dict(zip(cols, r)) for r in cur.fetchall()]
 
         cur.execute("SELECT id, name, env, contact_email FROM institutions")
-        cols  = [d[0] for d in cur.description]
+        cols  = [d[0] for d in (cur.description or [])]
         insts = [dict(zip(cols, r)) for r in cur.fetchall()]
 
         cur.execute("SELECT id, user_email, exchange_count, overall_score, mode, created_at FROM voice_sessions ORDER BY created_at DESC LIMIT 100")
         cols     = [d[0] for d in cur.description]
         sessions = [dict(zip(cols, r)) for r in cur.fetchall()]
 
-        cur.execute("SELECT user_email, score FROM honor_scores ORDER BY score DESC LIMIT 50")
+        cur.execute("""
+            SELECT email, COALESCE(SUM(delta), 0) AS score
+            FROM honor_events GROUP BY email ORDER BY score DESC LIMIT 50
+        """)
         honor = [{"email": r[0], "score": r[1]} for r in cur.fetchall()]
 
     except Exception as e:
@@ -1890,6 +1893,7 @@ DATABASE CONTEXT:
 
 Produce the action plan JSON."""
 
+    plan_text = ""
     try:
         plan_text = await call_llm(
             [{"role": "user", "content": user_prompt}],
@@ -1898,7 +1902,7 @@ Produce the action plan JSON."""
             timeout=30.0
         )
         # Strip markdown fences if present
-        plan_text = plan_text.strip()
+        plan_text = (plan_text or "").strip()
         if plan_text.startswith("```"):
             plan_text = plan_text.split("```")[1]
             if plan_text.startswith("json"):
@@ -1941,7 +1945,7 @@ Produce the action plan JSON."""
                     cur.execute("SELECT id,name,email,auth_provider,created_at,institution_id FROM users WHERE name ILIKE %s", (f"%{value}%",))
                 else:
                     cur.execute("SELECT id,name,email,auth_provider,created_at,institution_id FROM users ORDER BY created_at DESC LIMIT 100")
-                cols = [d[0] for d in cur.description]
+                cols = [d[0] for d in (cur.description or [])]
                 outcome["data"] = [dict(zip(cols, r)) for r in cur.fetchall()]
 
             elif action == "show_stats":
@@ -1963,27 +1967,33 @@ Produce the action plan JSON."""
                     "SELECT id,name,email,institution_id FROM users WHERE email ILIKE %s OR name ILIKE %s LIMIT 50",
                     (f"%{q}%", f"%{q}%")
                 )
-                cols = [d[0] for d in cur.description]
+                cols = [d[0] for d in (cur.description or [])]
                 outcome["data"] = [dict(zip(cols, r)) for r in cur.fetchall()]
 
             elif action == "list_sessions":
                 cur.execute("SELECT id,user_email,exchange_count,overall_score,mode,created_at FROM voice_sessions ORDER BY created_at DESC LIMIT 50")
-                cols = [d[0] for d in cur.description]
+                cols = [d[0] for d in (cur.description or [])]
                 outcome["data"] = [dict(zip(cols, r)) for r in cur.fetchall()]
 
             elif action == "list_institutions":
                 cur.execute("SELECT id,name,env,contact_email FROM institutions")
-                cols = [d[0] for d in cur.description]
+                cols = [d[0] for d in (cur.description or [])]
                 outcome["data"] = [dict(zip(cols, r)) for r in cur.fetchall()]
 
             elif action == "show_honor":
                 filter_by = params.get("filter_by", "")
                 value     = params.get("value", "")
                 if filter_by == "email":
-                    cur.execute("SELECT user_email,score FROM honor_scores WHERE user_email ILIKE %s", (f"%{value}%",))
+                    cur.execute("""
+                        SELECT email, COALESCE(SUM(delta),0) AS score
+                        FROM honor_events WHERE email ILIKE %s GROUP BY email
+                    """, (f"%{value}%",))
                 else:
-                    cur.execute("SELECT user_email,score FROM honor_scores ORDER BY score DESC LIMIT 50")
-                outcome["data"] = [{"email": r[0], "score": r[1]} for r in cur.fetchall()]
+                    cur.execute("""
+                        SELECT email, COALESCE(SUM(delta),0) AS score
+                        FROM honor_events GROUP BY email ORDER BY score DESC LIMIT 50
+                    """)
+                outcome["data"] = [{"email": r[0], "score": r[1]} for r in (cur.fetchall() or [])]
 
             # ── Write actions ─────────────────────────────────────────────────
             elif action == "delete_user":
@@ -2032,7 +2042,8 @@ Produce the action plan JSON."""
                     "INSERT INTO institutions (name, env, contact_email) VALUES (%s, %s, %s) RETURNING id",
                     (name, env, email)
                 )
-                new_id = cur.fetchone()[0]
+                row = cur.fetchone()
+                new_id = row[0] if row else None
                 conn.commit()
                 outcome["data"] = f"Added institution '{name}' with id {new_id}"
 
