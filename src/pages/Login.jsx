@@ -236,11 +236,7 @@ export default function Login() {
             {loading ? <><Spinner size={15} /> Please wait…</> : (tab === 'in' ? 'Sign In' : 'Create Account')}
           </button>
 
-          <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid #F1F4F9', textAlign: 'center' }}>
-            <button onClick={() => nav('/setup')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#CBD5E1', fontSize: 12, fontFamily: 'Inter, sans-serif' }}>
-              Admin setup
-            </button>
-          </div>
+
         </div>
       </div>
 
