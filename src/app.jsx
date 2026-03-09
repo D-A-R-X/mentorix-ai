@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { FullPageSpinner, ToastProvider } from './components/ui/index.jsx'
 import { lazy, Suspense } from 'react'
+import HR    from './pages/HR'
 
 const Landing    = lazy(() => import('./pages/Landing'))
 const Login      = lazy(() => import('./pages/Login'))
