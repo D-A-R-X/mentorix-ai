@@ -1770,6 +1770,332 @@ _alh.setLevel(logging.INFO)
 logging.getLogger("mentorix-api").addHandler(_alh)
 
 
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# ADMIN AI COMMAND ENGINE
+# ════════════════════════════════════════════════════════════════════════════════
+
+class AdminAiRequest(BaseModel):
+    command: str
+    confirm: bool = False   # True = actually execute, False = dry-run preview
+
+@app.post("/admin/ai-command")
+async def admin_ai_command(
+    data: AdminAiRequest,
+    admin: str = Depends(require_admin)
+):
+    """
+    Natural language admin commands.
+    Pass confirm=False for a preview/plan, confirm=True to execute.
+    """
+    import json as _json
+
+    conn = get_connection()
+    cur  = conn.cursor()
+
+    # ── 1. Fetch live context so the LLM knows what's in the DB ──────────────
+    try:
+        cur.execute("SELECT id, name, email, auth_provider, created_at, institution_id FROM users ORDER BY created_at DESC LIMIT 200")
+        cols  = [d[0] for d in cur.description]
+        users = [dict(zip(cols, r)) for r in cur.fetchall()]
+
+        cur.execute("SELECT id, name, env, contact_email FROM institutions")
+        cols  = [d[0] for d in cur.description]
+        insts = [dict(zip(cols, r)) for r in cur.fetchall()]
+
+        cur.execute("SELECT id, user_email, exchange_count, overall_score, mode, created_at FROM voice_sessions ORDER BY created_at DESC LIMIT 100")
+        cols     = [d[0] for d in cur.description]
+        sessions = [dict(zip(cols, r)) for r in cur.fetchall()]
+
+        cur.execute("SELECT user_email, score FROM honor_scores ORDER BY score DESC LIMIT 50")
+        honor = [{"email": r[0], "score": r[1]} for r in cur.fetchall()]
+
+    except Exception as e:
+        logger.warning(f"AI context fetch error: {e}")
+        users, insts, sessions, honor = [], [], [], []
+
+    context_summary = f"""
+CURRENT DATABASE STATE:
+- Total users: {len(users)}
+- Institutions: {[i['name'] for i in insts]}
+- Recent sessions: {len(sessions)}
+
+USERS (sample, max 200):
+{_json.dumps(users[:50], default=str, indent=2)}
+
+ALL INSTITUTIONS:
+{_json.dumps(insts, default=str, indent=2)}
+
+HONOR SCORES (top 50):
+{_json.dumps(honor, default=str, indent=2)}
+"""
+
+    # ── 2. Ask LLM to interpret the command and produce an action plan ────────
+    system_prompt = """You are an AI admin assistant for Mentorix AI, an educational platform.
+You help the admin manage users, institutions, sessions, and honor scores.
+
+You have access to the current database state. Given a natural language command, you must:
+1. Understand what the admin wants to do
+2. Produce a structured JSON action plan
+3. Be conservative — prefer listing/filtering over mass deletion
+
+AVAILABLE ACTIONS (use exactly these action types):
+- list_users: filter and show users (params: filter_by, value, operator)
+- delete_user: delete a specific user (params: email)
+- bulk_delete_users: delete multiple users (params: emails list)
+- suspend_user: suspend a user (params: email)
+- unsuspend_user: unsuspend a user (params: email)
+- list_sessions: show sessions (params: filter_by, value)
+- delete_session: delete a session (params: session_id)
+- list_institutions: show institutions
+- add_institution: add institution (params: name, env, contact_email)
+- delete_institution: delete institution (params: institution_id)
+- toggle_institution: toggle dev/prod (params: institution_id)
+- show_honor: show honor scores (params: filter_by, value)
+- adjust_honor: manually adjust honor (params: email, delta, reason)
+- show_stats: show platform statistics
+- search: search across users/sessions (params: query)
+
+Respond ONLY with valid JSON in this exact format:
+{
+  "understood": "plain English summary of what you understood",
+  "plan": [
+    {
+      "action": "action_type",
+      "description": "what this step does in plain English",
+      "params": { ... },
+      "affected_count": N,
+      "affected_items": ["email1", "email2"]
+    }
+  ],
+  "warning": "optional warning if destructive",
+  "safe_to_execute": true/false
+}
+
+IMPORTANT RULES:
+- For delete operations, ALWAYS list what will be deleted first
+- If the command is ambiguous, ask for clarification via understood field
+- Never delete all users or all sessions unless explicitly confirmed with exact wording
+- institution_id values must come from the provided institutions list
+- Email matching should be case-insensitive
+"""
+
+    user_prompt = f"""ADMIN COMMAND: "{data.command}"
+
+CONFIRM MODE: {"EXECUTE" if data.confirm else "DRY RUN — just show the plan, do not execute"}
+
+DATABASE CONTEXT:
+{context_summary}
+
+Produce the action plan JSON."""
+
+    try:
+        plan_text = await call_llm(
+            [{"role": "user", "content": user_prompt}],
+            system=system_prompt,
+            max_tokens=2000,
+            timeout=30.0
+        )
+        # Strip markdown fences if present
+        plan_text = plan_text.strip()
+        if plan_text.startswith("```"):
+            plan_text = plan_text.split("```")[1]
+            if plan_text.startswith("json"):
+                plan_text = plan_text[4:]
+        plan_text = plan_text.strip()
+        plan = _json.loads(plan_text)
+    except Exception as e:
+        logger.error(f"AI command parse error: {e} | raw: {plan_text if 'plan_text' in dir() else 'N/A'}")
+        raise HTTPException(status_code=503, detail="AI could not understand the command. Please rephrase.")
+
+    # ── 3. If dry run, return plan without executing ──────────────────────────
+    if not data.confirm:
+        return {
+            "mode":       "preview",
+            "understood": plan.get("understood", ""),
+            "plan":       plan.get("plan", []),
+            "warning":    plan.get("warning", ""),
+            "safe":       plan.get("safe_to_execute", True),
+            "message":    "This is a preview. Send with confirm=true to execute."
+        }
+
+    # ── 4. Execute the plan ───────────────────────────────────────────────────
+    results = []
+
+    for step in plan.get("plan", []):
+        action  = step.get("action", "")
+        params  = step.get("params", {})
+        outcome = {"action": action, "description": step.get("description", ""), "result": "ok", "data": None}
+
+        try:
+            # ── Read actions ──────────────────────────────────────────────────
+            if action == "list_users":
+                filter_by = params.get("filter_by", "")
+                value     = params.get("value", "")
+                if filter_by == "institution_id":
+                    cur.execute("SELECT id,name,email,auth_provider,created_at,institution_id FROM users WHERE institution_id = %s", (value,))
+                elif filter_by == "email_domain":
+                    cur.execute("SELECT id,name,email,auth_provider,created_at,institution_id FROM users WHERE email ILIKE %s", (f"%@{value}",))
+                elif filter_by == "name":
+                    cur.execute("SELECT id,name,email,auth_provider,created_at,institution_id FROM users WHERE name ILIKE %s", (f"%{value}%",))
+                else:
+                    cur.execute("SELECT id,name,email,auth_provider,created_at,institution_id FROM users ORDER BY created_at DESC LIMIT 100")
+                cols = [d[0] for d in cur.description]
+                outcome["data"] = [dict(zip(cols, r)) for r in cur.fetchall()]
+
+            elif action == "show_stats":
+                cur.execute("SELECT COUNT(*) FROM users")
+                total_users = (cur.fetchone() or (0,))[0]
+                cur.execute("SELECT COUNT(*) FROM voice_sessions")
+                total_sessions = (cur.fetchone() or (0,))[0]
+                cur.execute("SELECT AVG(overall_score) FROM voice_sessions WHERE overall_score > 0")
+                avg = cur.fetchone()
+                outcome["data"] = {
+                    "total_users": total_users,
+                    "total_sessions": total_sessions,
+                    "avg_score": round(float(avg[0]), 1) if avg and avg[0] else 0
+                }
+
+            elif action == "search":
+                q = params.get("query", "")
+                cur.execute(
+                    "SELECT id,name,email,institution_id FROM users WHERE email ILIKE %s OR name ILIKE %s LIMIT 50",
+                    (f"%{q}%", f"%{q}%")
+                )
+                cols = [d[0] for d in cur.description]
+                outcome["data"] = [dict(zip(cols, r)) for r in cur.fetchall()]
+
+            elif action == "list_sessions":
+                cur.execute("SELECT id,user_email,exchange_count,overall_score,mode,created_at FROM voice_sessions ORDER BY created_at DESC LIMIT 50")
+                cols = [d[0] for d in cur.description]
+                outcome["data"] = [dict(zip(cols, r)) for r in cur.fetchall()]
+
+            elif action == "list_institutions":
+                cur.execute("SELECT id,name,env,contact_email FROM institutions")
+                cols = [d[0] for d in cur.description]
+                outcome["data"] = [dict(zip(cols, r)) for r in cur.fetchall()]
+
+            elif action == "show_honor":
+                filter_by = params.get("filter_by", "")
+                value     = params.get("value", "")
+                if filter_by == "email":
+                    cur.execute("SELECT user_email,score FROM honor_scores WHERE user_email ILIKE %s", (f"%{value}%",))
+                else:
+                    cur.execute("SELECT user_email,score FROM honor_scores ORDER BY score DESC LIMIT 50")
+                outcome["data"] = [{"email": r[0], "score": r[1]} for r in cur.fetchall()]
+
+            # ── Write actions ─────────────────────────────────────────────────
+            elif action == "delete_user":
+                email = params.get("email", "")
+                if not email:
+                    outcome["result"] = "error"; outcome["data"] = "No email provided"
+                else:
+                    cur.execute("DELETE FROM users WHERE email = %s", (email.lower(),))
+                    conn.commit()
+                    outcome["data"] = f"Deleted user: {email}"
+                    logger.info(f"AI admin deleted user {email}")
+
+            elif action == "bulk_delete_users":
+                emails = params.get("emails", [])
+                deleted = []
+                for email in emails:
+                    cur.execute("DELETE FROM users WHERE email = %s", (email.lower(),))
+                    deleted.append(email)
+                conn.commit()
+                outcome["data"] = f"Deleted {len(deleted)} users: {deleted}"
+                logger.info(f"AI admin bulk deleted {len(deleted)} users")
+
+            elif action == "suspend_user":
+                email = params.get("email", "")
+                cur.execute("UPDATE users SET suspended = TRUE WHERE email = %s", (email.lower(),))
+                conn.commit()
+                outcome["data"] = f"Suspended: {email}"
+
+            elif action == "unsuspend_user":
+                email = params.get("email", "")
+                cur.execute("UPDATE users SET suspended = FALSE WHERE email = %s", (email.lower(),))
+                conn.commit()
+                outcome["data"] = f"Unsuspended: {email}"
+
+            elif action == "delete_session":
+                sid = params.get("session_id")
+                cur.execute("DELETE FROM voice_sessions WHERE id = %s", (sid,))
+                conn.commit()
+                outcome["data"] = f"Deleted session {sid}"
+
+            elif action == "add_institution":
+                name  = params.get("name", "")
+                env   = params.get("env", "dev")
+                email = params.get("contact_email", "")
+                cur.execute(
+                    "INSERT INTO institutions (name, env, contact_email) VALUES (%s, %s, %s) RETURNING id",
+                    (name, env, email)
+                )
+                new_id = cur.fetchone()[0]
+                conn.commit()
+                outcome["data"] = f"Added institution '{name}' with id {new_id}"
+
+            elif action == "delete_institution":
+                inst_id = params.get("institution_id")
+                cur.execute("DELETE FROM institutions WHERE id = %s", (inst_id,))
+                conn.commit()
+                outcome["data"] = f"Deleted institution {inst_id}"
+
+            elif action == "toggle_institution":
+                inst_id = params.get("institution_id")
+                cur.execute("SELECT env FROM institutions WHERE id = %s", (inst_id,))
+                row = cur.fetchone()
+                if row:
+                    new_env = "prod" if row[0] == "dev" else "dev"
+                    cur.execute("UPDATE institutions SET env = %s WHERE id = %s", (new_env, inst_id))
+                    conn.commit()
+                    outcome["data"] = f"Institution {inst_id} toggled to {new_env}"
+
+            elif action == "adjust_honor":
+                email  = params.get("email", "")
+                delta  = int(params.get("delta", 0))
+                reason = params.get("reason", "admin adjustment")
+                add_honor_event(email, "admin_adjustment", reason, override_delta=delta)
+                outcome["data"] = f"Honor adjusted for {email} by {delta:+d} ({reason})"
+
+            else:
+                outcome["result"] = "skipped"
+                outcome["data"]   = f"Unknown action: {action}"
+
+        except Exception as e:
+            conn.rollback()
+            outcome["result"] = "error"
+            outcome["data"]   = str(e)
+            logger.error(f"AI admin action {action} failed: {e}")
+
+        results.append(outcome)
+
+    # ── 5. Ask LLM to summarise what happened ─────────────────────────────────
+    try:
+        summary_prompt = f"""The admin ran this command: "{data.command}"
+These actions were executed: {_json.dumps(results, default=str)}
+Write a clear 1-3 sentence plain English summary of what was done and the outcome. Be specific about counts and names."""
+        summary = await call_llm(
+            [{"role": "user", "content": summary_prompt}],
+            system="You are a helpful admin assistant. Give concise action summaries.",
+            max_tokens=200,
+            timeout=10.0
+        )
+    except Exception:
+        summary = f"Executed {len(results)} action(s)."
+
+    cur.close()
+    conn.close()
+
+    return {
+        "mode":       "executed",
+        "understood": plan.get("understood", ""),
+        "results":    results,
+        "summary":    summary,
+        "warning":    plan.get("warning", ""),
+    }
+
 @app.get("/admin/logs")
 def admin_logs(admin: str = Depends(require_admin)):
     return {"logs": list(reversed(_admin_log_buffer))}
