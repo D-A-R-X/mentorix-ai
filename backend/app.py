@@ -714,17 +714,22 @@ async def get_latest_scan(current_user: str = Depends(get_current_user)):
 # ═══════════════════════════════════════════════════════════════
 
 class ChatRequest(BaseModel):
-    message: str
-    system:  str = ""
-    history: list = []
+    message:  str = ""
+    system:   str = ""
+    history:  list = []
+    messages: list = []  # alternative: array of {role, content}
 
 @app.post("/chat")
 async def chat_endpoint(
     data: ChatRequest,
     current_user: str = Depends(get_current_user)
 ):
-    messages = [{"role": m["role"], "content": m["content"]} for m in (data.history or [])]
-    messages.append({"role": "user", "content": data.message})
+    if data.messages:
+        messages = [{"role": m["role"], "content": m["content"]} for m in data.messages]
+    else:
+        messages = [{"role": m["role"], "content": m["content"]} for m in (data.history or [])]
+        if data.message:
+            messages.append({"role": "user", "content": data.message})
     
     reply = await call_llm(messages, system=data.system or "", max_tokens=300, timeout=10.0)
     if not reply:
@@ -739,6 +744,150 @@ class VoiceSession(BaseModel):
     scores:         dict = {}
     overall:        int  = 0
     mode:           str  = "voice"
+
+
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
+ELEVENLABS_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"  # Rachel - warm, emotional female
+
+@app.post("/voice/tts")
+async def text_to_speech(
+    data: dict,
+    current_user: str = Depends(get_current_user)
+):
+    text = data.get("text", "")[:500]
+    if not text:
+        raise HTTPException(status_code=400, detail="No text")
+    if not ELEVENLABS_API_KEY:
+        raise HTTPException(status_code=503, detail="TTS not configured")
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            res = await client.post(
+                f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}",
+                headers={
+                    "xi-api-key": ELEVENLABS_API_KEY,
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "text": text,
+                    "model_id": "eleven_turbo_v2",
+                    "voice_settings": {
+                        "stability": 0.4,
+                        "similarity_boost": 0.85,
+                        "style": 0.35,
+                        "use_speaker_boost": True
+                    }
+                }
+            )
+            res.raise_for_status()
+            from fastapi.responses import Response
+            return Response(content=res.content, media_type="audio/mpeg")
+    except Exception as e:
+        logger.warning(f"ElevenLabs TTS failed: {e}")
+        raise HTTPException(status_code=503, detail="TTS unavailable")
+
+
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
+ELEVENLABS_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"  # Rachel - warm, emotional female
+
+@app.post("/voice/tts")
+async def text_to_speech(
+    data: dict,
+    current_user: str = Depends(get_current_user)
+):
+    text = data.get("text", "")[:500]
+    if not text:
+        raise HTTPException(status_code=400, detail="No text")
+    if not ELEVENLABS_API_KEY:
+        raise HTTPException(status_code=503, detail="TTS not configured")
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            res = await client.post(
+                f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}",
+                headers={
+                    "xi-api-key": ELEVENLABS_API_KEY,
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "text": text,
+                    "model_id": "eleven_turbo_v2",
+                    "voice_settings": {
+                        "stability": 0.4,
+                        "similarity_boost": 0.85,
+                        "style": 0.35,
+                        "use_speaker_boost": True
+                    }
+                }
+            )
+            res.raise_for_status()
+            from fastapi.responses import Response
+            return Response(content=res.content, media_type="audio/mpeg")
+    except Exception as e:
+        logger.warning(f"ElevenLabs TTS failed: {e}")
+        raise HTTPException(status_code=503, detail="TTS unavailable")
+
+
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
+ELEVENLABS_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"  # Rachel - warm, emotional female
+
+@app.post("/voice/tts")
+async def text_to_speech(
+    data: dict,
+    current_user: str = Depends(get_current_user)
+):
+    text = data.get("text", "")[:500]
+    if not text:
+        raise HTTPException(status_code=400, detail="No text")
+    if not ELEVENLABS_API_KEY:
+        raise HTTPException(status_code=503, detail="TTS not configured")
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            res = await client.post(
+                f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}",
+                headers={
+                    "xi-api-key": ELEVENLABS_API_KEY,
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "text": text,
+                    "model_id": "eleven_turbo_v2",
+                    "voice_settings": {
+                        "stability": 0.4,
+                        "similarity_boost": 0.85,
+                        "style": 0.35,
+                        "use_speaker_boost": True
+                    }
+                }
+            )
+            res.raise_for_status()
+            from fastapi.responses import Response
+            return Response(content=res.content, media_type="audio/mpeg")
+    except Exception as e:
+        logger.warning(f"ElevenLabs TTS failed: {e}")
+        raise HTTPException(status_code=503, detail="TTS unavailable")
+
+
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
+ELEVENLABS_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"
+
+@app.post("/voice/tts")
+async def tts_endpoint(data: dict, current_user: str = Depends(get_current_user)):
+    text = str(data.get("text", ""))[:500]
+    if not text or not ELEVENLABS_API_KEY:
+        raise HTTPException(status_code=503, detail="TTS unavailable")
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            r = await client.post(
+                f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}",
+                headers={"xi-api-key": ELEVENLABS_API_KEY, "Content-Type": "application/json"},
+                json={"text": text, "model_id": "eleven_turbo_v2",
+                      "voice_settings": {"stability": 0.4, "similarity_boost": 0.85, "style": 0.35, "use_speaker_boost": True}}
+            )
+            r.raise_for_status()
+            from fastapi.responses import Response as FResponse
+            return FResponse(content=r.content, media_type="audio/mpeg")
+    except Exception as e:
+        logger.warning(f"TTS failed: {e}")
+        raise HTTPException(status_code=503, detail="TTS failed")
 
 @app.post("/voice/save")
 async def save_voice_session(
