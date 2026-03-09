@@ -6,7 +6,7 @@ export const API = import.meta.env.VITE_API_URL || 'https://mentorix-ai-backend.
 async function req(method, path, body = null, extraHeaders = {}) {
   const opts = {
     method,
-    headers: { ...authHeaders(), ...extraHeaders },
+    headers: { 'Content-Type': 'application/json', ...authHeaders(), ...extraHeaders },
   }
   if (body) opts.body = JSON.stringify(body)
   const res = await fetch(`${API}${path}`, opts)
