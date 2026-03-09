@@ -1,5 +1,6 @@
 import logging
 import os
+import httpx
 import time
 from pydantic import BaseModel, EmailStr
 from typing import Optional,Dict
@@ -13,7 +14,11 @@ from pydantic import BaseModel, Field, EmailStr
 import pickle
 from llm_client import call_llm
 
-import resend, random, time
+import random
+try:
+    import resend
+except ImportError:
+    resend = None
 from typing import Dict
 
 # ── In-memory OTP store: { email: { otp, name, password_hash, expires_at } } ──
@@ -875,93 +880,18 @@ async def chat_endpoint(
     return {"reply": reply}
 
 class VoiceSession(BaseModel):
-    transcript:     str = ""
-    summary:        str = ""
-    tab_warnings:   int = 0
-    exchange_count: int = 0
-    scores:         dict = {}
-    overall:        int  = 0
-    mode:           str  = "voice"
-
-
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
-ELEVENLABS_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"  # Rachel - warm, emotional female
-
-@app.post("/voice/tts")
-async def text_to_speech(
-    data: dict,
-    current_user: str = Depends(get_current_user)
-):
-    text = data.get("text", "")[:500]
-    if not text:
-        raise HTTPException(status_code=400, detail="No text")
-    if not ELEVENLABS_API_KEY:
-        raise HTTPException(status_code=503, detail="TTS not configured")
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            res = await client.post(
-                f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}",
-                headers={
-                    "xi-api-key": ELEVENLABS_API_KEY,
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "text": text,
-                    "model_id": "eleven_turbo_v2",
-                    "voice_settings": {
-                        "stability": 0.4,
-                        "similarity_boost": 0.85,
-                        "style": 0.35,
-                        "use_speaker_boost": True
-                    }
-                }
-            )
-            res.raise_for_status()
-            from fastapi.responses import Response
-            return Response(content=res.content, media_type="audio/mpeg")
-    except Exception as e:
-        logger.warning(f"ElevenLabs TTS failed: {e}")
-        raise HTTPException(status_code=503, detail="TTS unavailable")
-
-
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
-ELEVENLABS_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"  # Rachel - warm, emotional female
-
-@app.post("/voice/tts")
-async def text_to_speech(
-    data: dict,
-    current_user: str = Depends(get_current_user)
-):
-    text = data.get("text", "")[:500]
-    if not text:
-        raise HTTPException(status_code=400, detail="No text")
-    if not ELEVENLABS_API_KEY:
-        raise HTTPException(status_code=503, detail="TTS not configured")
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            res = await client.post(
-                f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}",
-                headers={
-                    "xi-api-key": ELEVENLABS_API_KEY,
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "text": text,
-                    "model_id": "eleven_turbo_v2",
-                    "voice_settings": {
-                        "stability": 0.4,
-                        "similarity_boost": 0.85,
-                        "style": 0.35,
-                        "use_speaker_boost": True
-                    }
-                }
-            )
-            res.raise_for_status()
-            from fastapi.responses import Response
-            return Response(content=res.content, media_type="audio/mpeg")
-    except Exception as e:
-        logger.warning(f"ElevenLabs TTS failed: {e}")
-        raise HTTPException(status_code=503, detail="TTS unavailable")
+    transcript:         str  = ""
+    summary:            str  = ""
+    tab_warnings:       int  = 0
+    tab_switches:       int  = 0   # alias — frontend may send either
+    exchange_count:     int  = 0
+    scores:             dict = {}
+    overall:            int  = 0
+    mode:               str  = "voice"
+    forced_end:         bool = False
+    questions_answered: int  = 0
+    department:         str  = ""
+    answers:            list = []
 
 
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
@@ -1047,7 +977,7 @@ async def save_voice_session(
         # ── Honor score: AI-score-driven ─────────────────────────────────────
         exchanges = data.exchange_count or 0
         overall   = data.overall or 0
-        tab_warn  = data.tab_warnings or 0
+        tab_warn  = data.tab_switches or data.tab_warnings or 0
         if data.mode == "hr_interview":
             if exchanges < 4:
                 add_honor_event(current_user, "early_session_exit",
