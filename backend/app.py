@@ -996,20 +996,28 @@ async def save_voice_session(
         overall   = data.overall or 0
         tab_warn  = data.tab_switches or data.tab_warnings or 0
         if data.mode == "hr_interview":
-            if exchanges < 4:
+            if exchanges == 0:
+                add_honor_event(current_user, "early_session_exit",
+                                "HR skipped with 0 exchanges", override_delta=-3)
+            elif data.forced_end or exchanges < 4:
                 add_honor_event(current_user, "early_session_exit",
                                 f"only {exchanges} exchanges in HR", override_delta=-3)
             else:
                 d = +4 if overall >= 80 else (+3 if overall >= 65 else (+2 if overall >= 50 else -1))
                 add_honor_event(current_user, "hr_session_complete",
                                 f"overall={overall} exchanges={exchanges}", override_delta=d)
-            for _ in range(min(tab_warn, 3)):
-                add_honor_event(current_user, "hr_tab_violation", "tab switch during HR")
+            # HR: every tab switch penalised (no cap), session force-ends at 3
+            for _ in range(tab_warn):
+                add_honor_event(current_user, "hr_tab_violation", "tab switch during HR interview")
         else:
-            if data.forced_end and exchanges < 3:
+            if exchanges == 0:
+                # Zero exchanges = pure skip — always penalise
+                add_honor_event(current_user, "early_session_exit",
+                                "voice skipped with 0 exchanges", override_delta=-3)
+            elif data.forced_end or exchanges < 3:
                 add_honor_event(current_user, "early_session_exit",
                                 f"voice abandoned after {exchanges} exchanges", override_delta=-3)
-            elif exchanges >= 3:
+            else:
                 d = +2 if overall >= 70 else +1
                 add_honor_event(current_user, "voice_session_complete",
                                 f"overall={overall}", override_delta=d)

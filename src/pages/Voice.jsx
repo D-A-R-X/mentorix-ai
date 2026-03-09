@@ -20,7 +20,7 @@ const QUESTIONS = [
   "Where do you see yourself in 5 years?",
 ]
 
-// ── Typewriter ────────────────────────────────────────────────────────────────
+// ── Typewriter (question text) ────────────────────────────────────────────────
 function TypewriterText({ text, speed = 22 }) {
   const [shown, setShown] = useState('')
   useEffect(() => {
@@ -33,7 +33,29 @@ function TypewriterText({ text, speed = 22 }) {
   return <span>{shown}</span>
 }
 
-// ── Animated bars (pure CSS, no canvas) ─────────────────────────────────────
+// ── StreamingText — word-by-word as Aria speaks ───────────────────────────────
+function StreamingText({ text, isNew, speed = 55 }) {
+  const [shown, setShown] = useState('')
+  const timerRef = useRef(null)
+  useEffect(() => {
+    clearTimeout(timerRef.current)
+    if (!isNew) { setShown(text); return }
+    setShown('')
+    const words = text.split(' ')
+    let idx = 0
+    const tick = () => {
+      if (idx >= words.length) return
+      idx++
+      setShown(words.slice(0, idx).join(' '))
+      timerRef.current = setTimeout(tick, speed)
+    }
+    timerRef.current = setTimeout(tick, 80)
+    return () => clearTimeout(timerRef.current)
+  }, [text, isNew])
+  return <span>{shown}</span>
+}
+
+// ── Animated bars ─────────────────────────────────────────────────────────────
 function SoundBars({ active }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, height: 40 }}>
@@ -42,24 +64,17 @@ function SoundBars({ active }) {
           width: 4, borderRadius: 2,
           background: active ? '#2563EB' : '#CBD5E1',
           height: active ? undefined : 6,
-          minHeight: 6,
-          maxHeight: 32,
+          minHeight: 6, maxHeight: 32,
           animation: active ? `bar-bounce 0.9s ease-in-out infinite ${(i * 0.07).toFixed(2)}s` : 'none',
         }} />
       ))}
-      <style>{`
-        @keyframes bar-bounce {
-          0%,100% { height: 6px; }
-          50%      { height: 28px; }
-        }
-      `}</style>
+      <style>{`@keyframes bar-bounce{0%,100%{height:6px}50%{height:28px}}`}</style>
     </div>
   )
 }
 
-// ── Browser TTS with female voice preference ──────────────────────────────────
+// ── TTS ───────────────────────────────────────────────────────────────────────
 let _ttsAudio = null
-
 function stopAllAudio() {
   if (_ttsAudio) { try { _ttsAudio.pause(); _ttsAudio.src = '' } catch {} _ttsAudio = null }
   try { window.speechSynthesis?.cancel() } catch {}
@@ -67,7 +82,6 @@ function stopAllAudio() {
 
 async function ariaSpeak(text, token, onDone) {
   stopAllAudio()
-  // Try ElevenLabs backend first
   try {
     const res = await fetch(API + '/voice/tts', {
       method: 'POST',
@@ -94,7 +108,6 @@ function fallbackSpeak(text, onDone) {
   const go = () => {
     const utt    = new SpeechSynthesisUtterance(text)
     const voices = window.speechSynthesis.getVoices()
-    // Best female voices in priority order
     const want   = ['Google UK English Female','Microsoft Zira - English (United States)',
                     'Microsoft Hazel - English (Great Britain)','Samantha','Karen','Moira','Tessa','Ava']
     let v = null
@@ -103,7 +116,7 @@ function fallbackSpeak(text, onDone) {
     if (!v) v = voices.find(x => x.lang === 'en-GB')
     if (!v) v = voices.find(x => x.lang.startsWith('en'))
     if (v) utt.voice = v
-    utt.rate  = 0.88; utt.pitch = 1.18; utt.volume = 1
+    utt.rate = 0.88; utt.pitch = 1.18; utt.volume = 1
     utt.onend = onDone; utt.onerror = onDone
     window.speechSynthesis.speak(utt)
   }
@@ -119,10 +132,7 @@ export default function Voice() {
   const toast     = useToast()
   const token     = localStorage.getItem('mentorix_token') || ''
 
-  // ── State ─────────────────────────────────────────────────────────────────
   const [phase,       setPhase]       = useState('intro')
-  // phases: intro → speaking → listening → saving_answer → feedback_speaking → done
-
   const [qIdx,        setQIdx]        = useState(0)
   const [answers,     setAnswers]     = useState([])
   const [transcript,  setTranscript]  = useState('')
@@ -131,21 +141,19 @@ export default function Voice() {
   const [tabWarns,    setTabWarns]    = useState(0)
   const [saving,      setSaving]      = useState(false)
   const [ariaText,    setAriaText]    = useState('')
+  const [ariaIsNew,   setAriaIsNew]   = useState(false)   // ← streaming flag
   const [micStatus,   setMicStatus]   = useState('idle')
-  // micStatus: idle | requesting | active | error
 
-  // ── Refs ──────────────────────────────────────────────────────────────────
-  const recogRef      = useRef(null)
-  const inactiveRef   = useRef(null)
-  const answersRef    = useRef([])
-  const tabRef        = useRef(0)
-  const phaseRef      = useRef('intro')
-  const txRef         = useRef('')        // always-current transcript
-  const qIdxRef       = useRef(0)
+  const recogRef    = useRef(null)
+  const inactiveRef = useRef(null)
+  const answersRef  = useRef([])
+  const tabRef      = useRef(0)
+  const phaseRef    = useRef('intro')
+  const txRef       = useRef('')
+  const qIdxRef     = useRef(0)
 
   const totalQ = Math.min(MAX_Q, QUESTIONS.length)
 
-  // Sync refs
   useEffect(() => { answersRef.current = answers },   [answers])
   useEffect(() => { phaseRef.current   = phase },     [phase])
   useEffect(() => { txRef.current      = transcript }, [transcript])
@@ -195,131 +203,99 @@ export default function Voice() {
     }, INACTIVITY_MS)
   }, [])
 
-  // ── Cleanup ───────────────────────────────────────────────────────────────
-  useEffect(() => () => {
-    killRecog()
-    stopAllAudio()
-    clearTimeout(inactiveRef.current)
-  }, [])
+  useEffect(() => () => { killRecog(); stopAllAudio(); clearTimeout(inactiveRef.current) }, [])
 
-  // ── Speak ─────────────────────────────────────────────────────────────────
+  // ── Speak — sets ariaIsNew=true so text streams word-by-word ─────────────
   const speak = (text, onDone) => {
     setAriaText(text)
-    ariaSpeak(text, token, onDone)
+    setAriaIsNew(true)                          // ← trigger streaming
+    ariaSpeak(text, token, () => {
+      setAriaIsNew(false)                       // ← stop streaming when done
+      onDone?.()
+    })
   }
 
-  // ── Kill recognition ───────────────────────────────────────────────────────
   const killRecog = () => {
     if (!recogRef.current) return
-    try { recogRef.current.onresult = null; recogRef.current.onerror = null; recogRef.current.onend = null; recogRef.current.stop() } catch {}
+    try {
+      recogRef.current.onresult = null
+      recogRef.current.onerror  = null
+      recogRef.current.onend    = null
+      recogRef.current.stop()
+    } catch {}
     recogRef.current = null
   }
 
-  // ── START MIC — the critical function ─────────────────────────────────────
+  // ── Start mic ─────────────────────────────────────────────────────────────
   const startMic = async () => {
-  setMicStatus('requesting')
-  setTranscript(''); txRef.current = ''
+    setMicStatus('requesting')
+    setTranscript(''); txRef.current = ''
 
-  // 1. Check browser support
-  const SRClass = window.SpeechRecognition || window.webkitSpeechRecognition
-  if (!SRClass) {
-    setMicStatus('error')
-    toast('Speech recognition not available. Switching to type mode.', 'warn')
-    setInputMode('type')
-    return
-  }
-
-  // 2. Request mic permission with a 6-second timeout
-  // (Chrome silently hangs if mic is blocked at OS/site level)
-  try {
-    const stream = await Promise.race([
-      navigator.mediaDevices.getUserMedia({ audio: true }),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 6000)
-      ),
-    ])
-    stream.getTracks().forEach(t => t.stop())
-  } catch (err) {
-    setMicStatus('error')
-    if (err.message === 'timeout') {
-      toast(
-        'Mic permission timed out. Click the 🔒 icon in the address bar → Allow microphone → refresh.',
-        'error'
-      )
-    } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-      toast(
-        'Microphone blocked. Click the 🔒 icon in the address bar → Allow microphone → refresh.',
-        'error'
-      )
-    } else {
-      toast(`Mic error: ${err.message}`, 'error')
-    }
-    return
-  }
-
-  // 3. Kill any existing recognition
-  killRecog()
-
-  // 4. Create new recognition instance
-  const SR = new SRClass()
-  SR.continuous     = true
-  SR.interimResults = true
-  SR.lang           = 'en-IN'
-  recogRef.current  = SR
-
-  SR.onstart = () => {
-    setMicStatus('active')
-    setPhase('listening')
-    resetInactive()
-  }
-
-  SR.onresult = (e) => {
-    let finalText = '', interimText = ''
-    for (let i = 0; i < e.results.length; i++) {
-      if (e.results[i].isFinal) finalText   += e.results[i][0].transcript + ' '
-      else                      interimText += e.results[i][0].transcript
-    }
-    const full = (finalText + interimText).trim()
-    setTranscript(full)
-    txRef.current = full
-    resetInactive()
-  }
-
-  SR.onerror = (e) => {
-    console.warn('SR error:', e.error)
-    if (e.error === 'no-speech') {
-      setMicStatus('idle') // non-fatal
-    } else if (e.error === 'not-allowed') {
+    const SRClass = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SRClass) {
       setMicStatus('error')
-      toast('Mic access denied. Allow microphone in browser settings.', 'error')
-    } else if (e.error === 'network') {
+      toast('Speech recognition not available. Switching to type mode.', 'warn')
+      setInputMode('type')
+      return
+    }
+
+    try {
+      const stream = await Promise.race([
+        navigator.mediaDevices.getUserMedia({ audio: true }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000)),
+      ])
+      stream.getTracks().forEach(t => t.stop())
+    } catch (err) {
       setMicStatus('error')
-      toast('Network error with speech recognition.', 'error')
-    } else {
-      setMicStatus('idle')
+      if (err.message === 'timeout') {
+        toast('Mic permission timed out. Click the 🔒 icon → Allow microphone → refresh.', 'error')
+      } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        toast('Microphone blocked. Click the 🔒 icon → Allow microphone → refresh.', 'error')
+      } else {
+        toast(`Mic error: ${err.message}`, 'error')
+      }
+      return
+    }
+
+    killRecog()
+
+    const SR = new SRClass()
+    SR.continuous = true; SR.interimResults = true; SR.lang = 'en-IN'
+    recogRef.current = SR
+
+    SR.onstart = () => { setMicStatus('active'); setPhase('listening'); resetInactive() }
+
+    SR.onresult = (e) => {
+      let finalText = '', interimText = ''
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) finalText   += e.results[i][0].transcript + ' '
+        else                      interimText += e.results[i][0].transcript
+      }
+      const full = (finalText + interimText).trim()
+      setTranscript(full); txRef.current = full
+      resetInactive()
+    }
+
+    SR.onerror = (e) => {
+      if (e.error === 'no-speech')   { setMicStatus('idle') }
+      else if (e.error === 'not-allowed') { setMicStatus('error'); toast('Mic access denied.', 'error') }
+      else if (e.error === 'network')     { setMicStatus('error'); toast('Network error with speech recognition.', 'error') }
+      else { setMicStatus('idle') }
+    }
+
+    SR.onend = () => {
+      if (phaseRef.current === 'listening' && recogRef.current === SR) {
+        try { SR.start(); setMicStatus('active') } catch { setMicStatus('idle') }
+      } else { setMicStatus('idle') }
+    }
+
+    try { SR.start() } catch (err) {
+      setMicStatus('error')
+      toast('Could not start microphone: ' + err.message, 'error')
     }
   }
 
-  SR.onend = () => {
-    // Auto-restart if still in listening phase
-    if (phaseRef.current === 'listening' && recogRef.current === SR) {
-      try { SR.start(); setMicStatus('active') }
-      catch { setMicStatus('idle') }
-    } else {
-      setMicStatus('idle')
-    }
-  }
-
-  // 5. Start
-  try {
-    SR.start()
-  } catch (err) {
-    setMicStatus('error')
-    toast('Could not start microphone: ' + err.message, 'error')
-  }
-}
-
-  // ── Submit answer and move on ─────────────────────────────────────────────
+  // ── Submit answer ─────────────────────────────────────────────────────────
   const submitAnswer = async () => {
     killRecog()
     clearTimeout(inactiveRef.current)
@@ -331,7 +307,6 @@ export default function Voice() {
     setAnswers(newAll); answersRef.current = newAll
     setPhase('saving_answer')
 
-    // Get AI feedback
     let feedback = ''
     try {
       const res = await fetch(API + '/chat', {
@@ -364,9 +339,8 @@ export default function Voice() {
   // ── Ask question ──────────────────────────────────────────────────────────
   const doAskQuestion = (idx) => {
     setTranscript(''); txRef.current = ''
-    setTyped(''); setAriaText('')
+    setTyped(''); setAriaText(''); setAriaIsNew(false)
     setMicStatus('idle'); setPhase('speaking')
-
     speak(QUESTIONS[idx], () => {
       setPhase('listening')
       if (inputMode === 'voice') startMic()
@@ -390,13 +364,16 @@ export default function Voice() {
 
     const all        = finalAnswers ?? answersRef.current
     const incomplete = all.length < totalQ
-    const overall    = forced || (incomplete && all.length < 3)
+
+    // ── FIX: 0 exchanges = always forced penalty ──────────────────────────
+    const isReallyForced = forced || all.length === 0 || (incomplete && all.length < 3)
+    const overall = isReallyForced
       ? Math.max(0, all.length * 4 - 8)
       : Math.min(100, 50 + all.length * 6)
 
     const msg = all.length === 0
       ? "You didn't respond this time — that's okay! Come back when you're ready. I'm always here for you!"
-      : forced || incomplete
+      : isReallyForced || incomplete
       ? `Session saved with ${all.length} answers. Try to complete the full session for a better honor score!`
       : `You answered all ${all.length} questions — incredible work! I'm so proud of your effort today!`
 
@@ -405,34 +382,37 @@ export default function Voice() {
 
     try {
       await voiceApi.save({
-        answers: all, tab_warnings: tabRef.current,
-                      tab_switches: tabRef.current,
-        forced_end: forced || incomplete,
+        answers:            all,
+        tab_warnings:       tabRef.current,
+        tab_switches:       tabRef.current,
+        forced_end:         isReallyForced,          // ← always true when 0 exchanges
         questions_answered: all.length,
-        summary: forced ? `Forced end: ${all.length}/${totalQ}` : incomplete ? `Incomplete: ${all.length}/${totalQ}` : `Completed: ${all.length}/${totalQ}`,
-        transcript: all.map(x => `Q: ${x.question}\nA: ${x.answer}`).join('\n\n'),
-        scores: {}, overall, exchange_count: all.length, mode: 'voice',
+        summary:            isReallyForced ? `Forced end: ${all.length}/${totalQ}` : incomplete ? `Incomplete: ${all.length}/${totalQ}` : `Completed: ${all.length}/${totalQ}`,
+        transcript:         all.map(x => `Q: ${x.question}\nA: ${x.answer}`).join('\n\n'),
+        scores:             {},
+        overall,
+        exchange_count:     all.length,
+        mode:               'voice',
       })
     } catch (e) { console.error(e) }
     finally { setSaving(false) }
   }
 
-  // ── Derived UI state ──────────────────────────────────────────────────────
+  // ── Derived state ─────────────────────────────────────────────────────────
   const isSpeaking  = phase === 'speaking' || phase === 'feedback_speaking'
   const isListening = phase === 'listening' && micStatus === 'active'
   const progress    = ((qIdx + 1) / totalQ) * 100
 
-  const micBtnColor = micStatus === 'active'  ? '#DC2626'
-                    : micStatus === 'error'    ? '#D97706'
-                    : micStatus === 'requesting' ? '#94A3B8'
+  const micBtnColor = micStatus === 'active'      ? '#DC2626'
+                    : micStatus === 'error'        ? '#D97706'
+                    : micStatus === 'requesting'   ? '#94A3B8'
                     : '#2563EB'
 
-  const micBtnLabel = micStatus === 'active'     ? '● Recording — tap to restart'
-                    : micStatus === 'requesting'  ? 'Requesting permission…'
-                    : micStatus === 'error'       ? 'Error — tap to retry'
+  const micBtnLabel = micStatus === 'active'      ? '● Recording — tap to restart'
+                    : micStatus === 'requesting'   ? 'Requesting permission…'
+                    : micStatus === 'error'        ? 'Error — tap to retry'
                     : 'Tap to start recording'
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: '100vh', background: '#F8F9FC', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: 'Inter, sans-serif' }}>
       <style>{`
@@ -479,7 +459,6 @@ export default function Voice() {
               <p style={{ color: '#CBD5E1', fontSize: 12, marginBottom: 28 }}>
                 Tab switches monitored — max {MAX_W}. Incomplete sessions reduce your Honor Score.
               </p>
-
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginBottom: 28 }}>
                 {[{ id: 'voice', icon: 'mic', label: 'Voice Mode' }, { id: 'type', icon: 'keyboard', label: 'Type Mode' }].map(m => (
                   <button key={m.id} onClick={() => setInputMode(m.id)} style={{
@@ -493,7 +472,6 @@ export default function Voice() {
                   </button>
                 ))}
               </div>
-
               <Btn onClick={startSession} size="lg" fullWidth>
                 <Icon name="play" size={15} color="#fff" /> Start Session with Aria
               </Btn>
@@ -503,21 +481,21 @@ export default function Voice() {
           {/* ═══ ACTIVE SESSION ═══ */}
           {['speaking', 'listening', 'saving_answer', 'feedback_speaking'].includes(phase) && (
             <div>
-              {/* Progress bar */}
+              {/* Progress */}
               <div style={{ height: 3, background: '#F1F4F9', borderRadius: 2, marginBottom: 20, overflow: 'hidden' }}>
                 <div style={{ height: '100%', background: 'linear-gradient(90deg,#2563EB,#059669)', width: `${progress}%`, transition: 'width 0.5s ease' }} />
               </div>
 
-              {/* Status row */}
+              {/* Status badges */}
               <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
                 <Badge color="blue">Q{qIdx + 1} / {totalQ}</Badge>
-                {phase === 'speaking'          && <Badge color="teal">Aria is speaking…</Badge>}
-                {phase === 'listening' && micStatus === 'active'      && <Badge color="blue">🔴 Recording</Badge>}
-                {phase === 'listening' && micStatus === 'requesting'  && <Badge color="muted">Requesting mic…</Badge>}
-                {phase === 'listening' && micStatus === 'idle'        && <Badge color="muted">Tap mic to start</Badge>}
-                {phase === 'listening' && micStatus === 'error'       && <Badge color="rose">Mic error</Badge>}
-                {phase === 'saving_answer'     && <Badge color="muted">Processing…</Badge>}
-                {phase === 'feedback_speaking' && <Badge color="teal">Aria responding…</Badge>}
+                {phase === 'speaking'                              && <Badge color="teal">Aria is speaking…</Badge>}
+                {phase === 'listening' && micStatus === 'active'  && <Badge color="blue">🔴 Recording</Badge>}
+                {phase === 'listening' && micStatus === 'requesting' && <Badge color="muted">Requesting mic…</Badge>}
+                {phase === 'listening' && micStatus === 'idle'    && <Badge color="muted">Tap mic to start</Badge>}
+                {phase === 'listening' && micStatus === 'error'   && <Badge color="rose">Mic error</Badge>}
+                {phase === 'saving_answer'                        && <Badge color="muted">Processing…</Badge>}
+                {phase === 'feedback_speaking'                    && <Badge color="teal">Aria responding…</Badge>}
               </div>
 
               {/* Question */}
@@ -525,22 +503,27 @@ export default function Voice() {
                 <TypewriterText text={QUESTIONS[qIdx]} speed={18} />
               </p>
 
-              {/* Aria speaking animation */}
-              {isSpeaking && (
-                <div style={{ marginBottom: 20, textAlign: 'center' }}>
-                  <SoundBars active={true} />
-                  <div style={{ fontSize: 12, color: '#7C3AED', marginTop: 8 }}>
-                    Aria is speaking…
+              {/* ── Aria speaking: show streaming text + sound bars ── */}
+              {isSpeaking && ariaText && (
+                <div style={{ marginBottom: 20, padding: '14px 16px', background: '#EFF6FF', borderRadius: 12, border: '1px solid #BFDBFE', animation: 'fadeUp 0.3s ease' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#2563EB', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Aria</div>
+                  <p style={{ margin: 0, fontSize: 14, color: '#1D4ED8', lineHeight: 1.7 }}>
+                    <StreamingText text={ariaText} isNew={ariaIsNew} />
+                    {ariaIsNew && <span style={{ display: 'inline-block', width: 2, height: 14, background: '#2563EB', marginLeft: 2, verticalAlign: 'middle', animation: 'blink 1s step-end infinite' }} />}
+                  </p>
+                  <div style={{ marginTop: 10 }}>
+                    <SoundBars active={true} />
                   </div>
+                  <style>{`@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}`}</style>
                 </div>
               )}
 
-              {/* Aria feedback bubble (after answer) */}
-              {phase === 'feedback_speaking' && ariaText && (
+              {/* ── Feedback bubble (after answer, while Aria reacts) ── */}
+              {phase === 'feedback_speaking' && ariaText && !isSpeaking && (
                 <div style={{ marginBottom: 18, padding: '14px 16px', background: '#EFF6FF', borderRadius: 12, border: '1px solid #BFDBFE', animation: 'fadeUp 0.3s ease' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#2563EB', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Aria</div>
                   <p style={{ margin: 0, fontSize: 14, color: '#1D4ED8', lineHeight: 1.6 }}>
-                    <TypewriterText text={ariaText} speed={16} />
+                    <StreamingText text={ariaText} isNew={ariaIsNew} />
                   </p>
                 </div>
               )}
@@ -548,13 +531,9 @@ export default function Voice() {
               {/* ── Voice listening UI ── */}
               {phase === 'listening' && inputMode === 'voice' && (
                 <div style={{ textAlign: 'center' }}>
-
-                  {/* Sound bars */}
                   <div style={{ marginBottom: 14 }}>
                     <SoundBars active={isListening} />
                   </div>
-
-                  {/* Transcript display */}
                   <div style={{
                     background: '#F8F9FC', borderRadius: 12, padding: '14px 16px', marginBottom: 18,
                     minHeight: 80, textAlign: 'left',
@@ -562,13 +541,9 @@ export default function Voice() {
                     transition: 'border-color 0.3s',
                   }}>
                     {micStatus === 'requesting' ? (
-                      <p style={{ margin: 0, color: '#94A3B8', fontSize: 13, fontStyle: 'italic' }}>
-                        🎤 Requesting microphone permission…
-                      </p>
+                      <p style={{ margin: 0, color: '#94A3B8', fontSize: 13, fontStyle: 'italic' }}>🎤 Requesting microphone permission…</p>
                     ) : micStatus === 'error' ? (
-                      <p style={{ margin: 0, color: '#DC2626', fontSize: 13 }}>
-                        ❌ Mic error — check permissions and tap the button again
-                      </p>
+                      <p style={{ margin: 0, color: '#DC2626', fontSize: 13 }}>❌ Mic error — check permissions and tap the button again</p>
                     ) : transcript ? (
                       <p style={{ margin: 0, color: '#0F172A', fontSize: 14, lineHeight: 1.6 }}>{transcript}</p>
                     ) : (
@@ -578,7 +553,7 @@ export default function Voice() {
                     )}
                   </div>
 
-                  {/* THE MIC BUTTON */}
+                  {/* Mic button */}
                   <div style={{ marginBottom: 18 }}>
                     <button
                       className="mic-btn"
@@ -605,7 +580,6 @@ export default function Voice() {
                     </p>
                   </div>
 
-                  {/* Bottom actions */}
                   <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
                     <Btn variant="secondary" size="sm" onClick={startMic} disabled={micStatus === 'requesting'}>
                       <Icon name="refresh-cw" size={13} color="#64748B" /> Re-record
@@ -618,7 +592,7 @@ export default function Voice() {
                 </div>
               )}
 
-              {/* ── Type mode UI ── */}
+              {/* ── Type mode ── */}
               {phase === 'listening' && inputMode === 'type' && (
                 <div>
                   <textarea
@@ -633,7 +607,7 @@ export default function Voice() {
                 </div>
               )}
 
-              {/* Processing indicator */}
+              {/* Processing */}
               {phase === 'saving_answer' && (
                 <div style={{ textAlign: 'center', padding: '20px 0', color: '#94A3B8', fontSize: 14 }}>
                   <div style={{ width: 28, height: 28, border: '3px solid #E2E8F0', borderTopColor: '#2563EB', borderRadius: '50%', margin: '0 auto 10px', animation: 'spin 0.8s linear infinite' }} />
@@ -654,6 +628,12 @@ export default function Voice() {
                 {answers.length >= totalQ ? 'Session Complete! 🎉' : answers.length === 0 ? 'No Responses' : `${answers.length}/${totalQ} Answered`}
               </h2>
 
+              {answers.length === 0 && (
+                <div style={{ margin: '0 auto 16px', padding: '10px 16px', background: '#FEF2F2', borderRadius: 10, border: '1px solid #FECACA', fontSize: 13, color: '#DC2626', maxWidth: 380 }}>
+                  Honor Score reduced — skipped session with no responses.
+                </div>
+              )}
+
               {answers.length > 0 && answers.length < totalQ && (
                 <div style={{ margin: '0 auto 16px', padding: '10px 16px', background: '#FEF3C7', borderRadius: 10, border: '1px solid #FDE68A', fontSize: 13, color: '#92400E', maxWidth: 380 }}>
                   ⚠️ Incomplete session — Honor Score reduced. Complete all {totalQ} questions next time.
@@ -664,7 +644,7 @@ export default function Voice() {
                 <div style={{ margin: '0 auto 18px', padding: '14px 18px', background: '#EFF6FF', borderRadius: 12, border: '1px solid #BFDBFE', maxWidth: 420, textAlign: 'left' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#2563EB', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Aria</div>
                   <p style={{ margin: 0, fontSize: 14, color: '#1D4ED8', lineHeight: 1.6 }}>
-                    <TypewriterText text={ariaText} speed={18} />
+                    <StreamingText text={ariaText} isNew={ariaIsNew} />
                   </p>
                 </div>
               )}
@@ -679,7 +659,12 @@ export default function Voice() {
               </p>
 
               <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-                <Btn variant="secondary" onClick={() => { setPhase('intro'); setQIdx(0); qIdxRef.current = 0; setAnswers([]); answersRef.current = []; setAriaText(''); setTranscript(''); txRef.current = '' }}>
+                <Btn variant="secondary" onClick={() => {
+                  setPhase('intro'); setQIdx(0); qIdxRef.current = 0
+                  setAnswers([]); answersRef.current = []
+                  setAriaText(''); setAriaIsNew(false)
+                  setTranscript(''); txRef.current = ''
+                }}>
                   <Icon name="refresh-cw" size={13} color="#64748B" /> New Session
                 </Btn>
                 <Btn onClick={() => nav('/dashboard')}>
