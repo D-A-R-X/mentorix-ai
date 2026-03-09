@@ -63,6 +63,7 @@ def _is_allowed_origin(origin: str) -> bool:
         return False
     allowed = [
         "https://mentorix-ai.vercel.app",
+        "https://mentorix-ai.netlify.app",
         "https://mentorix-ai-git-version-2-dev-darxs-projects.vercel.app",
         "https://mentorix-ai-git-version-2-dev.vercel.app",
     ]
