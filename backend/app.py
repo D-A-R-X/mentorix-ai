@@ -1226,11 +1226,12 @@ def get_public_institutions():
     conn = get_connection(); cur = conn.cursor()
     try:
         cur.execute("""
-            SELECT id, name, contact_email
+            SELECT id, name, contact_email, college_code, active
             FROM institutions
+            WHERE active = TRUE OR active IS NULL
             ORDER BY name ASC
         """)
-        rows = [{"id": r[0], "name": r[1], "contact_email": r[2] or ""} for r in cur.fetchall()]
+        rows = [{"id": r[0], "name": r[1], "contact_email": r[2] or "", "college_code": r[3] or ""} for r in cur.fetchall()]
         return {"institutions": rows}
     finally:
         cur.close(); conn.close()
@@ -1276,7 +1277,11 @@ def _ensure_extra_tables():
         """CREATE TABLE IF NOT EXISTS institutions (
                 id SERIAL PRIMARY KEY, name TEXT NOT NULL,
                 contact_email TEXT, env TEXT DEFAULT 'dev',
+                college_code TEXT,
+                active BOOLEAN DEFAULT TRUE,
                 created_at TIMESTAMP DEFAULT NOW())""",
+        "ALTER TABLE institutions ADD COLUMN IF NOT EXISTS college_code TEXT",
+        "ALTER TABLE institutions ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT TRUE",
         """CREATE TABLE IF NOT EXISTS honor_events (
                 id SERIAL PRIMARY KEY, email TEXT NOT NULL,
                 event_type TEXT NOT NULL, delta INTEGER NOT NULL DEFAULT 0,
@@ -1572,7 +1577,7 @@ def admin_get_institutions(admin: str = Depends(require_admin)):
     conn = get_connection(); cur = conn.cursor()
     try:
         cur.execute(
-            "SELECT id, name, contact_email, env, created_at FROM institutions ORDER BY created_at DESC"
+            "SELECT id, name, contact_email, env, college_code, active, created_at FROM institutions ORDER BY created_at DESC"
         )
         cols = [d[0] for d in (cur.description or [])]
         rows = []
@@ -1589,6 +1594,8 @@ class InstitutionCreate(BaseModel):
     name: str
     contact_email: Optional[str] = None
     env: Optional[str] = "dev"
+    college_code: Optional[str] = None
+    active: Optional[bool] = True
 
 
 @app.post("/admin/institutions")
@@ -1596,8 +1603,9 @@ def admin_create_institution(data: InstitutionCreate, admin: str = Depends(requi
     conn = get_connection(); cur = conn.cursor()
     try:
         cur.execute(
-            "INSERT INTO institutions (name, contact_email, env) VALUES (%s, %s, %s) RETURNING id",
-            (data.name.strip(), data.contact_email or None, data.env or "dev")
+            "INSERT INTO institutions (name, contact_email, env, college_code, active) VALUES (%s, %s, %s, %s, %s) RETURNING id",
+            (data.name.strip(), data.contact_email or None, data.env or "dev",
+             (data.college_code or "").strip() or None, data.active if data.active is not None else True)
         )
         new_id = (cur.fetchone() or (None,))[0]
         conn.commit()
@@ -1607,9 +1615,11 @@ def admin_create_institution(data: InstitutionCreate, admin: str = Depends(requi
 
 
 class InstitutionPatch(BaseModel):
-    env:           Optional[str] = None
-    name:          Optional[str] = None
-    contact_email: Optional[str] = None
+    env:           Optional[str]  = None
+    name:          Optional[str]  = None
+    contact_email: Optional[str]  = None
+    college_code:  Optional[str]  = None
+    active:        Optional[bool] = None
 
 
 @app.patch("/admin/institutions/{inst_id}")
@@ -1625,6 +1635,10 @@ def admin_patch_institution(inst_id: int, data: InstitutionPatch, admin: str = D
             updates.append("name = %s"); vals.append(data.name.strip())
         if data.contact_email is not None:
             updates.append("contact_email = %s"); vals.append(data.contact_email)
+        if data.college_code is not None:
+            updates.append("college_code = %s"); vals.append((data.college_code or "").strip() or None)
+        if data.active is not None:
+            updates.append("active = %s"); vals.append(data.active)
         if not updates:
             raise HTTPException(status_code=400, detail="No fields to update.")
         vals.append(inst_id)
@@ -1636,6 +1650,28 @@ def admin_patch_institution(inst_id: int, data: InstitutionPatch, admin: str = D
     finally:
         cur.close(); conn.close()
 
+
+
+
+class ServiceToggleRequest(BaseModel):
+    active: bool
+
+@app.patch("/admin/institutions/{inst_id}/service")
+def admin_toggle_service(inst_id: int, data: ServiceToggleRequest, admin: str = Depends(require_admin)):
+    """Toggle whether an institution's service is active (students can register)."""
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        cur.execute("UPDATE institutions SET active = %s WHERE id = %s RETURNING id, name, active",
+                    (data.active, inst_id))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Institution not found.")
+        conn.commit()
+        status = "activated" if data.active else "deactivated"
+        logger.info(f"Institution {row[1]} (id={inst_id}) service {status} by admin")
+        return {"ok": True, "id": inst_id, "active": data.active}
+    finally:
+        cur.close(); conn.close()
 
 @app.patch("/admin/institutions/{inst_id}/toggle")
 def admin_toggle_institution(inst_id: int, admin: str = Depends(require_admin)):

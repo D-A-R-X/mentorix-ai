@@ -135,11 +135,40 @@ function Modal({ show, title, body, onCancel, onConfirm, confirmLabel = 'Delete'
 }
 
 // ── Add Institution Modal ─────────────────────────────────────────────────────
+// ── Service On/Off Toggle for each institution ───────────────────────────────
+function ServiceToggle({ inst, onToggle }) {
+  const [on,  setOn]  = useState(inst.active !== false)
+  const [busy, setBusy] = useState(false)
+  const toggle = async () => {
+    setBusy(true)
+    const newVal = !on
+    setOn(newVal)
+    try { await onToggle(inst.id, newVal) } catch { setOn(!newVal) }
+    setBusy(false)
+  }
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+      <span style={{ fontSize:11, color: on ? C.green : C.muted, fontWeight:600 }}>{on ? 'ON' : 'OFF'}</span>
+      <div onClick={busy ? undefined : toggle} style={{
+        width:36, height:20, borderRadius:10,
+        background: on ? C.green : '#CBD5E1',
+        cursor: busy ? 'default' : 'pointer',
+        position:'relative', transition:'background 0.2s', flexShrink:0,
+        opacity: busy ? 0.6 : 1,
+      }}>
+        <div style={{ position:'absolute', top:2, left: on ? 18 : 2, width:16, height:16, borderRadius:'50%', background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,0.2)', transition:'left 0.2s' }} />
+      </div>
+    </div>
+  )
+}
+
 function AddInstModal({ show, onClose, onSubmit }) {
-  const [name,    setName]    = useState('')
-  const [email,   setEmail]   = useState('')
-  const [env,     setEnv]     = useState('dev')
-  const [loading, setLoading] = useState(false)
+  const [name,        setName]        = useState('')
+  const [email,       setEmail]       = useState('')
+  const [collegeCode, setCollegeCode] = useState('')
+  const [env,         setEnv]         = useState('dev')
+  const [active,      setActive]      = useState(true)
+  const [loading,     setLoading]     = useState(false)
 
   const iStyle = { width:'100%', padding:'9px 12px', background:C.surface2, border:`1px solid ${C.border}`, borderRadius:8, color:C.navy, fontSize:13, fontFamily:'Inter,sans-serif', outline:'none' }
   const lStyle = { display:'block', fontSize:11, fontWeight:600, color:C.text, marginBottom:5 }
@@ -147,8 +176,8 @@ function AddInstModal({ show, onClose, onSubmit }) {
   const submit = async () => {
     if (!name.trim()) { showToast('Institution name required','error'); return }
     setLoading(true)
-    await onSubmit({ name: name.trim(), contact_email: email||null, env })
-    setLoading(false); setName(''); setEmail(''); setEnv('dev')
+    await onSubmit({ name: name.trim(), contact_email: email||null, env, college_code: collegeCode.trim()||null, active })
+    setLoading(false); setName(''); setEmail(''); setCollegeCode(''); setEnv('dev'); setActive(true)
   }
   if (!show) return null
   return (
@@ -160,8 +189,22 @@ function AddInstModal({ show, onClose, onSubmit }) {
           <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. DSCE, Bangalore" style={iStyle} />
         </div>
         <div style={{ marginBottom:14 }}>
+          <label style={lStyle}>College Code <span style={{ color:C.muted, fontWeight:400 }}>(optional — e.g. 7219 for DSCE)</span></label>
+          <input value={collegeCode} onChange={e=>setCollegeCode(e.target.value)} placeholder="e.g. 7219" style={iStyle} />
+          <div style={{ marginTop:5, fontSize:11, color:C.muted }}>University affiliation code — helps identify the institution uniquely</div>
+        </div>
+        <div style={{ marginBottom:14 }}>
           <label style={lStyle}>Contact Email</label>
           <input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="admin@college.edu" style={iStyle} />
+        </div>
+        <div style={{ marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 14px', background:active?C.greenBg:C.surface2, border:`1px solid ${active?C.greenBorder:C.border}`, borderRadius:10 }}>
+          <div>
+            <div style={{ fontSize:13, fontWeight:600, color:active?C.green:C.muted }}>Service {active ? 'Active' : 'Disabled'}</div>
+            <div style={{ fontSize:11, color:C.muted, marginTop:2 }}>{active ? 'Students from this institution can sign up' : 'No new students from this institution'}</div>
+          </div>
+          <div onClick={()=>setActive(v=>!v)} style={{ width:44, height:24, borderRadius:12, background:active?C.green:'#CBD5E1', cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
+            <div style={{ position:'absolute', top:2, left:active?22:2, width:20, height:20, borderRadius:'50%', background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,0.2)', transition:'left 0.2s' }} />
+          </div>
         </div>
         <div style={{ marginBottom:22 }}>
           <label style={lStyle}>Plan / Environment</label>
@@ -610,6 +653,7 @@ export default function Admin() {
                           <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:14 }}>
                             <div style={{ flex:1, minWidth:0, paddingRight:10 }}>
                               <div style={{ fontWeight:700, fontSize:14, color:C.navy, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', marginBottom:3 }}>{inst.name}</div>
+                              {inst.college_code && <div style={{ fontSize:11, color:C.muted, marginTop:1 }}>Code: <strong style={{ color:C.blue }}>{inst.college_code}</strong></div>}
                               <div style={{ fontSize:11, color:C.muted }}>{inst.contact_email||'No contact email'}</div>
                             </div>
                             <EnvBadge env={inst.env} />
@@ -630,6 +674,10 @@ export default function Admin() {
                           {/* Footer */}
                           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', paddingTop:12, borderTop:`1px solid ${C.border}` }}>
                             <div style={{ fontSize:11, color:C.muted }}>Added {fmt(inst.created_at)}</div>
+                            <ServiceToggle inst={inst} onToggle={async (id, newActive) => {
+                              await fetch(`${API}/admin/institutions/${id}/service`, { method:'PATCH', headers:hdr(), body:JSON.stringify({ active: newActive }) })
+                              loadAll()
+                            }} />
                             <button className="adm-btn-del" onClick={()=>deleteInst(inst.id,inst.name)} style={{ ...btnSm, color:C.red, borderColor:C.redBorder, fontSize:11, padding:'5px 12px' }}>Remove</button>
                           </div>
                         </div>
