@@ -36,7 +36,7 @@ export const userApi = {
   history:    () => get('/user/history'),
   profile:    () => get('/profile'),
   onboarding: (data) => post('/onboarding', data),
-  honor:      () => get('/honor'),
+  honor:      () => get('/user/honor'),
 }
 
 // ── Institutions (public — no auth required) ──────────────────────────────────

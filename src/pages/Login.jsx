@@ -41,6 +41,9 @@ export default function Login() {
   }, [])
 
   // ── Handle Google OAuth redirect ──────────────────────────────────────────
+  // Store pending Google auth so user can pick institution first
+  const [pendingGoogle, setPendingGoogle] = useState(null)
+
   useEffect(() => {
     const p          = new URLSearchParams(window.location.search)
     const token      = p.get('token')
@@ -57,15 +60,34 @@ export default function Login() {
 
     if (token && email) {
       const decoded = name ? decodeURIComponent(name) : email.split('@')[0]
-      login({ token, email, name: decoded })
-      saveAutofill(email)
       window.history.replaceState({}, '', '/login')
 
-      if (deriveAdmin(email))  { nav('/admin',      { replace: true }); return }
-      if (!hasProfile)         { nav('/onboarding', { replace: true }); return }
-      nav(loc.state?.from?.pathname || '/dashboard', { replace: true })
+      // Admin — skip institution picker
+      if (deriveAdmin(email)) {
+        login({ token, email, name: decoded })
+        nav('/admin', { replace: true })
+        return
+      }
+
+      // Store pending and show institution picker
+      setPendingGoogle({ token, email, name: decoded, hasProfile })
+      setTab('in')          // switch to a neutral tab state
+      setInstModal(true)    // open institution modal immediately
     }
   }, [])
+
+  // Called when user confirms institution (or skips) after Google login
+  const completeGoogleLogin = () => {
+    if (!pendingGoogle) return
+    const { token, email, name, hasProfile } = pendingGoogle
+    if (selectedInst) setInstitution(selectedInst.id, selectedInst.name)
+    login({ token, email, name })
+    saveAutofill(email)
+    setPendingGoogle(null)
+    setInstModal(false)
+    if (!hasProfile) nav('/onboarding', { replace: true })
+    else nav(loc.state?.from?.pathname || '/dashboard', { replace: true })
+  }
 
   const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); setError('') }
 
@@ -332,7 +354,7 @@ export default function Login() {
       </div>
 
       {/* Institution Modal */}
-      <Modal open={instModal} onClose={() => setInstModal(false)} title="Select Institution">
+      <Modal open={instModal} onClose={() => { if (pendingGoogle) completeGoogleLogin(); else setInstModal(false) }} title="Select Institution">
         {instLoading ? (
           <div style={{ textAlign: 'center', padding: 32 }}><Spinner size={24} /></div>
         ) : (
@@ -360,7 +382,9 @@ export default function Login() {
               {!institutions.length && <p style={{ textAlign: 'center', color: '#94A3B8', padding: '24px 0', fontSize: 13 }}>No institutions found.</p>}
             </div>
             <Btn onClick={() => setInstModal(false)} fullWidth>
-              {selectedInst ? `Continue with ${selectedInst.name}` : 'Skip'}
+              {pendingGoogle
+                ? (selectedInst ? `Continue with ${selectedInst.name}` : 'Skip & Continue')
+                : (selectedInst ? `Continue with ${selectedInst.name}` : 'Skip')}
             </Btn>
           </div>
         )}
