@@ -81,6 +81,7 @@ export const adminApi = {
   honor:               () => get('/admin/honor'),
   analytics:           () => get('/admin/analytics'),
   logs:                () => get('/admin/logs'),
+  aiCommand:           (command, confirm = false) => post('/admin/ai-command', { command, confirm }),
 }
 
 // ── Setup ─────────────────────────────────────────────────────────────────────

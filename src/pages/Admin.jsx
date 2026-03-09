@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import AdminAI from './AdminAI'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 
@@ -127,6 +128,13 @@ function Modal({ show, title, body, onCancel, onConfirm, confirmLabel = 'Delete'
         <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
           <button onClick={onCancel} style={{ padding:'8px 16px', borderRadius:8, border:`1px solid ${C.border}`, color:C.muted, background:'transparent', cursor:'pointer', fontSize:13 }}>Cancel</button>
           <button onClick={onConfirm} style={{ padding:'8px 16px', borderRadius:8, border:`1px solid ${confirmColor}55`, color:confirmColor, background:`${confirmColor}10`, cursor:'pointer', fontSize:13, fontWeight:600 }}>{confirmLabel}</button>
+          {/* ════ AI COMMAND ════ */}
+          {activeSection === 'ai_command' && (
+            <div style={{ height: 'calc(100vh - 160px)', display: 'flex', flexDirection: 'column' }}>
+              <AdminAI />
+            </div>
+          )}
+
         </div>
       </div>
     </div>
@@ -170,8 +178,8 @@ function AddInstModal({ show, onClose, onSubmit }) {
           </select>
           <div style={{ marginTop:7, fontSize:12, color:C.muted, lineHeight:1.6, padding:'8px 10px', background:env==='prod'?C.blueBg:C.amberBg, borderRadius:7, border:`1px solid ${env==='prod'?C.blueBorder:C.amberBorder}` }}>
             {env==='prod'
-              ? 'Production — visible to students on login page. Full feature access.'
-              : 'Demo mode — for testing/trial. Can activate to PROD when ready.'}
+              ? 'PROD — Advanced paid AI models + dedicated DB. Switch when institution upgrades.'
+              : 'DEV — Current free-tier stack (Groq + shared DB). Students can see and use this institution.'}
           </div>
         </div>
         <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
@@ -317,8 +325,9 @@ export default function Admin() {
     { group:'Management',  items:[{ id:'users',        icon:'users', label:'Users' }, { id:'sessions', icon:'mic', label:'Sessions' }, { id:'institutions', icon:'building', label:'Institutions' }] },
     { group:'Intelligence',items:[{ id:'analytics',    icon:'barchart', label:'Analytics' }, { id:'honor', icon:'shield', label:'Honor Board' }] },
     { group:'System',      items:[{ id:'system',       icon:'monitor', label:'System' }, { id:'ml', icon:'cpu', label:'ML & LLM' }] },
+    { group:'AI',          items:[{ id:'ai_command',   icon:'zap',     label:'AI Command' }] },
   ]
-  const pageTitle = { overview:'Dashboard', users:'User Management', sessions:'Sessions', institutions:'Institutions', analytics:'Analytics', honor:'Honor Board', system:'System Status', ml:'ML & LLM Engine' }
+  const pageTitle = { overview:'Dashboard', users:'User Management', sessions:'Sessions', institutions:'Institutions', analytics:'Analytics', honor:'Honor Board', system:'System Status', ml:'ML & LLM Engine', ai_command:'AI Command' }
 
   // ── EnvBadge ───────────────────────────────────────────────────────────────
   const EnvBadge = ({ env }) => (
@@ -579,7 +588,7 @@ export default function Admin() {
                 <div>
                   <div style={{ fontWeight:700, fontSize:15, color:C.navy, marginBottom:4 }}>Deployment Management</div>
                   <div style={{ fontSize:13, color:C.muted, maxWidth:520, lineHeight:1.65 }}>
-                    <Badge color="amber">DEV</Badge>&nbsp; Demo / trial access (free) &nbsp;·&nbsp; <Badge color="blue">PROD</Badge>&nbsp; Paid live deployment (Enterprise)
+                    <Badge color="amber">DEV</Badge>&nbsp; Free tier — Groq + shared DB (students can sign in) &nbsp;·&nbsp; <Badge color="blue">PROD</Badge>&nbsp; Paid tier — advanced models + dedicated DB
                   </div>
                 </div>
                 <button onClick={()=>setAddInst(true)} style={{ padding:'9px 18px', background:C.blue, border:'none', color:'#fff', borderRadius:8, fontWeight:700, fontSize:13, cursor:'pointer', flexShrink:0 }}>+ Add Institution</button>
@@ -612,7 +621,7 @@ export default function Admin() {
                               <option value="prod">PROD — Live / Paid (Enterprise)</option>
                             </select>
                             <div style={{ marginTop:6, fontSize:11, color:isProd?C.blue:C.amber, padding:'6px 10px', background:isProd?C.blueBg:C.amberBg, borderRadius:6, border:`1px solid ${isProd?C.blueBorder:C.amberBorder}` }}>
-                              {isProd ? 'Live — visible to students on login page' : 'Demo — hidden from student login, testing only'}
+                              {isProd ? 'PROD — Paid tier: advanced AI models + dedicated DB' : 'DEV — Free tier: Groq + shared DB · students can sign in'}
                             </div>
                           </div>
 
