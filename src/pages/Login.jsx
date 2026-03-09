@@ -14,6 +14,32 @@ const AUTOFILL_KEY = 'mentorix_autofill'
 const saveAutofill  = (email) => { try { localStorage.setItem(AUTOFILL_KEY, JSON.stringify({ email, ts: Date.now() })) } catch {} }
 const loadAutofill  = () => { try { const v = localStorage.getItem(AUTOFILL_KEY); return v ? JSON.parse(v) : null } catch { return null } }
 
+// ── ResendTimer: countdown + resend button ────────────────────────────────────
+function ResendTimer({ email, name, password, onResent }) {
+  const [secs, setSecs] = React.useState(60)
+  const [busy, setBusy] = React.useState(false)
+  React.useEffect(() => {
+    if (secs <= 0) return
+    const t = setTimeout(() => setSecs(v => v - 1), 1000)
+    return () => clearTimeout(t)
+  }, [secs])
+  const resend = async () => {
+    setBusy(true)
+    try { await authApi.sendOtp(email, name, password); setSecs(60); onResent?.() } catch {}
+    setBusy(false)
+  }
+  if (secs > 0) return <span style={{ color: '#94A3B8', fontSize: 13 }}>Resend in {secs}s</span>
+  return (
+    <button onClick={resend} disabled={busy} style={{
+      background: 'none', border: 'none', color: '#2563EB',
+      cursor: busy ? 'default' : 'pointer', padding: 0,
+      fontSize: 13, fontWeight: 500, fontFamily: 'Inter, sans-serif',
+    }}>
+      {busy ? 'Sending…' : 'Resend code'}
+    </button>
+  )
+}
+
 export default function Login() {
   const nav       = useNavigate()
   const loc       = useLocation()
