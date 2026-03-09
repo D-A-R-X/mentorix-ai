@@ -36,12 +36,11 @@ export function AmbientBg() {
 
 // ── Logo Mark ─────────────────────────────────────────────────────────────────
 export function LogoMark({ size = 32 }) {
+  const s = size
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-      <rect width="32" height="32" rx="8" fill="#2563EB"/>
-      <path d="M8 22L16 10L24 22" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M11 18L21 18" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"/>
-      <circle cx="16" cy="10" r="2" fill="#fff"/>
+    <svg width={s} height={s} viewBox="0 0 40 40" fill="none">
+      <path d="M4 32 L4 10 L13 10 L20 22 L27 10 L36 10 L36 32 L30 32 L30 18 L22 30 L18 30 L10 18 L10 32 Z" fill="#7C3AED" />
+      <path d="M24 10 L30 10 L36 10 L30 20 L36 32 L29 32 L24 23 L19 32 L13 32 L20 20 Z" fill="#0F172A" />
     </svg>
   )
 }
