@@ -319,13 +319,13 @@ async def google_callback(request: Request, code: Optional[str] = None, error: O
     from fastapi.responses import RedirectResponse
 
     if error or not code:
-        return RedirectResponse(f"{FRONTEND_URL}/login.html?error=google_cancelled")
+        return RedirectResponse(f"{FRONTEND_URL}/login?error=google_cancelled")
 
     redirect_uri = get_google_redirect_uri(request)
     user_info    = await exchange_google_code(code, redirect_uri)
 
     if not user_info or not user_info.get("email"):
-        return RedirectResponse(f"{FRONTEND_URL}/login.html?error=google_failed")
+        return RedirectResponse(f"{FRONTEND_URL}/login?error=google_failed")
 
     # Upsert user — creates if new, updates name/picture if existing
     user  = upsert_google_user(
@@ -340,7 +340,7 @@ async def google_callback(request: Request, code: Optional[str] = None, error: O
 
     # Redirect to frontend with token in URL fragment — JS picks it up
     return RedirectResponse(
-        f"{FRONTEND_URL}/login.html"
+        f"{FRONTEND_URL}/login"
         f"?token={token}"
         f"&email={user_info['email']}"
         f"&name={name}"
