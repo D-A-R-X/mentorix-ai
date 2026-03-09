@@ -58,10 +58,10 @@ export default function Login() {
         ? await authApi.login(form.email.trim().toLowerCase(), form.password)
         : await authApi.register(form.email.trim().toLowerCase(), form.password, form.name.trim())
       if (selectedInst) setInstitution(selectedInst.id, selectedInst.name)
-      auth.login(data)
-if (data.is_admin) nav('/admin')
-else if (!data.profile) nav('/onboarding')  
-else nav('/dashboard')
+      login(data)
+      if (data.is_admin) nav('/admin')
+      else if (!data.profile) nav('/onboarding')
+      else nav('/dashboard')
     } catch (e) {
       setError(e.message || 'Authentication failed')
     } finally { setLoading(false) }
