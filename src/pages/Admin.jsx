@@ -78,7 +78,7 @@ function Modal({ show, title, body, onCancel, onConfirm, confirmLabel = 'Delete'
   return (
     <div onClick={onCancel} style={{ position:'fixed',inset:0,zIndex:600,background:'rgba(15,23,42,0.45)',backdropFilter:'blur(3px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
       <div onClick={e => e.stopPropagation()} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:28, maxWidth:420, width:'100%', boxShadow:'0 8px 32px rgba(0,0,0,0.12)' }}>
-        <div style={{ fontSize:16, fontWeight:700, color:C.navy, marginBottom:8 }}>⚠ {title}</div>
+        <div style={{ fontSize:16, fontWeight:700, color:C.navy, marginBottom:8 }} style={{ display:'flex', alignItems:'center', gap:8 }}><Ic n='warning' size={18} color={C.red}/>{title}</div>
         <div style={{ fontSize:13, color:C.text, lineHeight:1.7, marginBottom:22 }}>{body}</div>
         <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
           <button onClick={onCancel} style={{ padding:'8px 16px', borderRadius:8, border:`1px solid ${C.border}`, color:C.muted, background:'transparent', cursor:'pointer', fontSize:13 }}>Cancel</button>
@@ -126,8 +126,8 @@ function AddInstModal({ show, onClose, onSubmit }) {
           </select>
           <div style={{ marginTop:7, fontSize:12, color:C.muted, lineHeight:1.6, padding:'8px 10px', background:env==='prod'?C.blueBg:C.amberBg, borderRadius:7, border:`1px solid ${env==='prod'?C.blueBorder:C.amberBorder}` }}>
             {env==='prod'
-              ? '🚀 Production — institution visible on student login. Full feature access.'
-              : '🔧 Demo mode — for testing/trial. Can activate to PROD when ready.'}
+              ? 'Production — visible to students on login page. Full feature access.'
+              : 'Demo mode — for testing/trial. Can activate to PROD when ready.'}
           </div>
         </div>
         <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
@@ -204,10 +204,10 @@ export default function Admin() {
   if (!isAdmin) return (
     <div style={{ minHeight:'100vh', background:C.bg, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'Inter,sans-serif' }}>
       <div style={{ textAlign:'center' }}>
-        <div style={{ fontSize:40, marginBottom:16 }}>🚫</div>
+        <div style={{ marginBottom:16 }}><Ic n='banstop' size={52} color={C.red}/></div>
         <div style={{ fontSize:18, fontWeight:700, color:C.navy, marginBottom:8 }}>Admin access required</div>
         <div style={{ fontSize:13, color:C.muted, marginBottom:24 }}>Signed in as {email}</div>
-        <button onClick={()=>nav('/dashboard')} style={{ padding:'10px 24px', background:C.blue, border:'none', borderRadius:8, color:'#fff', cursor:'pointer', fontSize:14, fontWeight:600 }}>← Dashboard</button>
+        <button onClick={()=>nav('/dashboard')} style={{ padding:'10px 24px', background:C.blue, border:'none', borderRadius:8, color:'#fff', cursor:'pointer', fontSize:14, fontWeight:600 }} style={{ display:'flex',alignItems:'center',gap:5 }}><Ic n='arrowleft' size={13} color={C.muted}/> Dashboard</button>
       </div>
     </div>
   )
@@ -269,10 +269,10 @@ export default function Admin() {
 
   // ── Sidebar nav ────────────────────────────────────────────────────────────
   const NAV = [
-    { group:'Overview',    items:[{ id:'overview',     icon:'⬜', label:'Dashboard' }] },
-    { group:'Management',  items:[{ id:'users',        icon:'👥', label:'Users' }, { id:'sessions', icon:'🎤', label:'Sessions' }, { id:'institutions', icon:'🏛', label:'Institutions' }] },
-    { group:'Intelligence',items:[{ id:'analytics',    icon:'📊', label:'Analytics' }, { id:'honor', icon:'🛡', label:'Honor Board' }] },
-    { group:'System',      items:[{ id:'system',       icon:'🖥', label:'System' }, { id:'ml', icon:'🤖', label:'ML & LLM' }] },
+    { group:'Overview',    items:[{ id:'overview',     icon:'dashboard', label:'Dashboard' }] },
+    { group:'Management',  items:[{ id:'users',        icon:'users', label:'Users' }, { id:'sessions', icon:'mic', label:'Sessions' }, { id:'institutions', icon:'building', label:'Institutions' }] },
+    { group:'Intelligence',items:[{ id:'analytics',    icon:'barchart', label:'Analytics' }, { id:'honor', icon:'shield', label:'Honor Board' }] },
+    { group:'System',      items:[{ id:'system',       icon:'monitor', label:'System' }, { id:'ml', icon:'cpu', label:'ML & LLM' }] },
   ]
   const pageTitle = { overview:'Dashboard', users:'User Management', sessions:'Sessions', institutions:'Institutions', analytics:'Analytics', honor:'Honor Board', system:'System Status', ml:'ML & LLM Engine' }
 
@@ -326,7 +326,7 @@ export default function Admin() {
               <div style={{ fontSize:10, fontWeight:600, color:C.muted, letterSpacing:1, textTransform:'uppercase', padding:'10px 18px 4px' }}>{group}</div>
               {items.map(({ id, icon, label }) => (
                 <div key={id} className={`adm-nav${page===id?' active-nav':''}`} onClick={() => setPage(id)} style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 18px', cursor:'pointer', borderLeft:`2px solid ${page===id?C.blue:'transparent'}`, color:page===id?C.blue:C.muted, fontSize:13, fontWeight:page===id?600:400, transition:'all 0.15s' }}>
-                  <span style={{ fontSize:14, width:18, textAlign:'center', opacity:0.8 }}>{icon}</span>{label}
+                  <Ic n={icon} size={15} color={page===id?C.blue:C.muted}/>{label}
                 </div>
               ))}
             </div>
@@ -359,7 +359,7 @@ export default function Admin() {
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             {lastUp && <span style={{ fontSize:11, color:C.muted }}>Updated {lastUp}</span>}
             <button onClick={loadAll} disabled={loading} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', background:C.surface2, border:`1px solid ${C.border}`, borderRadius:8, color:C.text, fontSize:13, cursor:'pointer', fontWeight:500 }}>
-              {loading ? <Spinner size={13}/> : '↺'} Refresh
+              {loading ? <Spinner size={13}/> : <Ic n='refresh' size={13} color={C.muted}/>} Refresh
             </button>
             <button onClick={() => nav('/dashboard')} style={{ padding:'7px 14px', background:'transparent', border:`1px solid ${C.border}`, borderRadius:8, color:C.muted, fontSize:13, cursor:'pointer' }}>
               ← Dashboard
@@ -376,17 +376,17 @@ export default function Admin() {
               {/* Stat cards */}
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:14, marginBottom:24 }}>
                 {[
-                  { label:'Total Users',    val: ov.total_users??users.length,     icon:'👥', accent:C.blue,  bg:C.blueBg,  sub:`+${ov.active_7d||0} this week` },
-                  { label:'Voice Sessions', val: (ov.total_sessions??sessions.length)-(ov.hr_sessions??sessions.filter(s=>s.mode==='hr_interview').length), icon:'🎤', accent:C.green, bg:C.greenBg },
-                  { label:'HR Sessions',    val: ov.hr_sessions??sessions.filter(s=>s.mode==='hr_interview').length, icon:'💼', accent:C.amber, bg:C.amberBg },
-                  { label:'Active Today',   val: ov.active_today??0,               icon:'⚡', accent:C.blue,  bg:C.blueBg },
-                  { label:'Avg Score',      val: ov.avg_score ? ov.avg_score+'/100' : '--', icon:'📈', accent:C.green, bg:C.greenBg },
-                  { label:'Avg Honor',      val: ov.avg_honor ?? '--',             icon:'🛡', accent:C.blue,  bg:C.blueBg },
+                  { label:'Total Users',    val: ov.total_users??users.length,     icon:'users', accent:C.blue,  bg:C.blueBg,  sub:`+${ov.active_7d||0} this week` },
+                  { label:'Voice Sessions', val: (ov.total_sessions??sessions.length)-(ov.hr_sessions??sessions.filter(s=>s.mode==='hr_interview').length), icon:'mic', accent:C.green, bg:C.greenBg },
+                  { label:'HR Sessions',    val: ov.hr_sessions??sessions.filter(s=>s.mode==='hr_interview').length, icon:'briefcase', accent:C.amber, bg:C.amberBg },
+                  { label:'Active Today',   val: ov.active_today??0,               icon:'zap', accent:C.blue,  bg:C.blueBg },
+                  { label:'Avg Score',      val: ov.avg_score ? ov.avg_score+'/100' : '--', icon:'trendingup', accent:C.green, bg:C.greenBg },
+                  { label:'Avg Honor',      val: ov.avg_honor ?? '--',             icon:'shield', accent:C.blue,  bg:C.blueBg },
                 ].map(({ label, val, icon, accent, bg, sub }) => (
                   <div key={label} style={{ ...card, position:'relative', overflow:'hidden' }}>
                     <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:10 }}>
                       <div style={{ fontSize:11, fontWeight:600, color:C.muted, textTransform:'uppercase', letterSpacing:0.5 }}>{label}</div>
-                      <div style={{ width:30, height:30, borderRadius:8, background:bg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14 }}>{icon}</div>
+                      <div style={{ width:30, height:30, borderRadius:8, background:bg, display:'flex', alignItems:'center', justifyContent:'center' }}><Ic n={icon} size={16} color={accent}/></div>
                     </div>
                     <div style={{ fontSize:26, fontWeight:800, color:C.navy }}>{val??'--'}</div>
                     {sub && <div style={{ fontSize:11, color:accent, marginTop:4 }}>{sub}</div>}
@@ -435,7 +435,7 @@ export default function Admin() {
               <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap' }}>
                 <input value={userQ} onChange={e=>setUserQ(e.target.value)} placeholder="Search by email or name…" style={{ ...input, flex:1, minWidth:180 }} />
                 <button onClick={()=>downloadCSV([['Name','Email','Institution','Dept','Sessions','Honor','Status','Joined'],...users.map(u=>[u.name,u.email,u.institution_name||'Independent',u.department,u.session_count,parseFloat(u.honor_score||0).toFixed(1),u.is_suspended?'Suspended':'Active',u.created_at])],'mentorix_users.csv')} style={{ ...btnSm, padding:'8px 14px', color:C.green, borderColor:C.greenBorder, background:C.greenBg }}>
-                  ↓ Export CSV
+                  
                 </button>
               </div>
               <div style={card}>
@@ -492,7 +492,7 @@ export default function Admin() {
                   <option value="hr_interview">HR Mode</option>
                 </select>
                 <button onClick={()=>downloadCSV([['Name','Email','Institution','Dept','Mode','Exchanges','Score','Tab Warns','Date'],...sessions.map(s=>[s.user_name,s.user_email||s.email,s.institution_name,s.department,s.mode,s.exchange_count,s.overall_score,s.tab_warnings,s.created_at])],'mentorix_sessions.csv')} style={{ ...btnSm, padding:'8px 14px', color:C.green, borderColor:C.greenBorder, background:C.greenBg }}>
-                  ↓ Export CSV
+                  
                 </button>
               </div>
               <div style={card}>
@@ -543,7 +543,7 @@ export default function Admin() {
 
               {insts.length===0
                 ? <div style={{ ...card, textAlign:'center', padding:48, color:C.muted, fontSize:13 }}>
-                    <div style={{ fontSize:36, marginBottom:12, opacity:0.3 }}>🏛</div>
+                    <div style={{ marginBottom:14 }}><Ic n='building' size={44} color={C.border}/></div>
                     No institutions yet. Add your first deployment.
                   </div>
                 : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))', gap:16 }}>
@@ -568,7 +568,7 @@ export default function Admin() {
                               <option value="prod">PROD — Live / Paid (Enterprise)</option>
                             </select>
                             <div style={{ marginTop:6, fontSize:11, color:isProd?C.blue:C.amber, padding:'6px 10px', background:isProd?C.blueBg:C.amberBg, borderRadius:6, border:`1px solid ${isProd?C.blueBorder:C.amberBorder}` }}>
-                              {isProd ? '🚀 Live — visible to students on login page' : '🔧 Demo — hidden from student login, testing only'}
+                              {isProd ? 'Live — visible to students on login page' : 'Demo — hidden from student login, testing only'}
                             </div>
                           </div>
 
@@ -680,7 +680,7 @@ export default function Admin() {
                 </div>
                 <div style={{ display:'flex', gap:10 }}>
                   <input value={honorQ} onChange={e=>setHonorQ(e.target.value)} placeholder="Search…" style={{ ...input, width:180 }} />
-                  <button onClick={()=>downloadCSV([['Rank','Name','Email','Institution','Dept','Score','Events'],...filtHonor.map((h,i)=>[i+1,h.name,h.email,h.institution_name,h.department,parseFloat(h.total_score||0).toFixed(1),h.event_count])],'mentorix_honor.csv')} style={{ ...btnSm, padding:'8px 14px', color:C.green, borderColor:C.greenBorder, background:C.greenBg }}>↓ Export</button>
+                  <button onClick={()=>downloadCSV([['Rank','Name','Email','Institution','Dept','Score','Events'],...filtHonor.map((h,i)=>[i+1,h.name,h.email,h.institution_name,h.department,parseFloat(h.total_score||0).toFixed(1),h.event_count])],'mentorix_honor.csv')} style={{ ...btnSm, padding:'8px 14px', color:C.green, borderColor:C.greenBorder, background:C.greenBg }}></button>
                 </div>
               </div>
               <div style={card}>
@@ -691,10 +691,10 @@ export default function Admin() {
                       ? <tr><td colSpan={6} style={{ ...td, textAlign:'center', color:C.muted, padding:28 }}>{loading?'Loading…':'No honor data yet'}</td></tr>
                       : filtHonor.map((h,i)=>{
                         const score = parseFloat(h.total_score||100).toFixed(1)
-                        const medals = ['🥇','🥈','🥉']
+                        const medalColors = ['#D97706','#9CA3AF','#B45309']
                         return (
                           <tr key={h.email} className="adm-row">
-                            <td style={{ ...td, textAlign:'center', width:48, fontSize:18 }}>{medals[i]||<span style={{ fontSize:12, color:C.muted }}>#{i+1}</span>}</td>
+                            <td style={{ ...td, textAlign:'center', width:48 }}>{i<3 ? <Ic n='award' size={20} color={medalColors[i]}/> : <span style={{ fontSize:12, color:C.muted }}>#{i+1}</span>}</td>
                             <td style={td}>
                               <div style={{ fontWeight:600, color:C.navy, fontSize:13 }}>{h.name||'--'}</div>
                               <div style={{ fontSize:11, color:C.muted, marginTop:1 }}>{h.email||'--'}</div>
@@ -722,16 +722,16 @@ export default function Admin() {
                 <div style={card}>
                   <div style={{ fontWeight:700, fontSize:14, color:C.navy, marginBottom:16 }}>Service Health</div>
                   {[
-                    { label:'Backend API (Render)',  val:'● Online',   latency:sysLatency, color:C.green },
-                    { label:'PostgreSQL Database',   val:'● Connected', color:C.green },
-                    { label:'Netlify Frontend',      val:'● Online',    color:C.green },
-                    { label:'Groq LLM (Primary)',    val:'● Active',    color:C.green },
-                    { label:'Gemini (Fallback)',      val:'● Active',    color:C.green },
-                    { label:'ElevenLabs TTS',         val:'● Active',    color:C.green },
+                    { label:'Backend API (Render)',  val:'Online', latency:sysLatency, color:C.green },
+                    { label:'PostgreSQL Database',   val:'Connected', color:C.green },
+                    { label:'Netlify Frontend',      val:'Online', color:C.green },
+                    { label:'Groq LLM (Primary)',    val:'Active', color:C.green },
+                    { label:'Gemini (Fallback)',      val:'Active', color:C.green },
+                    { label:'ElevenLabs TTS',         val:'Active', color:C.green },
                   ].map(({ label, val, color, latency }) => (
                     <div key={label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 0', borderBottom:`1px solid ${C.surface2}` }}>
                       <span style={{ fontSize:13 }}>{label}</span>
-                      <span style={{ fontSize:12, fontWeight:600, color }}>{val}{latency ? ` (${latency})` : ''}</span>
+                      <div style={{ display:'flex', alignItems:'center', gap:6 }}><div style={{ width:7, height:7, borderRadius:'50%', background:color, flexShrink:0 }}/><span style={{ fontSize:12, fontWeight:600, color }}>{val}{latency ? ` (${latency})` : ''}</span></div>
                     </div>
                   ))}
                 </div>
@@ -758,7 +758,7 @@ export default function Admin() {
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:8 }}>
                   {['users','voice_sessions','honor_events','assessments','course_completions','institutions'].map(t=>(
                     <div key={t} style={{ background:C.surface2, border:`1px solid ${C.border}`, borderRadius:8, padding:'9px 12px', fontSize:12, color:C.green, fontWeight:500, display:'flex', alignItems:'center', gap:6 }}>
-                      <span style={{ fontSize:8 }}>●</span>{t}
+                      <Ic n='checkcirc' size={13} color={C.green}/>{t}
                     </div>
                   ))}
                 </div>
@@ -806,10 +806,10 @@ export default function Admin() {
                     try {
                       const r=await fetch(`${API}/chat`,{method:'POST',headers:hdr(),body:JSON.stringify({messages:[{role:'user',content:'ping'}],system:'Reply with pong only.',max_tokens:10})})
                       const d=await r.json()
-                      e.target.textContent='✓ LLM OK'; e.target.style.color=C.green
+                      e.target.textContent='Connected'; e.target.style.color=C.green
                       showToast('LLM responded: '+(d.reply||'ok'))
                     } catch {
-                      e.target.textContent='✗ Failed'; e.target.style.color=C.red
+                      e.target.textContent='Failed'; e.target.style.color=C.red
                       showToast('LLM test failed','error')
                     }
                     e.target.disabled=false
