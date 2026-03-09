@@ -9,11 +9,16 @@ const deriveAdmin = (email = '') =>
   email.toLowerCase() === 'admin@mentorix.ai' ||
   email.toLowerCase().startsWith('admin@')
 
+// ── Autofill store (persists email across sessions) ───────────────────────────
+const AUTOFILL_KEY = 'mentorix_autofill'
+const saveAutofill  = (email) => { try { localStorage.setItem(AUTOFILL_KEY, JSON.stringify({ email, ts: Date.now() })) } catch {} }
+const loadAutofill  = () => { try { const v = localStorage.getItem(AUTOFILL_KEY); return v ? JSON.parse(v) : null } catch { return null } }
+
 export default function Login() {
-  const nav        = useNavigate()
-  const loc        = useLocation()
-  const { login }  = useAuth()
-  const toast      = useToast()
+  const nav       = useNavigate()
+  const loc       = useLocation()
+  const { login } = useAuth()
+  useToast()
 
   const [tab,          setTab]          = useState('in')
   const [form,         setForm]         = useState({ email: '', password: '', name: '' })
@@ -25,13 +30,20 @@ export default function Login() {
   const [instLoading,  setInstLoading]  = useState(false)
   const [selectedInst, setSelectedInst] = useState(null)
 
+  // ── Autofill email on mount ───────────────────────────────────────────────
+  useEffect(() => {
+    const saved = loadAutofill()
+    if (saved?.email) setForm(f => ({ ...f, email: saved.email }))
+  }, [])
+
   // ── Handle Google OAuth redirect ──────────────────────────────────────────
   useEffect(() => {
-    const p     = new URLSearchParams(window.location.search)
-    const token = p.get('token')
-    const email = p.get('email')
-    const name  = p.get('name')
-    const err   = p.get('error')
+    const p          = new URLSearchParams(window.location.search)
+    const token      = p.get('token')
+    const email      = p.get('email')
+    const name       = p.get('name')
+    const err        = p.get('error')
+    const hasProfile = p.get('has_profile') === '1'
 
     if (err) {
       setError(err === 'google_cancelled' ? 'Google sign-in was cancelled.' : 'Google sign-in failed.')
@@ -42,9 +54,12 @@ export default function Login() {
     if (token && email) {
       const decoded = name ? decodeURIComponent(name) : email.split('@')[0]
       login({ token, email, name: decoded })
+      saveAutofill(email)
       window.history.replaceState({}, '', '/login')
-      if (deriveAdmin(email)) nav('/admin', { replace: true })
-      else nav(loc.state?.from?.pathname || '/dashboard', { replace: true })
+
+      if (deriveAdmin(email))  { nav('/admin',      { replace: true }); return }
+      if (!hasProfile)         { nav('/onboarding', { replace: true }); return }
+      nav(loc.state?.from?.pathname || '/dashboard', { replace: true })
     }
   }, [])
 
@@ -75,7 +90,8 @@ export default function Login() {
         : await authApi.register(form.email.trim().toLowerCase(), form.password, form.name.trim())
       if (selectedInst) setInstitution(selectedInst.id, selectedInst.name)
       login(data)
-      if (data.is_admin) nav('/admin', { replace: true })
+      saveAutofill(form.email.trim().toLowerCase())
+      if (data.is_admin)    nav('/admin',      { replace: true })
       else if (!data.profile) nav('/onboarding', { replace: true })
       else nav('/dashboard', { replace: true })
     } catch (e) {
@@ -91,10 +107,7 @@ export default function Login() {
     color: '#0F172A', fontSize: 14, fontFamily: 'Inter, sans-serif',
     outline: 'none', boxSizing: 'border-box',
   }
-  const lStyle = {
-    display: 'block', fontSize: 13, fontWeight: 500,
-    color: '#334155', marginBottom: 5,
-  }
+  const lStyle = { display: 'block', fontSize: 13, fontWeight: 500, color: '#334155', marginBottom: 5 }
 
   return (
     <div style={{ minHeight: '100vh', background: '#F8F9FC', display: 'flex', fontFamily: 'Inter, sans-serif' }}>
@@ -102,9 +115,9 @@ export default function Login() {
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         * { box-sizing: border-box; }
         input:focus { border-color: #93C5FD !important; box-shadow: 0 0 0 3px rgba(37,99,235,0.08) !important; outline: none !important; }
-        .tab-btn:hover { color: #0F172A !important; }
+        .tab-btn:hover  { color: #0F172A !important; }
         .inst-row:hover { background: #F8FAFC !important; }
-        .google-btn:hover { border-color: #93C5FD !important; }
+        .google-btn:hover { border-color: #93C5FD !important; background: #FAFBFF !important; }
       `}</style>
 
       {/* ── Left panel ── */}
@@ -112,7 +125,6 @@ export default function Login() {
         flex: 1, minHeight: '100vh', padding: 'clamp(32px,5vw,60px)',
         background: '#0F172A', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
       }}>
-        {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <LogoMark size={30} />
           <span style={{ fontWeight: 700, fontSize: 16, color: '#fff', letterSpacing: '-0.02em' }}>
@@ -120,7 +132,6 @@ export default function Login() {
           </span>
         </div>
 
-        {/* Hero */}
         <div>
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 28,
@@ -130,29 +141,19 @@ export default function Login() {
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#34D399', boxShadow: '0 0 6px #34D399' }} />
             <span style={{ fontSize: 11, fontWeight: 500, color: '#93C5FD', letterSpacing: '0.06em' }}>AI-POWERED MENTORING</span>
           </div>
-
-          <h1 style={{
-            fontSize: 'clamp(28px,3.5vw,44px)', fontWeight: 700, color: '#fff',
-            lineHeight: 1.2, letterSpacing: '-0.025em', marginBottom: 16,
-          }}>
+          <h1 style={{ fontSize: 'clamp(28px,3.5vw,44px)', fontWeight: 700, color: '#fff', lineHeight: 1.2, letterSpacing: '-0.025em', marginBottom: 16 }}>
             Mentor your way<br />to placement
           </h1>
-
           <p style={{ color: '#94A3B8', fontSize: 15, lineHeight: 1.75, maxWidth: 360, marginBottom: 40 }}>
             Voice sessions, honor scoring, and AI assessments — designed for engineering students.
           </p>
-
           {[
             { icon: 'mic',          label: 'AI voice mentoring tailored to your curriculum' },
-            { icon: 'shield-check', label: 'Honor system with institutional transparency' },
+            { icon: 'shield-check', label: 'Honor system with institutional transparency'   },
             { icon: 'bar-chart-2',  label: 'Real-time academic risk and stability analysis' },
           ].map(f => (
             <div key={f.icon} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              <div style={{
-                width: 34, height: 34, borderRadius: 8, flexShrink: 0,
-                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
+              <div style={{ width: 34, height: 34, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Icon name={f.icon} size={16} color="#93C5FD" />
               </div>
               <span style={{ fontSize: 13, color: '#CBD5E1' }}>{f.label}</span>
@@ -192,13 +193,13 @@ export default function Login() {
             ))}
           </div>
 
-          {/* Google OAuth */}
+          {/* Google */}
           <a href={authApi.googleUrl()} className="google-btn" style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
             padding: '10px 16px', borderRadius: 8, marginBottom: 16,
             border: '1px solid #E2E8F0', background: '#fff',
             color: '#334155', fontSize: 14, fontWeight: 500,
-            textDecoration: 'none', transition: 'border-color 0.15s',
+            textDecoration: 'none', transition: 'all 0.15s',
           }}>
             <svg width="18" height="18" viewBox="0 0 18 18">
               <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
@@ -209,38 +210,24 @@ export default function Login() {
             Continue with Google
           </a>
 
-          {/* Divider */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '4px 0 16px' }}>
             <div style={{ flex: 1, height: 1, background: '#E2E8F0' }} />
             <span style={{ fontSize: 12, color: '#CBD5E1' }}>or</span>
             <div style={{ flex: 1, height: 1, background: '#E2E8F0' }} />
           </div>
 
-          {/* Form fields */}
+          {/* Fields */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {tab === 'up' && (
               <div>
                 <label style={lStyle}>Full Name</label>
-                <input
-                  value={form.name}
-                  onChange={e => set('name', e.target.value)}
-                  placeholder="Your full name"
-                  style={iStyle}
-                />
+                <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Your full name" style={iStyle} />
               </div>
             )}
-
             <div>
               <label style={lStyle}>Email Address</label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={e => set('email', e.target.value)}
-                placeholder="you@college.edu"
-                style={iStyle}
-              />
+              <input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="you@college.edu" style={iStyle} autoComplete="email" />
             </div>
-
             <div>
               <label style={lStyle}>Password</label>
               <div style={{ position: 'relative' }}>
@@ -251,11 +238,9 @@ export default function Login() {
                   onKeyDown={e => e.key === 'Enter' && submit()}
                   placeholder="••••••••"
                   style={{ ...iStyle, paddingRight: 42 }}
+                  autoComplete={tab === 'in' ? 'current-password' : 'new-password'}
                 />
-                <button
-                  onClick={() => setShowPw(v => !v)}
-                  style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, padding: 0 }}
-                >
+                <button onClick={() => setShowPw(v => !v)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, padding: 0 }}>
                   <Icon name={showPw ? 'eye-off' : 'eye'} size={16} color="#94A3B8" />
                 </button>
               </div>
@@ -277,14 +262,12 @@ export default function Login() {
             </button>
           </div>
 
-          {/* Error */}
           {error && (
             <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA', fontSize: 13, color: '#DC2626' }}>
               {error}
             </div>
           )}
 
-          {/* Submit */}
           <button onClick={submit} disabled={loading} style={{
             width: '100%', marginTop: 16, padding: '11px', borderRadius: 8, border: 'none',
             cursor: loading ? 'not-allowed' : 'pointer',
@@ -294,10 +277,7 @@ export default function Login() {
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             opacity: loading ? 0.7 : 1, transition: 'opacity 0.2s',
           }}>
-            {loading
-              ? <><Spinner size={15} /> Please wait…</>
-              : (tab === 'in' ? 'Sign In' : 'Create Account')
-            }
+            {loading ? <><Spinner size={15} /> Please wait…</> : (tab === 'in' ? 'Sign In' : 'Create Account')}
           </button>
         </div>
       </div>
@@ -308,41 +288,27 @@ export default function Login() {
           <div style={{ textAlign: 'center', padding: 32 }}><Spinner size={24} /></div>
         ) : (
           <div>
-            <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16 }}>
-              Link your profile to your institution.
-            </p>
+            <p style={{ fontSize: 13, color: '#64748B', marginBottom: 16 }}>Link your profile to your institution.</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto', marginBottom: 16 }}>
               {institutions.map(inst => {
                 const sel = selectedInst?.id === inst.id
                 return (
-                  <div
-                    key={inst.id}
-                    className="inst-row"
-                    onClick={() => setSelectedInst(sel ? null : inst)}
-                    style={{
-                      padding: '12px 14px', borderRadius: 8, cursor: 'pointer',
-                      border: `1px solid ${sel ? '#BFDBFE' : '#E2E8F0'}`,
-                      background: sel ? '#EFF6FF' : '#fff',
-                      display: 'flex', alignItems: 'center', gap: 12,
-                      transition: 'all 0.15s',
-                    }}
-                  >
+                  <div key={inst.id} className="inst-row" onClick={() => setSelectedInst(sel ? null : inst)} style={{
+                    padding: '12px 14px', borderRadius: 8, cursor: 'pointer',
+                    border: `1px solid ${sel ? '#BFDBFE' : '#E2E8F0'}`,
+                    background: sel ? '#EFF6FF' : '#fff',
+                    display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.15s',
+                  }}>
                     <Icon name="building" size={16} color={sel ? '#2563EB' : '#94A3B8'} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: 500, color: '#0F172A' }}>{inst.name}</div>
-                      {inst.contact_email && (
-                        <div style={{ fontSize: 11, color: '#94A3B8' }}>{inst.contact_email}</div>
-                      )}
+                      {inst.contact_email && <div style={{ fontSize: 11, color: '#94A3B8' }}>{inst.contact_email}</div>}
                     </div>
                     {sel && <Icon name="check-circle" size={16} color="#2563EB" />}
                   </div>
                 )
               })}
-              {!institutions.length && (
-                <p style={{ textAlign: 'center', color: '#94A3B8', padding: '24px 0', fontSize: 13 }}>
-                  No institutions found.
-                </p>
-              )}
+              {!institutions.length && <p style={{ textAlign: 'center', color: '#94A3B8', padding: '24px 0', fontSize: 13 }}>No institutions found.</p>}
             </div>
             <Btn onClick={() => setInstModal(false)} fullWidth>
               {selectedInst ? `Continue with ${selectedInst.name}` : 'Skip'}
