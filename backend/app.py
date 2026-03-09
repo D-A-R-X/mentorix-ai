@@ -998,20 +998,19 @@ async def save_voice_session(
         if data.mode == "hr_interview":
             if exchanges < 4:
                 add_honor_event(current_user, "early_session_exit",
-                                f"only {exchanges} exchanges in HR", override_delta=-6)
+                                f"only {exchanges} exchanges in HR", override_delta=-3)
             else:
-                d = +10 if overall >= 80 else (+6 if overall >= 65 else (+3 if overall >= 50 else -2))
+                d = +4 if overall >= 80 else (+3 if overall >= 65 else (+2 if overall >= 50 else -1))
                 add_honor_event(current_user, "hr_session_complete",
                                 f"overall={overall} exchanges={exchanges}", override_delta=d)
             for _ in range(min(tab_warn, 3)):
                 add_honor_event(current_user, "hr_tab_violation", "tab switch during HR")
         else:
             if data.forced_end and exchanges < 3:
-                # Incomplete voice session penalty
                 add_honor_event(current_user, "early_session_exit",
-                                f"voice abandoned after {exchanges} exchanges", override_delta=-4)
+                                f"voice abandoned after {exchanges} exchanges", override_delta=-3)
             elif exchanges >= 3:
-                d = +6 if overall >= 70 else +2
+                d = +2 if overall >= 70 else +1
                 add_honor_event(current_user, "voice_session_complete",
                                 f"overall={overall}", override_delta=d)
             for _ in range(min(tab_warn, 3)):
@@ -1062,16 +1061,17 @@ async def get_user_sessions(current_user: str = Depends(get_current_user)):
 # ── Honor Score System ────────────────────────────────────
 HONOR_RULES = {
     # Static events
-    "course_marked_done":     +3,
-    "scan_complete":          +5,
-    "stability_improvement":  +5,
-    "streak_30_days":         +3,
-    "tab_switch_assessment":  -5,
-    "tab_switch_voice":       -3,
-    "early_session_exit":     -4,
-    "low_scan_quality":       -5,
-    "hr_tab_violation":       -5,
-    "camera_off_violation":   -7,
+    "course_marked_done":     +2,
+    "scan_complete":          +3,
+    "stability_improvement":  +3,
+    "streak_30_days":         +2,
+    "tab_switch_assessment":  -2,
+    "tab_switch_voice":       -1,
+    "early_session_exit":     -3,
+    "low_scan_quality":       -2,
+    "hr_tab_violation":       -2,
+    "camera_off_violation":   -3,
+    "admin_adjustment":        0,
     # Dynamic — override_delta passed at call site
     "voice_session_complete": 0,
     "hr_session_complete":    0,
@@ -1092,6 +1092,9 @@ def add_honor_event(email: str, event_type: str, note: str = "",
     try:
         current = get_honor_score(email)
         new_score = max(0, min(200, current + delta))
+        # Floor: never drop below 0, but log if dramatic drop
+        if delta < -5:
+            logger.warning(f"Large honor penalty: {email} delta={delta} new={new_score}")
         conn = get_connection(); cur = conn.cursor()
         cur.execute("""
             INSERT INTO honor_events (email, event_type, delta, running_score, note, created_at)
