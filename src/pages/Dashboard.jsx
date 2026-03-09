@@ -12,7 +12,36 @@ const NAV = [
 ]
 
 const API = import.meta.env.VITE_API_URL || 'https://mentorix-ai-backend.onrender.com'
+const CHAT_CACHE_KEY = 'mentorix_chat_cache'
+const CACHE_TTL = 24 * 60 * 60 * 1000  // 24 hours
 
+// ── Chat cache helpers ────────────────────────────────────────────────────────
+function loadChatCache() {
+  try {
+    const raw = localStorage.getItem(CHAT_CACHE_KEY)
+    if (!raw) return null
+    const { messages, savedAt } = JSON.parse(raw)
+    if (Date.now() - savedAt > CACHE_TTL) {
+      localStorage.removeItem(CHAT_CACHE_KEY)
+      return null
+    }
+    return messages
+  } catch { return null }
+}
+
+function saveChatCache(messages) {
+  try {
+    localStorage.setItem(CHAT_CACHE_KEY, JSON.stringify({ messages, savedAt: Date.now() }))
+  } catch {}
+}
+
+function clearChatCache() {
+  localStorage.removeItem(CHAT_CACHE_KEY)
+}
+
+const INITIAL_MSG = { role: 'assistant', content: "Hi! I'm Aria, your AI mentor. Ask me anything about academics, placement, or career planning." }
+
+// ── Component ─────────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { user, logout } = useAuth()
   const nav   = useNavigate()
@@ -23,7 +52,9 @@ export default function Dashboard() {
   const [honor,     setHonor]     = useState(null)
   const [courses,   setCourses]   = useState([])
   const [loading,   setLoading]   = useState(true)
-  const [chatMsgs,  setChatMsgs]  = useState([{ role: 'assistant', content: "Hi! I'm Aria, your AI mentor. Ask me anything about academics, placement, or career planning." }])
+
+  // Chat — load from cache or use initial
+  const [chatMsgs,  setChatMsgs]  = useState(() => loadChatCache() || [INITIAL_MSG])
   const [chatInput, setChatInput] = useState('')
   const [chatBusy,  setChatBusy]  = useState(false)
 
@@ -39,11 +70,17 @@ export default function Dashboard() {
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chatMsgs])
 
+  // Save chat to cache whenever messages change (skip initial)
+  useEffect(() => {
+    if (chatMsgs.length > 1) saveChatCache(chatMsgs)
+  }, [chatMsgs])
+
   const sendChat = async () => {
     if (!chatInput.trim() || chatBusy) return
     const msg = chatInput.trim()
     setChatInput('')
-    setChatMsgs(m => [...m, { role: 'user', content: msg }])
+    const updated = [...chatMsgs, { role: 'user', content: msg }]
+    setChatMsgs(updated)
     setChatBusy(true)
     try {
       const res = await fetch(API + '/chat', {
@@ -53,19 +90,24 @@ export default function Dashboard() {
           'Authorization': 'Bearer ' + localStorage.getItem('mentorix_token'),
         },
         body: JSON.stringify({
-          messages: [...chatMsgs.slice(-8), { role: 'user', content: msg }],
-          system: 'You are Aria, a warm and helpful AI academic mentor for ' + (user?.name || 'a student') + ' studying ' + (user?.department || user?.dept || 'engineering') + '. Be concise, encouraging and supportive.',
+          messages: [...updated.slice(-10)],  // last 10 messages for context
+          system: `You are Aria, a warm, encouraging AI academic mentor for ${user?.name || 'a student'} studying ${user?.department || user?.dept || 'engineering'}. Be concise, empathetic, and supportive. Max 3 sentences.`,
           max_tokens: 300,
         }),
       })
-      const data = await res.json()
-      const reply = data.reply || data.content || data.text || 'I could not respond right now. Please try again.'
+      const data  = await res.json()
+      const reply = data.reply || data.content || 'I could not respond right now. Please try again.'
       setChatMsgs(m => [...m, { role: 'assistant', content: reply }])
     } catch {
-      setChatMsgs(m => [...m, { role: 'assistant', content: 'Could not connect to AI. Please try again.' }])
+      setChatMsgs(m => [...m, { role: 'assistant', content: 'Could not connect. Please try again.' }])
     } finally {
       setChatBusy(false)
     }
+  }
+
+  const clearChat = () => {
+    clearChatCache()
+    setChatMsgs([INITIAL_MSG])
   }
 
   const honorScore       = honor?.honor_score ?? honor?.score ?? 0
@@ -180,10 +222,10 @@ export default function Dashboard() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 14, marginBottom: 18 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     {[
-                      { label: 'Voice Session', desc: 'Practice with AI mentor',  icon: 'mic',             to: '/voice',      bg: '#EFF6FF', fg: '#2563EB' },
-                      { label: 'HR Mode',       desc: 'Mock interview prep',       icon: 'briefcase',       to: '/hr',         bg: '#ECFDF5', fg: '#059669' },
-                      { label: 'Assessment',    desc: 'Skill evaluation',          icon: 'clipboard-check', to: '/assessment', bg: '#EFF6FF', fg: '#2563EB' },
-                      { label: 'AI Chat',       desc: 'Ask your mentor',           icon: 'message-circle',  action: () => setTab('chat'), bg: '#ECFDF5', fg: '#059669' },
+                      { label: 'Voice Session', desc: 'Practice with Aria',        icon: 'mic',             to: '/voice',      bg: '#EFF6FF', fg: '#2563EB' },
+                      { label: 'HR Mode',       desc: 'Mock interview prep',        icon: 'briefcase',       to: '/hr',         bg: '#ECFDF5', fg: '#059669' },
+                      { label: 'Assessment',    desc: 'Skill evaluation',           icon: 'clipboard-check', to: '/assessment', bg: '#EFF6FF', fg: '#2563EB' },
+                      { label: 'AI Chat',       desc: 'Ask Aria anything',          icon: 'message-circle',  action: () => setTab('chat'), bg: '#ECFDF5', fg: '#059669' },
                     ].map(a => (
                       <button key={a.label} className="action-card" onClick={() => a.to ? nav(a.to) : a.action()} style={{
                         padding: 18, borderRadius: 12, cursor: 'pointer', textAlign: 'left',
@@ -294,39 +336,73 @@ export default function Dashboard() {
             {tab === 'chat' && (
               <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 150px)' }}>
                 <Card style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0 }}>
-                  <div style={{ padding: '14px 20px', borderBottom: '1px solid #F1F4F9', display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#EFF6FF', border: '1px solid #BFDBFE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Icon name="message-circle" size={15} color="#2563EB" />
+
+                  {/* Chat header */}
+                  <div style={{ padding: '13px 18px', borderBottom: '1px solid #F1F4F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,#EFF6FF,#ECFDF5)', border: '1px solid #BFDBFE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Icon name="message-circle" size={16} color="#2563EB" />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>Aria — AI Mentor</div>
+                        <div style={{ fontSize: 11, color: '#059669', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#059669' }} /> Online
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>Aria — AI Mentor</div>
-                      <div style={{ fontSize: 11, color: '#059669' }}>● Online</div>
+                    <div style={{ display: 'flex', align: 'center', gap: 8 }}>
+                      {chatMsgs.length > 1 && (
+                        <span style={{ fontSize: 11, color: '#CBD5E1' }}>
+                          Chat saved for 24h
+                        </span>
+                      )}
+                      <button onClick={clearChat} title="Clear chat" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#CBD5E1', padding: '2px 6px', borderRadius: 4, fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Icon name="trash-2" size={13} color="#CBD5E1" /> Clear
+                      </button>
                     </div>
                   </div>
+
+                  {/* Messages */}
                   <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {chatMsgs.map((m, i) => (
                       <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                        <div style={{ maxWidth: '75%', padding: '11px 15px', borderRadius: 12, background: m.role === 'user' ? '#2563EB' : '#F8F9FC', color: m.role === 'user' ? '#fff' : '#334155', fontSize: 14, lineHeight: 1.6, border: m.role === 'user' ? 'none' : '1px solid #E2E8F0' }}>
+                        {m.role === 'assistant' && (
+                          <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#EFF6FF', border: '1px solid #BFDBFE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginRight: 8, marginTop: 2 }}>
+                            <Icon name="message-circle" size={13} color="#2563EB" />
+                          </div>
+                        )}
+                        <div style={{ maxWidth: '72%', padding: '11px 15px', borderRadius: m.role === 'user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px', background: m.role === 'user' ? '#2563EB' : '#F8F9FC', color: m.role === 'user' ? '#fff' : '#334155', fontSize: 14, lineHeight: 1.6, border: m.role === 'user' ? 'none' : '1px solid #E2E8F0' }}>
                           {m.content}
                         </div>
                       </div>
                     ))}
                     {chatBusy && (
-                      <div style={{ display: 'flex' }}>
-                        <div style={{ padding: '11px 15px', background: '#F8F9FC', borderRadius: 12, border: '1px solid #E2E8F0', display: 'flex', gap: 4, alignItems: 'center' }}>
-                          <Spinner size={14} />
-                          <span style={{ fontSize: 12, color: '#94A3B8' }}>Aria is typing…</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#EFF6FF', border: '1px solid #BFDBFE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Icon name="message-circle" size={13} color="#2563EB" />
+                        </div>
+                        <div style={{ padding: '11px 15px', background: '#F8F9FC', borderRadius: '12px 12px 12px 2px', border: '1px solid #E2E8F0', display: 'flex', gap: 5, alignItems: 'center' }}>
+                          {[0,1,2].map(i => (
+                            <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: '#CBD5E1', animation: `pulse 1.2s infinite ${i * 0.2}s` }} />
+                          ))}
                         </div>
                       </div>
                     )}
                     <div ref={chatEndRef} />
                   </div>
+
+                  {/* Input */}
                   <div style={{ padding: '12px 16px', borderTop: '1px solid #F1F4F9', display: 'flex', gap: 8 }}>
-                    <input value={chatInput} onChange={e => setChatInput(e.target.value)}
+                    <input
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendChat()}
                       placeholder="Ask Aria anything…"
-                      style={{ flex: 1, padding: '10px 14px', background: '#F8F9FC', border: '1px solid #E2E8F0', borderRadius: 8, color: '#0F172A', fontSize: 14, fontFamily: 'Inter, sans-serif' }} />
-                    <Btn onClick={sendChat} loading={chatBusy}><Icon name="send" size={14} color="#fff" /></Btn>
+                      style={{ flex: 1, padding: '10px 14px', background: '#F8F9FC', border: '1px solid #E2E8F0', borderRadius: 8, color: '#0F172A', fontSize: 14, fontFamily: 'Inter, sans-serif' }}
+                    />
+                    <Btn onClick={sendChat} loading={chatBusy}>
+                      <Icon name="send" size={14} color="#fff" />
+                    </Btn>
                   </div>
                 </Card>
               </div>
