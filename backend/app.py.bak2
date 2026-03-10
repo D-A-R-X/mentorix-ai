@@ -2283,15 +2283,6 @@ _emotion_model    = _bytez_sdk.model("ehcalabres/wav2vec2-lg-xlsr-en-speech-emot
 _emotion_fallback = _bytez_sdk.model("superb/wav2vec2-base-superb-er")
 _embed_model      = _bytez_sdk.model("BAAI/bge-small-en-v1.5")
 
-def _bytez_run(model, input_data):
-    """
-    Bytez SDK .run() returns a Generator — call next() to get the result.
-    Returns object with .error and .output attributes.
-    Wraps in try/except so any generator exhaustion is handled cleanly.
-    """
-    gen = model.run(input_data)
-    return next(gen)
-
 class _PostureReq(_BM):
     image_b64: str          # base64 data URL from canvas snapshot
 
@@ -2324,7 +2315,7 @@ async def bytez_posture(req: _PostureReq, _u=Depends(get_current_user)):
     Returns: { posture: int, source: "bytez" | "geometric" }
     """
     try:
-        result = _bytez_run(_posture_model, req.image_b64)
+        result = _posture_model.run(req.image_b64)
         if result.error:
             raise Exception(result.error)
         output = result.output
@@ -2374,7 +2365,7 @@ async def bytez_emotion(req: _EmotionReq, _u=Depends(get_current_user)):
 
     # Primary Bytez model
     try:
-        result = _bytez_run(_emotion_model, req.audio_b64)
+        result = _emotion_model.run(req.audio_b64)
         if not result.error:
             parsed = parse(result.output, "bytez")
             if parsed:
@@ -2384,7 +2375,7 @@ async def bytez_emotion(req: _EmotionReq, _u=Depends(get_current_user)):
 
     # Fallback Bytez model
     try:
-        result = _bytez_run(_emotion_fallback, req.audio_b64)
+        result = _emotion_fallback.run(req.audio_b64)
         if not result.error:
             parsed = parse(result.output, "bytez_fb")
             if parsed:
@@ -2403,8 +2394,8 @@ async def bytez_similarity(req: _SimilarityReq, _u=Depends(get_current_user)):
     Returns: { score: int (30-95), source: "bytez" | "llm_fallback" }
     """
     try:
-        r1 = _bytez_run(_embed_model, req.candidate)
-        r2 = _bytez_run(_embed_model, req.ideal)
+        r1 = _embed_model.run(req.candidate)
+        r2 = _embed_model.run(req.ideal)
         if r1.error or r2.error:
             raise Exception(f"embed error: {r1.error or r2.error}")
         emb1 = _flatten(r1.output)
