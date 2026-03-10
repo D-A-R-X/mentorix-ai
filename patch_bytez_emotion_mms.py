@@ -13,7 +13,7 @@ if not os.path.exists(path):
     print(f"ERROR: {path} not found.")
     sys.exit(1)
 
-with open(path) as f:
+with open(path, encoding="utf-8") as f:
     c = f.read()
 
 # Find and replace the /bytez/emotion route
@@ -115,7 +115,7 @@ else:
     c = c.rstrip() + "\n\n" + NEW_EMOTION
     print("✓ Appended /bytez/emotion (MMS version)")
 
-with open(path, "w") as f:
+with open(path, "w", encoding="utf-8") as f:
     f.write(c)
 
 print("✅ /bytez/emotion updated to use YeBhoneLin10/MMS")

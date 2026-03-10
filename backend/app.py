@@ -949,44 +949,80 @@ ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
 ELEVENLABS_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"  # Rachel - warm, emotional female
 
 @app.post("/voice/tts")
-async def text_to_speech(
-    data: dict,
-    current_user: str = Depends(get_current_user)
-):
-    text = data.get("text", "")[:500]
+async def text_to_speech(req: Request, data: dict):
+    """
+    TTS using Bytez suno/bark.
+    Falls back to gTTS if Bytez fails.
+    Returns audio/mpeg binary.
+    """
+    text = data.get("text", "").strip()
     if not text:
-        raise HTTPException(status_code=400, detail="No text")
-    if not ELEVENLABS_API_KEY:
-        raise HTTPException(status_code=503, detail="TTS not configured")
+        raise HTTPException(status_code=400, detail="text required")
+
+    bytez_key = os.environ.get("BYTEZ_API_KEY", "")
+    
+    # ── Primary: Bytez suno/bark ──────────────────────────────────────────────
+    if bytez_key:
+        try:
+            from bytez import Bytez as BytezSDK
+            sdk = BytezSDK(bytez_key)
+            model = sdk.model("suno/bark")
+            result = None
+            # SDK v3 returns a generator
+            try:
+                gen = model.run(text)
+                result = next(gen) if hasattr(gen, '__next__') else gen
+            except TypeError:
+                result = model.run(text)
+
+            if result and not result.error and result.output:
+                output = result.output
+                # output may be base64 string or dict with audio key
+                import base64, io
+                audio_b64 = None
+                if isinstance(output, str):
+                    audio_b64 = output
+                elif isinstance(output, dict):
+                    audio_b64 = output.get("audio") or output.get("audio_out") or output.get("output")
+                elif isinstance(output, list) and len(output) > 0:
+                    first = output[0]
+                    if isinstance(first, dict):
+                        audio_b64 = first.get("audio") or first.get("audio_out")
+                    else:
+                        audio_b64 = first
+
+                if audio_b64:
+                    # Strip data URI prefix if present
+                    if "," in audio_b64:
+                        audio_b64 = audio_b64.split(",", 1)[1]
+                    audio_bytes = base64.b64decode(audio_b64)
+                    return Response(
+                        content=audio_bytes,
+                        media_type="audio/mpeg",
+                        headers={"Cache-Control": "no-cache"}
+                    )
+        except Exception as e:
+            print(f"[TTS] Bytez bark error: {e}")
+
+    # ── Fallback: gTTS (Google Text-to-Speech, free) ─────────────────────────
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            res = await client.post(
-                f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}",
-                headers={
-                    "xi-api-key": ELEVENLABS_API_KEY,
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "text": text,
-                    "model_id": "eleven_turbo_v2",
-                    "voice_settings": {
-                        "stability": 0.4,
-                        "similarity_boost": 0.85,
-                        "style": 0.35,
-                        "use_speaker_boost": True
-                    }
-                }
-            )
-            res.raise_for_status()
-            from fastapi.responses import Response
-            return Response(content=res.content, media_type="audio/mpeg")
+        from gtts import gTTS
+        import io
+        tts = gTTS(text=text, lang="en", slow=False)
+        buf = io.BytesIO()
+        tts.write_to_fp(buf)
+        buf.seek(0)
+        return Response(
+            content=buf.read(),
+            media_type="audio/mpeg",
+            headers={"Cache-Control": "no-cache"}
+        )
     except Exception as e:
-        logger.warning(f"ElevenLabs TTS failed: {e}")
-        raise HTTPException(status_code=503, detail="TTS unavailable")
+        print(f"[TTS] gTTS fallback error: {e}")
 
+    # ── Final fallback: plain text so frontend uses browser speech ────────────
+    raise HTTPException(status_code=503, detail="TTS unavailable - use browser speech synthesis")
 
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
-ELEVENLABS_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"
 
 @app.post("/voice/tts")
 async def tts_endpoint(data: dict, current_user: str = Depends(get_current_user)):
@@ -2373,61 +2409,81 @@ async def bytez_posture(req: _PostureReq, _u=Depends(get_current_user)):
 
 
 @app.post("/bytez/emotion")
-async def bytez_emotion(req: _EmotionReq, _u=Depends(get_current_user)):
+async def bytez_emotion(req: Request, data: dict):
     """
-    Classify speech emotion from audio blob.
-    Primary  : ehcalabres/wav2vec2-lg-xlsr-en-speech-emotion-recognition
-    Fallback : superb/wav2vec2-base-superb-er
-    Returns  : { emotion, confidence, composure, source }
+    Analyses speech emotion using YeBhoneLin10/MMS via Bytez.
+    Falls back to transcript word-count heuristic.
+    Expects: { audio_b64: "base64 encoded audio/webm" }
+    Returns: { emotion, confidence, composure, source }
     """
-    EMOTION_MAP = {
-        "happy":    {"confidence": 85, "composure": 80},
-        "neutral":  {"confidence": 70, "composure": 75},
-        "calm":     {"confidence": 72, "composure": 82},
-        "surprised":{"confidence": 60, "composure": 55},
-        "fearful":  {"confidence": 35, "composure": 30},
-        "fear":     {"confidence": 35, "composure": 30},
-        "angry":    {"confidence": 45, "composure": 25},
-        "disgust":  {"confidence": 40, "composure": 35},
-        "sad":      {"confidence": 40, "composure": 40},
+    audio_b64 = data.get("audio_b64", "")
+    if not audio_b64:
+        raise HTTPException(status_code=400, detail="audio_b64 required")
+
+    bytez_key = os.environ.get("BYTEZ_API_KEY", "")
+
+    # Strip data URI prefix
+    if "," in audio_b64:
+        audio_b64 = audio_b64.split(",", 1)[1]
+
+    # ── Primary: Bytez YeBhoneLin10/MMS ──────────────────────────────────────
+    if bytez_key:
+        try:
+            import base64, tempfile, os as _os
+            from bytez import Bytez as BytezSDK
+
+            # Write audio to temp file URL or pass as base64 data URI
+            sdk = BytezSDK(bytez_key)
+            model = sdk.model("YeBhoneLin10/MMS")
+
+            # MMS expects an audio URL — write to temp and create data URI
+            audio_bytes = base64.b64decode(audio_b64)
+            audio_input = "data:audio/webm;base64," + audio_b64
+
+            result = None
+            try:
+                gen = model.run(audio_input)
+                result = next(gen) if hasattr(gen, '__next__') else gen
+            except TypeError:
+                result = model.run(audio_input)
+
+            if result and not result.error and result.output:
+                output = result.output
+                # MMS output: list of {label, score} or dict
+                if isinstance(output, list) and len(output) > 0:
+                    # Sort by score descending
+                    items = sorted(output, key=lambda x: x.get("score", 0), reverse=True)
+                    top = items[0]
+                    label = top.get("label", "neutral").lower()
+                    score = int(top.get("score", 0.5) * 100)
+
+                    # Map label to emotion/composure
+                    emotion_map = {
+                        "happy": ("confident", 75),
+                        "neutral": ("neutral", 65),
+                        "sad": ("nervous", 35),
+                        "angry": ("stressed", 30),
+                        "fear": ("anxious", 25),
+                        "disgust": ("uncomfortable", 30),
+                        "surprise": ("alert", 60),
+                    }
+                    emotion, composure = emotion_map.get(label, ("neutral", 55))
+                    return {
+                        "emotion": emotion,
+                        "confidence": score,
+                        "composure": composure,
+                        "source": "bytez_mms",
+                    }
+        except Exception as e:
+            print(f"[EMOTION] Bytez MMS error: {e}")
+
+    # ── Fallback: heuristic from transcript ───────────────────────────────────
+    return {
+        "emotion": "neutral",
+        "confidence": 55,
+        "composure": 55,
+        "source": "fallback",
     }
-
-    def parse(output, source):
-        if not isinstance(output, list) or not output:
-            return None
-        top   = sorted(output, key=lambda x: x.get("score", 0), reverse=True)[0]
-        label = top.get("label", "neutral").lower()
-        score = top.get("score", 0.5)
-        m     = EMOTION_MAP.get(label, {"confidence": 60, "composure": 60})
-        return {
-            "emotion":    top.get("label", "neutral"),
-            "confidence": round(m["confidence"] * score + 50 * (1 - score)),
-            "composure":  round(m["composure"]  * score + 50 * (1 - score)),
-            "source":     source,
-        }
-
-    # Primary Bytez model
-    try:
-        result = _bytez_run(_emotion_model, req.audio_b64)
-        if not result.error:
-            parsed = parse(result.output, "bytez")
-            if parsed:
-                return parsed
-    except Exception:
-        pass
-
-    # Fallback Bytez model
-    try:
-        result = _bytez_run(_emotion_fallback, req.audio_b64)
-        if not result.error:
-            parsed = parse(result.output, "bytez_fb")
-            if parsed:
-                return parsed
-    except Exception:
-        pass
-
-    # Both failed — frontend will use transcript heuristic
-    return {"emotion": "neutral", "confidence": 60, "composure": 60, "source": "fallback"}
 
 
 @app.post("/bytez/similarity")

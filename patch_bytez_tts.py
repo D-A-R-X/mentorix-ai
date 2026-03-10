@@ -16,7 +16,7 @@ if not os.path.exists(path):
     print(f"ERROR: {path} not found. Run from project root.")
     sys.exit(1)
 
-with open(path) as f:
+with open(path, encoding="utf-8") as f:
     c = f.read()
 
 # ── 1. Find the existing /voice/tts endpoint and replace it ──────────────────
@@ -126,21 +126,21 @@ else:
 # ── 2. Add gTTS to requirements if not present ───────────────────────────────
 req_path = "backend/requirements.txt"
 if os.path.exists(req_path):
-    with open(req_path) as f:
+    with open(req_path, encoding="utf-8") as f:
         reqs = f.read()
     added = []
     for pkg in ["gtts", "bytez"]:
         if pkg not in reqs:
             reqs = reqs.rstrip() + f"\n{pkg}\n"
             added.append(pkg)
-    with open(req_path, "w") as f:
+    with open(req_path, "w", encoding="utf-8") as f:
         f.write(reqs)
     if added:
         print(f"✓ Added to requirements.txt: {', '.join(added)}")
     else:
         print("✓ requirements.txt already has needed packages")
 
-with open(path, "w") as f:
+with open(path, "w", encoding="utf-8") as f:
     f.write(c)
 
 print("\n✅ Done. Deploy to Render to activate Bytez TTS.")
