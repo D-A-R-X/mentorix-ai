@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LogoMark, ScoreRing, Icon, Btn, Card, Badge, Spinner, useToast } from '../components/ui/index.jsx'
-import { useAuth } from '../hooks/useAuth.jsx'
+import { useAuth, cleanDisplayName } from '../hooks/useAuth.jsx'
 import { userApi, coursesApi } from '../lib/api'
 
 const NAV = [
@@ -44,6 +44,8 @@ const INITIAL_MSG = { role: 'assistant', content: "Hi! I'm Aria, your AI mentor.
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { user, logout } = useAuth()
+  // Clean Google name: extract quoted nickname, strip number prefix
+  const cleanName = cleanDisplayName(user?.name || '')
   const nav   = useNavigate()
   const toast = useToast()
 
@@ -161,10 +163,10 @@ export default function Dashboard() {
         <div style={{ marginTop: 'auto', padding: '16px 20px', borderTop: '1px solid #F1F4F9' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#EFF6FF', border: '1px solid #BFDBFE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#2563EB', fontSize: 13, flexShrink: 0 }}>
-              {(user?.name || 'U')[0].toUpperCase()}
+              {(cleanName || 'U')[0].toUpperCase()}
             </div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>{user?.name || 'User'}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>{cleanName || 'User'}</div>
               <div style={{ fontSize: 11, color: '#94A3B8' }}>{dept || 'Student'}</div>
             </div>
           </div>
@@ -179,7 +181,7 @@ export default function Dashboard() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em', marginBottom: 2 }}>
-              {tab === 'overview' ? `Good day, ${(user?.name || '').split(' ')[0] || 'there'}` : NAV.find(n => n.id === tab)?.label}
+              {tab === 'overview' ? `Good day, ${cleanName || 'there'}` : NAV.find(n => n.id === tab)?.label}
             </h1>
             <p style={{ margin: 0, fontSize: 13, color: '#94A3B8' }}>
               {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
