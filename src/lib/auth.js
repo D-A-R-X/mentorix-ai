@@ -1,3 +1,4 @@
+// src/lib/auth.js
 // ── Token keys ────────────────────────────────────────────────────────────────
 const KEYS = {
   token:          'mentorix_token',
@@ -8,11 +9,33 @@ const KEYS = {
   institution:    'mentorix_institution_name',
 }
 
+// ── Clean name helper (mirrors useAuth cleanDisplayName) ─────────────────────
+function cleanName(raw) {
+  if (!raw) return 'User'
+  // Extract quoted nickname e.g. 721922104118 "Surya" → Surya
+  const quoted = raw.match(/"([^"]+)"/)
+  if (quoted) return quoted[1].trim()
+  // Strip leading number
+  const stripped = raw.replace(/^\d+\s*/, '').trim()
+  // If leftover is ALL CAPS multi-word (dept name), return User
+  if (/^[A-Z\s]+$/.test(stripped) && stripped.split(' ').length > 2) return 'User'
+  return stripped || 'User'
+}
+
 // ── Getters ───────────────────────────────────────────────────────────────────
 export const getToken         = () => localStorage.getItem(KEYS.token)
 export const getEmail         = () => localStorage.getItem(KEYS.email)
-export const getName          = () => localStorage.getItem(KEYS.name) || 'User'
-export const getProfile       = () => { try { return JSON.parse(localStorage.getItem(KEYS.profile) || 'null') } catch { return null } }
+export const getName          = () => {
+  // Prefer display_name from profile
+  try {
+    const profile = JSON.parse(localStorage.getItem(KEYS.profile) || 'null')
+    if (profile?.display_name) return profile.display_name
+  } catch {}
+  return cleanName(localStorage.getItem(KEYS.name) || 'User')
+}
+export const getProfile       = () => {
+  try { return JSON.parse(localStorage.getItem(KEYS.profile) || 'null') } catch { return null }
+}
 export const getInstitutionId = () => localStorage.getItem(KEYS.institution_id)
 export const isLoggedIn       = () => !!getToken()
 

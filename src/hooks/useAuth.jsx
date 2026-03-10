@@ -8,10 +8,27 @@ import { userApi } from '../lib/api'
 
 const AuthCtx = createContext(null)
 
-// Derive admin status from email (fallback if backend didn't return is_admin)
-const deriveAdmin = (email = '') =>
-  email.toLowerCase() === 'admin@mentorix.ai' ||
-  email.toLowerCase().startsWith('admin@')
+// ── Clean name: remove leading numbers, quoted words, extra whitespace ─────────
+// Handles: '721922104118 "Surya" COMPUTER SCIENCE' → 'Surya'
+// Handles: '721922104118 Surya' → 'Surya'
+// Handles: '"Surya"' → 'Surya'
+export function cleanDisplayName(raw) {
+  if (!raw) return 'User'
+  let name = raw
+
+  // 1. If profile has a quoted nickname like "Surya" — extract it (highest priority)
+  const quoted = name.match(/"([^"]+)"/)
+  if (quoted) return quoted[1].trim()
+
+  // 2. Strip leading number (Google sub / phone number at start)
+  name = name.replace(/^\d+\s*/, '').trim()
+
+  // 3. If what remains looks like an ALL CAPS department name, it means
+  //    the real name was the quoted part (already handled above) — return fallback
+  if (/^[A-Z\s]+$/.test(name) && name.split(' ').length > 2) return 'User'
+
+  return name || 'User'
+}
 
 export function AuthProvider({ children }) {
   const [ready,      setReady]      = useState(false)
@@ -23,20 +40,21 @@ export function AuthProvider({ children }) {
     const token = getToken()
     if (token) {
       const cached = getProfile()
-      const email  = getEmail()
-      const base   = cached || { name: getName(), email }
-      // Restore is_admin from cached profile or derive from email
-      const is_admin = base.is_admin ?? deriveAdmin(email)
-      setUser({ ...base, is_admin })
+      // Prefer display_name from onboarding, fallback to cleaned Google name
+      const rawName = cached?.display_name || getName()
+      const cleanName = cleanDisplayName(rawName)
+      setUser(cached ? { ...cached, name: cleanName } : { name: cleanName, email: getEmail() })
       setIsLoggedIn(true)
-      // Background refresh
+
+      // Best-effort background refresh
       userApi.sessions()
         .then(d => {
           if (d?.profile) {
+            const rawN = d.profile.display_name || getName()
             const merged = {
-              name: getName(), email: getEmail(),
+              name: cleanDisplayName(rawN),
+              email: getEmail(),
               ...d.profile,
-              is_admin: d.profile.is_admin ?? is_admin,
             }
             storeProfile(merged)
             setUser(merged)
@@ -47,17 +65,18 @@ export function AuthProvider({ children }) {
     setReady(true)
   }, [])
 
-  // ── Called after /auth/login or /auth/register ────────────────────────────
-  // Backend returns: { token, name, email, is_admin }
+  // ── Called after /auth/login or /auth/google callback ────────────────────
   const login = (data) => {
-    const tok      = data.token || data.access_token
-    const is_admin = data.is_admin ?? deriveAdmin(data.email)
-    setSession({ token: tok, email: data.email, name: data.name })
+    const tok = data.token || data.access_token
+    const rawName = data.profile?.display_name || data.name || ''
+    const cleanName = cleanDisplayName(rawName)
+
+    setSession({ token: tok, email: data.email, name: cleanName })
     if (data.institution_id) setInstitution(data.institution_id, data.institution_name || '')
+
     const userObj = {
-      name:     data.name,
-      email:    data.email,
-      is_admin,
+      name: cleanName,
+      email: data.email,
       ...(data.profile || {}),
     }
     storeProfile(userObj)
@@ -77,10 +96,11 @@ export function AuthProvider({ children }) {
     try {
       const d = await userApi.sessions()
       if (d?.profile) {
+        const rawN = d.profile.display_name || getName()
         const merged = {
-          name: getName(), email: getEmail(),
+          name: cleanDisplayName(rawN),
+          email: getEmail(),
           ...d.profile,
-          is_admin: d.profile.is_admin ?? deriveAdmin(getEmail()),
         }
         storeProfile(merged)
         setUser(merged)
