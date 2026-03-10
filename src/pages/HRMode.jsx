@@ -105,7 +105,7 @@ async function analysePostureFromCanvas(canvas) {
 
 function geometricPostureScore(canvas) {
   try {
-    const ctx = canvas.getContext('2d'), w = canvas.width, h = canvas.height
+    const ctx = canvas.getContext('2d', {willReadFrequently:true}), w = canvas.width, h = canvas.height
     const d = ctx.getImageData(0, 0, w, h).data
     let light = 0, count = 0
     for (let y = 0; y < h * 0.35; y++) for (let x = w * 0.25; x < w * 0.75; x++) {
@@ -161,21 +161,24 @@ function StreamingText({ text, streamKey }) {
 }
 
 // ── Score parsing from text (old hr-mode logic) ───────────────────────────────
-function parseScoresFromAnswer(answer, aiReply, prevScores, qNum) {
+function parseScoresFromAnswer(answer, aiReply, prevScores) {
   const wordCount = answer.split(' ').length
-  const hasDetail = wordCount > 20, isVague = wordCount < 8
+  const hasDetail = wordCount > 20, hasGoodDetail = wordCount > 35, isVague = wordCount < 8
   const isConfident = !/i think|maybe|not sure|i guess|probably/i.test(answer)
-  const isChallenged = /(incorrect|wrong|that's not)/i.test(aiReply)
-  const isCorrect = /(correct|good point|well done|exactly)/i.test(aiReply)
-  const s = { ...prevScores }
-  if (qNum <= 4) {
-    const base = s.tech || 50
-    s.tech = Math.min(100, Math.max(0, base + (isCorrect?8:0) + (isChallenged?-6:0) + (hasDetail?4:0) + (isVague?-4:0)))
+  const isChallenged = /(incorrect|wrong|that.s not|not quite|unclear)/i.test(aiReply)
+  const isCorrect = /(correct|good point|well done|exactly|that.s right|good answer)/i.test(aiReply)
+  const s = {
+    tech: prevScores.tech || 45,
+    comm: prevScores.comm || 45,
+    crit: prevScores.crit || 40,
+    pres: prevScores.pres || 50,
+    lead: prevScores.lead || 40,
   }
-  s.comm = Math.min(100, Math.max(0, (s.comm||50) + (hasDetail?5:0) + (isVague?-5:0) + (isConfident?4:0)))
-  s.pres = Math.min(100, Math.max(0, (s.pres||60) + (isChallenged&&!isVague?5:0) + (isChallenged&&isVague?-5:0)))
-  if (qNum > 4) s.crit = Math.min(100, Math.max(0, (s.crit||50) + (isCorrect?7:0) + (hasDetail?5:0) + (isVague?-6:0)))
-  if (qNum > 6) s.lead = Math.min(100, Math.max(0, (s.lead||50) + (hasDetail?6:0) + (isConfident?5:0) + (isVague?-4:0)))
+  s.tech = Math.min(100,Math.max(10,s.tech+(isCorrect?10:0)+(isChallenged?-7:0)+(hasGoodDetail?6:hasDetail?3:0)+(isVague?-5:0)+(isConfident?2:0)))
+  s.comm = Math.min(100,Math.max(10,s.comm+(hasGoodDetail?8:hasDetail?5:0)+(isVague?-6:0)+(isConfident?4:-2)))
+  s.crit = Math.min(100,Math.max(10,s.crit+(isCorrect?8:0)+(hasGoodDetail?7:hasDetail?4:0)+(isVague?-7:0)+(isChallenged?-4:0)))
+  s.pres = Math.min(100,Math.max(10,s.pres+(isChallenged&&!isVague?6:0)+(isChallenged&&isVague?-6:0)+(isConfident?3:-2)+(hasDetail?2:0)))
+  s.lead = Math.min(100,Math.max(10,s.lead+(hasGoodDetail?7:hasDetail?4:0)+(isConfident?5:-3)+(isVague?-5:0)+(isCorrect?4:0)))
   return s
 }
 
@@ -186,8 +189,12 @@ export default function HRMode() {
   const nav = useNavigate()
   const { user } = useAuth()
 
-  // Derive clean name — strip numbers, trim
-  const cleanName = (user?.name || 'Candidate').replace(/^\d+\s*/, '').replace(/"[^"]*"\s*/g, '').trim() || 'Candidate'
+  // Derive clean name: extract quoted nickname if present, else strip number prefix
+  const _rawName = user?.name || 'Candidate'
+  const _quoted = _rawName.match(/"([^"]+)"/)
+  const cleanName = _quoted
+    ? _quoted[1].trim()
+    : _rawName.replace(/^\d+\s*/, '').trim().split(/\s+/).slice(0,2).join(' ') || 'Candidate'
   const dept = user?.department || user?.dept || 'CSE'
   const year = user?.year || '3'
 
@@ -262,7 +269,7 @@ export default function HRMode() {
       postureTimerRef.current = setInterval(async () => {
         setEyeContact(e => Math.max(50, Math.min(100, e + (Math.random()>0.6?1:-1)*Math.floor(Math.random()*3))))
         if (videoRef.current && canvasRef.current) {
-          const cv = canvasRef.current, ctx = cv.getContext('2d')
+          const cv = canvasRef.current, ctx = cv.getContext('2d', {willReadFrequently:true})
           cv.width = videoRef.current.videoWidth||320; cv.height = videoRef.current.videoHeight||240
           ctx.drawImage(videoRef.current, 0, 0, cv.width, cv.height)
           const result = await analysePostureFromCanvas(cv)
@@ -362,6 +369,23 @@ ${tscript}`
         tab_warnings: tabViolRef.current, exchange_count: exchanges,
         scores: sc, overall_score: overall, mode:'hr_interview', forced_end: forced,
       })})
+      // Save recommended courses to backend so Dashboard courses tab shows them
+      const weakDims = Object.entries(sc).filter(([,v])=>v>0&&v<65).sort((a,b)=>a[1]-b[1]).slice(0,2).map(([k])=>k)
+      const COURSE_LIST = {
+        tech:[{title:'Data Structures & Algorithms',platform:'NPTEL',url:'https://nptel.ac.in/courses/106/106/106106127/'},{title:'CS Essentials — CS50',platform:'edX',url:'https://www.edx.org/cs50'}],
+        comm:[{title:'English Communication Skills',platform:'Coursera',url:'https://www.coursera.org/learn/english-communication'},{title:'Public Speaking',platform:'Udemy',url:'https://www.udemy.com/course/public-speaking-complete-course/'}],
+        crit:[{title:'Problem Solving & Critical Thinking',platform:'Coursera',url:'https://www.coursera.org/learn/critical-thinking-problem-solving'}],
+        pres:[{title:'Confidence Under Pressure',platform:'Udemy',url:'https://www.udemy.com/course/confidence-mastery/'},{title:'Interview Prep Masterclass',platform:'Coursera',url:'https://www.coursera.org/learn/interview-preparation'}],
+        lead:[{title:'Leadership for Engineers',platform:'Coursera',url:'https://www.coursera.org/specializations/leadership-development-for-engineers'}],
+      }
+      const toSave = weakDims.flatMap(k => (COURSE_LIST[k]||[]).slice(0,1))
+      for (const course of toSave) {
+        try {
+          await fetch(`${API}/courses/recommend`, { method:'POST', headers:hdr(), body:JSON.stringify({
+            course_title: course.title, provider: course.platform, course_url: course.url, track: 'hr_recommended', status: 'in_progress'
+          })})
+        } catch {}
+      }
     } catch { setReport('Report generation failed. Session data has been saved.') }
   }, [stopListening, stopCamera, stopTimer, clearSilence, clearCdown, cleanName, dept, year])
 
@@ -511,7 +535,7 @@ ${emotionData?`Detected emotion: ${emotionData.emotion}, confidence: ${emotionDa
       const clean = reply.replace('[[END_INTERVIEW]]','').trim()
 
       // Update scores from answer analysis
-      const newScores = parseScoresFromAnswer(answer, reply, scoresRef.current, currentQNum)
+      const newScores = parseScoresFromAnswer(answer, reply, scoresRef.current)
       // Blend Bytez similarity into tech/crit
       if (bytezSim !== null) {
         newScores.tech = Math.round((newScores.tech*0.6) + (bytezSim*0.4))
@@ -658,7 +682,13 @@ ${emotionData?`Detected emotion: ${emotionData.emotion}, confidence: ${emotionDa
           <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,padding:28,marginBottom:20,boxShadow:'0 2px 12px rgba(0,0,0,0.04)'}}>
             <div style={{fontSize:14,fontWeight:700,color:C.navy,marginBottom:16}}>Detailed Report</div>
             {report
-              ? <pre style={{fontFamily:'monospace',fontSize:12,color:C.text,whiteSpace:'pre-wrap',lineHeight:2,margin:0}}>{report}</pre>
+              ? <div style={{fontSize:13,color:C.text,lineHeight:2,margin:0,fontFamily:'Inter,sans-serif'}}>
+                  {report.split('\n').map((line,i) => {
+                    const formatted = line.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/^• /,'')
+                    const isBullet = line.startsWith('•') || line.startsWith('* ')
+                    return <div key={i} style={{paddingLeft:isBullet?12:0,marginBottom:isBullet?2:4,borderLeft:isBullet?`2px solid ${C.blueBorder}`:'none',paddingLeft:isBullet?10:0}} dangerouslySetInnerHTML={{__html:formatted||'&nbsp;'}}/>
+                  })}
+                </div>
               : <div style={{display:'flex',alignItems:'center',gap:8,color:C.muted,fontSize:13}}><div style={{width:12,height:12,border:`2px solid ${C.border}`,borderTopColor:C.blue,borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/> Generating report…</div>
             }
           </div>
