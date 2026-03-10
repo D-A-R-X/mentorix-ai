@@ -1,3 +1,4 @@
+// HRMode.jsx
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AmbientBg, LogoMark, Btn, Icon, Badge, Card, ScoreRing } from '../components/ui/index.jsx'
