@@ -11,7 +11,8 @@ if not os.path.exists(path):
     print(f"ERROR: {path} not found")
     sys.exit(1)
 
-with open(path) as f:
+# FIX: open with utf-8 encoding; replace undecodable bytes rather than crashing
+with open(path, encoding='utf-8', errors='replace') as f:
     c = f.read()
 
 if "/courses/recommend" in c:
@@ -70,6 +71,7 @@ else:
     c = c.rstrip() + "\n" + NEW_ROUTE
     print("✓ /courses/recommend appended")
 
-with open(path, 'w') as f:
+# FIX: write back with utf-8 encoding to preserve all characters correctly
+with open(path, 'w', encoding='utf-8') as f:
     f.write(c)
 print("✅ backend/app.py patched")
