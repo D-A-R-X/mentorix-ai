@@ -871,55 +871,7 @@ export default function Admin() {
 
           {/* ════ ML & LLM ════ */}
           {page==='ml' && (
-            <div style={{ animation:'adm-up 0.3s ease' }}>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
-                <div style={card}>
-                  <div style={{ fontWeight:700, fontSize:14, color:C.navy, marginBottom:16 }}>ML Model</div>
-                  {[
-                    { label:'Version',    val:'risk_model_v1' },
-                    { label:'Algorithm',  val:'Random Forest' },
-                    { label:'Predictions',val:String(sessions.length||0) },
-                    { label:'Updated',    val:'2025-01-01' },
-                    { label:'Status',     val:'Active', color:C.green },
-                  ].map(({ label,val,color })=>(
-                    <div key={label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 0', borderBottom:`1px solid ${C.surface2}` }}>
-                      <span style={{ fontSize:13 }}>{label}</span>
-                      <span style={{ fontSize:12, fontWeight:600, color:color||C.navy }}>{val}</span>
-                    </div>
-                  ))}
-                  <button onClick={()=>showToast('Retraining requires a dataset upload. Contact CRONIX engineering.','error')} style={{ width:'100%', marginTop:14, padding:'9px', background:C.surface2, border:`1px solid ${C.border}`, borderRadius:8, fontSize:12, color:C.text, cursor:'pointer', fontWeight:500 }}>Retrain Model</button>
-                </div>
-                <div style={card}>
-                  <div style={{ fontWeight:700, fontSize:14, color:C.navy, marginBottom:16 }}>LLM Engine</div>
-                  {[
-                    { label:'Primary LLM',   val:'Groq · llama-3.1-8b' },
-                    { label:'Fallback LLM',  val:'Gemini 2.0 Flash' },
-                    { label:'STT',           val:'Web Speech API' },
-                    { label:'TTS',           val:'ElevenLabs Rachel' },
-                    { label:'TTS Fallback',  val:'Browser SpeechSynthesis' },
-                    { label:'Aria Persona',  val:'Active (Voice + Chat)' },
-                  ].map(({ label,val })=>(
-                    <div key={label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 0', borderBottom:`1px solid ${C.surface2}` }}>
-                      <span style={{ fontSize:13 }}>{label}</span>
-                      <span style={{ fontSize:12, fontWeight:600, color:C.navy }}>{val}</span>
-                    </div>
-                  ))}
-                  <button onClick={async e=>{
-                    e.target.textContent='Testing…'; e.target.disabled=true
-                    try {
-                      const r=await fetch(`${API}/chat`,{method:'POST',headers:hdr(),body:JSON.stringify({messages:[{role:'user',content:'ping'}],system:'Reply with pong only.',max_tokens:10})})
-                      const d=await r.json()
-                      e.target.textContent='Connected'; e.target.style.color=C.green
-                      showToast('LLM responded: '+(d.reply||'ok'))
-                    } catch {
-                      e.target.textContent='Failed'; e.target.style.color=C.red
-                      showToast('LLM test failed','error')
-                    }
-                    e.target.disabled=false
-                  }} style={{ width:'100%', marginTop:14, padding:'9px', background:C.blueBg, border:`1px solid ${C.blueBorder}`, borderRadius:8, fontSize:12, color:C.blue, cursor:'pointer', fontWeight:500 }}>Test LLM Endpoint</button>
-                </div>
-              </div>
-            </div>
+            <MLLLMPanel sessions={sessions} api={API} hdr={hdr} showToast={showToast} C={C} card={card} />
           )}
 
           {/* ════ AI COMMAND ════ */}
@@ -935,6 +887,156 @@ export default function Admin() {
       {/* Modals */}
       <Modal show={!!delModal} title={delModal?.title||''} body={delModal?.body||''} onCancel={()=>setDelModal(null)} onConfirm={delModal?.onConfirm} />
       <AddInstModal show={addInst} onClose={()=>setAddInst(false)} onSubmit={addInstitution} />
+    </div>
+  )
+}
+
+// ── MLLLMPanel — Live LLM stats for admin ─────────────────────────────────────
+function MLLLMPanel({ sessions, api, hdr, showToast, C, card }) {
+  const [stats, setStats] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [testResult, setTestResult] = useState(null)
+
+  useEffect(() => {
+    fetch(`${api}/admin/llm-stats`, { headers: hdr() })
+      .then(r => r.json()).then(setStats).catch(() => setStats(null))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const MODEL_COLORS = {
+    'llama-3.1-8b-instant':    '#2563EB',
+    'llama-3.3-70b-versatile': '#059669',
+    'mixtral-8x7b-32768':      '#D97706',
+    'gemini-1.5-flash':        '#7C3AED',
+  }
+
+  const testLLM = async () => {
+    setTestResult('testing')
+    try {
+      const t0 = Date.now()
+      const r = await fetch(`${api}/chat`, {
+        method: 'POST', headers: hdr(),
+        body: JSON.stringify({ messages:[{role:'user',content:'ping'}], system:'Reply pong only.', max_tokens:10 })
+      })
+      const d = await r.json()
+      const ms = Date.now() - t0
+      setTestResult({ ok: true, ms, reply: d.reply || 'ok' })
+      showToast(`LLM OK — ${ms}ms`)
+    } catch (e) {
+      setTestResult({ ok: false, error: String(e) })
+      showToast('LLM test failed', 'error')
+    }
+  }
+
+  return (
+    <div style={{ animation:'adm-up 0.3s ease' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
+
+        {/* ML Model card */}
+        <div style={card}>
+          <div style={{ fontWeight:700, fontSize:14, color:C.navy, marginBottom:16 }}>ML Risk Model</div>
+          {[
+            { label:'Version',     val:'risk_model_v1' },
+            { label:'Algorithm',   val:'Random Forest' },
+            { label:'Predictions', val:String(sessions?.length||0) },
+            { label:'Status',      val:'Active', color:C.green },
+          ].map(({label,val,color})=>(
+            <div key={label} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 0',borderBottom:`1px solid ${C.surface2}`}}>
+              <span style={{fontSize:13}}>{label}</span>
+              <span style={{fontSize:12,fontWeight:600,color:color||C.navy}}>{val}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* LLM config card */}
+        <div style={card}>
+          <div style={{ fontWeight:700, fontSize:14, color:C.navy, marginBottom:16 }}>LLM Chain Config</div>
+          {[
+            { label:'1st (fastest)', val:'llama-3.1-8b-instant', color:MODEL_COLORS['llama-3.1-8b-instant'] },
+            { label:'2nd (quality)', val:'llama-3.3-70b-versatile', color:MODEL_COLORS['llama-3.3-70b-versatile'] },
+            { label:'3rd (backup)',  val:'mixtral-8x7b-32768', color:MODEL_COLORS['mixtral-8x7b-32768'] },
+            { label:'4th (final)',   val:'gemini-1.5-flash', color:MODEL_COLORS['gemini-1.5-flash'] },
+            { label:'TTS Primary',   val:'Browser SpeechSynthesis (instant)' },
+            { label:'TTS Enhance',   val:'Bytez suno/bark → gTTS' },
+            { label:'STT',           val:'Web Speech API' },
+          ].map(({label,val,color})=>(
+            <div key={label} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 0',borderBottom:`1px solid ${C.surface2}`}}>
+              <span style={{fontSize:12,color:C.muted}}>{label}</span>
+              <span style={{fontSize:11,fontWeight:600,color:color||C.navy,maxWidth:200,textAlign:'right'}}>{val}</span>
+            </div>
+          ))}
+          <button onClick={testLLM} disabled={testResult==='testing'} style={{
+            width:'100%', marginTop:14, padding:'9px',
+            background: testResult?.ok ? '#ECFDF5' : testResult?.ok===false ? '#FEF2F2' : C.blueBg,
+            border:`1px solid ${testResult?.ok ? C.green : testResult?.ok===false ? C.red : C.border}`,
+            borderRadius:8, fontSize:12,
+            color: testResult?.ok ? C.green : testResult?.ok===false ? C.red : C.blue,
+            cursor:'pointer', fontWeight:500
+          }}>
+            {testResult==='testing' ? 'Testing...' : testResult?.ok ? `✓ OK (${testResult.ms}ms)` : testResult?.ok===false ? '✗ Failed' : 'Test LLM Speed'}
+          </button>
+        </div>
+      </div>
+
+      {/* Live stats card */}
+      <div style={card}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+          <div style={{fontWeight:700,fontSize:14,color:C.navy}}>Live LLM Activity</div>
+          {loading && <span style={{fontSize:11,color:C.muted}}>Loading...</span>}
+          {stats && (
+            <div style={{display:'flex',gap:16}}>
+              {[
+                {label:'Total Calls', val:stats.calls},
+                {label:'Success Rate', val:`${stats.success_rate}%`, color:stats.success_rate>95?C.green:C.amber},
+                {label:'Avg Latency', val:`${stats.avg_latency_ms}ms`, color:stats.avg_latency_ms<500?C.green:stats.avg_latency_ms<1500?C.amber:C.red},
+              ].map(({label,val,color})=>(
+                <div key={label} style={{textAlign:'center'}}>
+                  <div style={{fontSize:18,fontWeight:700,color:color||C.navy}}>{val}</div>
+                  <div style={{fontSize:10,color:C.muted}}>{label}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Model usage breakdown */}
+        {stats?.model_usage && Object.keys(stats.model_usage).length > 0 && (
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:12,fontWeight:600,color:C.text,marginBottom:8}}>Model Usage</div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:8}}>
+              {Object.entries(stats.model_usage).map(([model,data])=>(
+                <div key={model} style={{background:C.surface2,borderRadius:8,padding:'10px 12px',border:`1px solid ${C.border}`}}>
+                  <div style={{fontSize:11,fontWeight:700,color:MODEL_COLORS[model]||C.navy,marginBottom:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{model}</div>
+                  <div style={{fontSize:11,color:C.text}}>{data.calls} calls · {data.success_rate}% ok · {data.avg_latency}ms avg</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recent calls log */}
+        {stats?.recent?.length > 0 && (
+          <div>
+            <div style={{fontSize:12,fontWeight:600,color:C.text,marginBottom:8}}>Recent Calls</div>
+            <div style={{maxHeight:240,overflowY:'auto'}}>
+              {stats.recent.slice(0,15).map((e,i)=>(
+                <div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 0',borderBottom:`1px solid ${C.surface2}`,fontSize:11}}>
+                  <div style={{width:6,height:6,borderRadius:'50%',background:e.success?C.green:C.red,flexShrink:0}}/>
+                  <span style={{color:MODEL_COLORS[e.model]||C.navy,fontWeight:600,minWidth:180}}>{e.model}</span>
+                  <span style={{color:e.latency_ms<500?C.green:e.latency_ms<1500?C.amber:C.red,minWidth:60}}>{e.latency_ms}ms</span>
+                  <span style={{color:C.muted,minWidth:50}}>{e.tokens}tok</span>
+                  <span style={{color:C.muted}}>{e.time}</span>
+                  {!e.success && <span style={{color:C.red,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{e.error}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!loading && (!stats || stats.calls === 0) && (
+          <div style={{textAlign:'center',padding:'24px 0',color:C.muted,fontSize:13}}>No LLM calls recorded yet. Start a Voice Session or HR Mode to see activity.</div>
+        )}
+      </div>
     </div>
   )
 }

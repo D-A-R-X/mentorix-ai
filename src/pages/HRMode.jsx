@@ -189,12 +189,22 @@ export default function HRMode() {
   const nav = useNavigate()
   const { user } = useAuth()
 
-  // Derive clean name: extract quoted nickname if present, else strip number prefix
+  // Derive clean name from raw Google/stored name
+  // Raw can be: '721922104118 "Surya" COMPUTER SCIENCE AND ENGINEERING'
+  // or: '"Surya" CSE' or: 'Surya Kumar' or: 'Surya'
   const _rawName = user?.name || 'Candidate'
-  const _quoted = _rawName.match(/"([^"]+)"/)
-  const cleanName = _quoted
-    ? _quoted[1].trim()
-    : _rawName.replace(/^\d+\s*/, '').trim().split(/\s+/).slice(0,2).join(' ') || 'Candidate'
+  const cleanName = (() => {
+    // 1. Extract quoted nickname first — highest priority
+    const quoted = _rawName.match(/"([^"]+)"/)
+    if (quoted) return quoted[1].trim()
+    // 2. Strip leading number prefix (Google phone/roll number)
+    const stripped = _rawName.replace(/^\d+\s*/, '').trim()
+    // 3. Take only first 2 words (avoid 'COMPUTER SCIENCE AND ENGINEERING')
+    const words = stripped.split(/\s+/).filter(Boolean)
+    // 4. Filter out all-caps department words (len>3, all uppercase)
+    const nameWords = words.filter(w => !(w.length > 3 && w === w.toUpperCase()))
+    return nameWords.slice(0, 2).join(' ') || 'Candidate'
+  })()
   const dept = user?.department || user?.dept || 'CSE'
   const year = user?.year || '3'
 
@@ -313,19 +323,76 @@ export default function HRMode() {
   const speak = useCallback(async (text, onEnd) => {
     setSpeaking(true); stopListening()
     const done = () => { setSpeaking(false); onEnd?.() }
-    try {
-      const r = await fetch(`${API}/voice/tts`, { method:'POST', headers:hdr(), body:JSON.stringify({ text }) })
-      if (!r.ok) throw new Error()
-      const blob = await r.blob(), url = URL.createObjectURL(blob)
-      const audio = new Audio(url)
-      audio.onended = () => { URL.revokeObjectURL(url); done() }
-      audio.play().catch(() => done())
-    } catch {
-      const u = new SpeechSynthesisUtterance(text)
-      u.rate=0.92; u.pitch=1.05; u.lang='en-IN'; u.onend=done
-      speechSynthesis.speak(u)
+
+    // ── Primary: browser speechSynthesis (instant, no server needed) ─────────
+    // Start speaking immediately so there's zero delay
+    let browserUtterance = null
+    const browserSpeak = () => {
+      browserUtterance = new SpeechSynthesisUtterance(text)
+      browserUtterance.rate = 0.93; browserUtterance.pitch = 1.05
+      browserUtterance.lang = 'en-IN'
+      // Pick a good female voice if available
+      const voices = speechSynthesis.getVoices()
+      const femaleVoice = voices.find(v =>
+        (v.name.includes('Female') || v.name.includes('Zira') ||
+         v.name.includes('Samantha') || v.name.includes('Google UK English Female') ||
+         v.name.includes('Microsoft Zira')) && v.lang.startsWith('en')
+      )
+      if (femaleVoice) browserUtterance.voice = femaleVoice
+      browserUtterance.onend = done
+      browserUtterance.onerror = done
+      speechSynthesis.speak(browserUtterance)
     }
-  }, [stopListening])
+
+    // ── Enhancement: try TTS in background, swap if ready within 2s ──────────
+    // Only swap if audio loads faster than speech duration estimate
+    const estDuration = Math.max(1500, text.split(' ').length * 350) // ~350ms/word
+    let swapped = false
+    let ttsTimer = null
+
+    try {
+      const controller = new AbortController()
+      ttsTimer = setTimeout(() => controller.abort(), 2000) // 2s max wait
+
+      const r = await fetch(`${API}/voice/tts`, {
+        method: 'POST', headers: hdr(),
+        body: JSON.stringify({ text }),
+        signal: controller.signal
+      })
+      clearTimeout(ttsTimer)
+
+      if (r.ok) {
+        const blob = await r.blob()
+        const url = URL.createObjectURL(blob)
+        const audio = new Audio(url)
+
+        // Only swap to TTS audio if browser speech hasn't finished yet
+        if (speaking) {
+          swapped = true
+          speechSynthesis.cancel() // stop browser speech
+          audio.onended = () => { URL.revokeObjectURL(url); done() }
+          audio.onerror = done
+          audio.play().catch(done)
+        } else {
+          URL.revokeObjectURL(url) // too late, browser speech already done
+        }
+      }
+    } catch {
+      clearTimeout(ttsTimer)
+      // TTS failed or timed out — browser speech is already running, do nothing
+    }
+
+    // If TTS never swapped, fall back to browser speech (already started)
+    if (!swapped) {
+      // voices may not be loaded yet on first call
+      if (speechSynthesis.getVoices().length === 0) {
+        speechSynthesis.addEventListener('voiceschanged', () => {
+          if (!speechSynthesis.speaking) browserSpeak()
+        }, { once: true })
+      }
+      if (!speechSynthesis.speaking) browserSpeak()
+    }
+  }, [stopListening, speaking])
 
   // ── End session ──────────────────────────────────────────────────────────────
   const endSession = useCallback(async (forced=false) => {

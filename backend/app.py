@@ -2280,6 +2280,17 @@ Write a clear 1-3 sentence plain English summary of what was done and the outcom
         "warning":    plan.get("warning", ""),
     }
 
+
+@app.get("/admin/llm-stats")
+def admin_llm_stats(admin: str = Depends(require_admin)):
+    """Return LLM usage stats and recent call log for admin panel."""
+    try:
+        from llm_client import get_llm_stats
+        return get_llm_stats()
+    except Exception as e:
+        return {"calls": 0, "success_rate": 100, "avg_latency_ms": 0,
+                "model_usage": {}, "recent": [], "error": str(e)}
+
 @app.get("/admin/logs")
 def admin_logs(admin: str = Depends(require_admin)):
     return {"logs": list(reversed(_admin_log_buffer))}
