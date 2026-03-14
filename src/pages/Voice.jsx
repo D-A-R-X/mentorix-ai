@@ -79,6 +79,7 @@ export default function Voice() {
   const nav       = useNavigate()
   const toast     = useToast()
   const token     = localStorage.getItem('mentorix_token') || ''
+  const hdr = () => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` })
 
   const [phase,      setPhase]      = useState('intro')
   const [qIdx,       setQIdx]       = useState(0)
@@ -150,7 +151,7 @@ export default function Voice() {
     }
     document.addEventListener('visibilitychange', fn)
     return () => document.removeEventListener('visibilitychange', fn)
-  }, []) // eslint-disable-line
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Page close ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -178,7 +179,7 @@ export default function Voice() {
         speak("I haven't heard from you — that's okay! Let me save your progress.", () => doEndSession(false))
       }
     }, INACTIVITY_MS)
-  }, []) // eslint-disable-line
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── SPEAK — browser speechSynthesis only, zero network calls ─────────────
   // Removed server TTS entirely: it caused delays, race conditions, and
@@ -312,7 +313,7 @@ export default function Voice() {
       const timeout = setTimeout(() => ctrl.abort(), 12000) // 12s hard cap
       const res = await fetch(API + '/chat', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        headers: hdr(),
         body: JSON.stringify({
           messages: [{ role: 'user', content: ans || '(no answer given)' }],
           system: `You are Aria, a warm female AI mentor. A student just answered: "${QUESTIONS[qIdxRef.current]}". Give a 1-2 sentence warm reaction with one gentle tip. Under 35 words.`,
@@ -341,7 +342,7 @@ export default function Voice() {
       if (nextIdx >= totalQ) doEndSession(false, newAll)
       else { setQIdx(nextIdx); qIdxRef.current = nextIdx; doAskQuestion(nextIdx) }
     }
-  }, [inputMode, typed, speak, token, totalQ]) // eslint-disable-line
+  }, [inputMode, typed, speak, token, totalQ]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Ask question ──────────────────────────────────────────────────────────
   const doAskQuestion = useCallback((idx) => {
@@ -397,7 +398,7 @@ export default function Voice() {
         transcript: all.map(x => `Q: ${x.question}\nA: ${x.answer}`).join('\n\n'),
         scores: {}, overall, exchange_count: all.length, mode: 'voice',
       })
-    } catch (e) { console.error(e) }
+    } catch { /* save failed silently — session data may be lost on network error */ }
     finally { if (!unmountedRef.current) setSaving(false) }
   }, [killRecog, stopAllAudio, speak, totalQ])
 

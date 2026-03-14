@@ -540,7 +540,7 @@ ${tscript}`
     const opening = `Good day. I am Aria, Senior HR Executive at Mentorix AI. I will be assessing your technical knowledge in ${dept}, your communication, problem solving ability, and how you perform under pressure. There are no second chances in this session. Answer clearly and concisely. Let's begin. ${cleanName}, tell me about yourself — your background, your department, and why you chose ${dept}.`
     setConvo([{ role:'ai', text:opening }]); setLatestMsgIdx(0); setStreamKey(k=>k+1)
     convoRef.current = [{ role:'ai', text:opening }]
-    await speak(opening, () => { if(activeRef.current) startListening() })
+    speak(opening, () => { if(activeRef.current) startListening() })
   }
 
   // ── Submit answer ─────────────────────────────────────────────────────────────
@@ -592,10 +592,13 @@ ${bytezSim!==null?`Note: answer quality similarity score = ${bytezSim}/100. Fact
 ${emotionData?`Detected emotion: ${emotionData.emotion}, confidence: ${emotionData.confidence}/100. Factor into pressure score.`:''}`
 
     try {
-      const r = await fetch(`${API}/chat`, { method:'POST', headers:hdr(), body:JSON.stringify({
+      const chatCtrl = new AbortController()
+      const chatTimeout = setTimeout(() => chatCtrl.abort(), 12000)
+      const r = await fetch(`${API}/chat`, { method:'POST', headers:hdr(), signal:chatCtrl.signal, body:JSON.stringify({
         messages: newConvo.map(m => ({ role:m.role==='ai'?'assistant':'user', content:m.text })),
         system: sysPrompt, max_tokens: 300
       })})
+      clearTimeout(chatTimeout)
       const d = await r.json()
       let reply = d.reply || "Elaborate on that."
       const isEnd = reply.includes('[[END_INTERVIEW]]')
@@ -619,15 +622,15 @@ ${emotionData?`Detected emotion: ${emotionData.emotion}, confidence: ${emotionDa
       setLatestMsgIdx(newIdx); setStreamKey(k=>k+1)
       setLoading(false); submittingRef.current = false
 
-      if (isEnd) { await speak(clean, () => endSession(false)) }
-      else { await speak(clean, () => { if(activeRef.current) startListening() }) }
+      if (isEnd) { speak(clean, () => endSession(false)) }
+      else { speak(clean, () => { if(activeRef.current) startListening() }) }
     } catch {
       const fb = "Your connection seems unstable. Please repeat your answer."
       const newIdx = newConvo.length
       setConvo(c => [...c, { role:'ai', text:fb }]); convoRef.current = [...newConvo, { role:'ai', text:fb }]
       setLatestMsgIdx(newIdx); setStreamKey(k=>k+1)
       setLoading(false); submittingRef.current = false
-      await speak(fb, () => { if(activeRef.current) startListening() })
+      speak(fb, () => { if(activeRef.current) startListening() })
     }
   }, [stopListening, clearSilence, clearCdown, speak, endSession, getAudioBlob, cleanName, dept, year])
 
@@ -753,7 +756,7 @@ ${emotionData?`Detected emotion: ${emotionData.emotion}, confidence: ${emotionDa
                   {report.split('\n').map((line,i) => {
                     const formatted = line.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/^• /,'')
                     const isBullet = line.startsWith('•') || line.startsWith('* ')
-                    return <div key={i} style={{paddingLeft:isBullet?12:0,marginBottom:isBullet?2:4,borderLeft:isBullet?`2px solid ${C.blueBorder}`:'none',paddingLeft:isBullet?10:0}} dangerouslySetInnerHTML={{__html:formatted||'&nbsp;'}}/>
+                    return <div key={i} style={{paddingLeft:isBullet?10:0,marginBottom:isBullet?2:4,borderLeft:isBullet?`2px solid ${C.blueBorder}`:'none'}} dangerouslySetInnerHTML={{__html:formatted||'&nbsp;'}}/>
                   })}
                 </div>
               : <div style={{display:'flex',alignItems:'center',gap:8,color:C.muted,fontSize:13}}><div style={{width:12,height:12,border:`2px solid ${C.border}`,borderTopColor:C.blue,borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/> Generating report…</div>
