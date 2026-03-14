@@ -100,7 +100,6 @@ export default function Voice() {
   const phaseRef     = useRef('intro')
   const txRef        = useRef('')
   const qIdxRef      = useRef(0)
-  const ttsAudioRef  = useRef(null)   // ← instance-scoped (was a module-level leak)
   const speakingRef  = useRef(false)  // ← mirrors speaking for async closures
   const unmountedRef = useRef(false)  // ← guards all state after navigation
 
@@ -117,12 +116,6 @@ export default function Voice() {
     return () => {
       unmountedRef.current = true
       speakingRef.current  = false
-      // Stop TTS audio
-      if (ttsAudioRef.current) {
-        try { ttsAudioRef.current.pause(); ttsAudioRef.current.src = '' } catch {}
-        ttsAudioRef.current = null
-      }
-      // THIS is what stops Aria talking after navigation
       try { window.speechSynthesis.cancel() } catch {}
       // Stop mic
       if (recogRef.current) {
@@ -140,10 +133,6 @@ export default function Voice() {
 
   // ── stopAllAudio — mid-session use ────────────────────────────────────────
   const stopAllAudio = useCallback(() => {
-    if (ttsAudioRef.current) {
-      try { ttsAudioRef.current.pause(); ttsAudioRef.current.src = '' } catch {}
-      ttsAudioRef.current = null
-    }
     try { window.speechSynthesis.cancel() } catch {}
     speakingRef.current = false
   }, [])
@@ -191,13 +180,9 @@ export default function Voice() {
     }, INACTIVITY_MS)
   }, []) // eslint-disable-line
 
-  // ── SPEAK ─────────────────────────────────────────────────────────────────
-  // KEY FIXES vs original:
-  // 1. Browser speech fires INSTANTLY — zero server wait (was: waited for server)
-  // 2. speakingRef used in async block (not stale React state)
-  // 3. 2s AbortController on TTS — never blocks when Render is cold-starting
-  // 4. unmountedRef guards all callbacks
-  // 5. ttsAudioRef is instance-scoped (was: module _ttsAudio = memory leak)
+  // ── SPEAK — browser speechSynthesis only, zero network calls ─────────────
+  // Removed server TTS entirely: it caused delays, race conditions, and
+  // double-speaking bugs. Browser speech is instant, free, and reliable.
   const speak = useCallback((text, onDone) => {
     if (unmountedRef.current) return
     stopAllAudio()
@@ -209,8 +194,7 @@ export default function Voice() {
       if (!unmountedRef.current) { setAriaIsNew(false); onDone?.() }
     }
 
-    // ── Step 1: browser speech starts RIGHT NOW, no waiting ───────────────
-    const browserSpeak = () => {
+    const go = () => {
       if (unmountedRef.current) return
       window.speechSynthesis.cancel()
       const utt    = new SpeechSynthesisUtterance(text)
@@ -230,45 +214,13 @@ export default function Voice() {
       window.speechSynthesis.speak(utt)
     }
 
+    // voices may not be loaded on very first call
     if (window.speechSynthesis.getVoices().length === 0) {
-      window.speechSynthesis.addEventListener('voiceschanged', browserSpeak, { once: true })
+      window.speechSynthesis.addEventListener('voiceschanged', go, { once: true })
     } else {
-      browserSpeak()
+      go()
     }
-
-    // ── Step 2: server TTS in background — swap in if arrives within 2s ───
-    ;(async () => {
-      try {
-        const ctrl    = new AbortController()
-        const timeout = setTimeout(() => ctrl.abort(), 2000) // 2s max — never blocks
-        const res = await fetch(API + '/voice/tts', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-          body:    JSON.stringify({ text }),
-          signal:  ctrl.signal,
-        })
-        clearTimeout(timeout)
-
-        if (res.ok && speakingRef.current && !unmountedRef.current) {
-          const blob  = await res.blob()
-          const url   = URL.createObjectURL(blob)
-          const audio = new Audio(url)
-
-          if (speakingRef.current && !unmountedRef.current) {
-            window.speechSynthesis.cancel() // swap out browser speech
-            ttsAudioRef.current = audio
-            audio.onended = () => { URL.revokeObjectURL(url); ttsAudioRef.current = null; done() }
-            audio.onerror = () => { URL.revokeObjectURL(url); ttsAudioRef.current = null; done() }
-            audio.play().catch(done)
-          } else {
-            URL.revokeObjectURL(url) // already done, discard
-          }
-        }
-      } catch {
-        // TTS timed out or failed — browser speech is already running
-      }
-    })()
-  }, [stopAllAudio, token])
+  }, [stopAllAudio])
 
   const killRecog = useCallback(() => {
     if (!recogRef.current) return
