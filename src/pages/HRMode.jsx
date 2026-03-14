@@ -320,79 +320,46 @@ export default function HRMode() {
   }, [clearSilence])
 
   // ── TTS ──────────────────────────────────────────────────────────────────────
-  const speak = useCallback(async (text, onEnd) => {
-    setSpeaking(true); stopListening()
-    const done = () => { setSpeaking(false); onEnd?.() }
+  // speakingRef mirrors the speaking state so async closures always see current value
+  const speakingRef = useRef(false)
+  useEffect(() => { speakingRef.current = speaking }, [speaking])
 
-    // ── Primary: browser speechSynthesis (instant, no server needed) ─────────
-    // Start speaking immediately so there's zero delay
-    let browserUtterance = null
-    const browserSpeak = () => {
-      browserUtterance = new SpeechSynthesisUtterance(text)
-      browserUtterance.rate = 0.93; browserUtterance.pitch = 1.05
-      browserUtterance.lang = 'en-IN'
-      // Pick a good female voice if available
+  // Cancel all speech on component unmount (stops voice bleeding after navigation)
+  useEffect(() => {
+    return () => {
+      speechSynthesis.cancel()
+      if (recogRef.current) { try { recogRef.current.stop() } catch {} }
+    }
+  }, [])
+
+  // ── SPEAK — browser speechSynthesis only, zero network calls ────────────
+  // Server TTS removed entirely: caused delays, race conditions, and double-
+  // speaking bugs. Browser speech is instant, reliable, and zero-latency.
+  const speak = useCallback((text, onEnd) => {
+    setSpeaking(true); speakingRef.current = true; stopListening()
+    const done = () => { setSpeaking(false); speakingRef.current = false; onEnd?.() }
+
+    const go = () => {
+      speechSynthesis.cancel()
+      const u = new SpeechSynthesisUtterance(text)
+      u.rate = 0.93; u.pitch = 1.05; u.lang = 'en-IN'
       const voices = speechSynthesis.getVoices()
       const femaleVoice = voices.find(v =>
         (v.name.includes('Female') || v.name.includes('Zira') ||
          v.name.includes('Samantha') || v.name.includes('Google UK English Female') ||
          v.name.includes('Microsoft Zira')) && v.lang.startsWith('en')
       )
-      if (femaleVoice) browserUtterance.voice = femaleVoice
-      browserUtterance.onend = done
-      browserUtterance.onerror = done
-      speechSynthesis.speak(browserUtterance)
+      if (femaleVoice) u.voice = femaleVoice
+      u.onend = done; u.onerror = done
+      speechSynthesis.speak(u)
     }
 
-    // ── Enhancement: try TTS in background, swap if ready within 2s ──────────
-    // Only swap if audio loads faster than speech duration estimate
-    const estDuration = Math.max(1500, text.split(' ').length * 350) // ~350ms/word
-    let swapped = false
-    let ttsTimer = null
-
-    try {
-      const controller = new AbortController()
-      ttsTimer = setTimeout(() => controller.abort(), 2000) // 2s max wait
-
-      const r = await fetch(`${API}/voice/tts`, {
-        method: 'POST', headers: hdr(),
-        body: JSON.stringify({ text }),
-        signal: controller.signal
-      })
-      clearTimeout(ttsTimer)
-
-      if (r.ok) {
-        const blob = await r.blob()
-        const url = URL.createObjectURL(blob)
-        const audio = new Audio(url)
-
-        // Only swap to TTS audio if browser speech hasn't finished yet
-        if (speaking) {
-          swapped = true
-          speechSynthesis.cancel() // stop browser speech
-          audio.onended = () => { URL.revokeObjectURL(url); done() }
-          audio.onerror = done
-          audio.play().catch(done)
-        } else {
-          URL.revokeObjectURL(url) // too late, browser speech already done
-        }
-      }
-    } catch {
-      clearTimeout(ttsTimer)
-      // TTS failed or timed out — browser speech is already running, do nothing
+    if (speechSynthesis.getVoices().length === 0) {
+      speechSynthesis.addEventListener('voiceschanged', go, { once: true })
+    } else {
+      go()
     }
-
-    // If TTS never swapped, fall back to browser speech (already started)
-    if (!swapped) {
-      // voices may not be loaded yet on first call
-      if (speechSynthesis.getVoices().length === 0) {
-        speechSynthesis.addEventListener('voiceschanged', () => {
-          if (!speechSynthesis.speaking) browserSpeak()
-        }, { once: true })
-      }
-      if (!speechSynthesis.speaking) browserSpeak()
-    }
-  }, [stopListening, speaking])
+  }, [stopListening])
 
   // ── End session ──────────────────────────────────────────────────────────────
   const endSession = useCallback(async (forced=false) => {
@@ -404,7 +371,7 @@ export default function HRMode() {
     const sc = scoresRef.current
     const overall = Math.round(Object.values(sc).filter(v=>v>0).reduce((a,b)=>a+b,0)/Math.max(1,Object.values(sc).filter(v=>v>0).length))
     setOverall(overall)
-    // Generate report via LLM
+    // Generate report via LLM — 15s hard timeout, always produces output
     try {
       const tscript = convoRef.current.map(m=>`${m.role==='ai'?'ARIA (HR)':cleanName}: ${m.text}`).join('\n')
       const reportSys = `You are a senior HR analyst. Cold, professional assessment report for ${cleanName} (${dept}, Year ${year}).
@@ -428,14 +395,44 @@ IMPROVEMENT PLAN:
 Under 200 words. Direct, not encouraging.
 Transcript:
 ${tscript}`
-      const r2 = await fetch(`${API}/chat`, { method:'POST', headers:hdr(), body:JSON.stringify({ messages:[{role:'user',content:'generate report'}], system:reportSys, max_tokens:400 }) })
-      const d2 = await r2.json()
-      setReport(d2.reply || 'Report generation failed.')
-      await fetch(`${API}/voice/save`, { method:'POST', headers:hdr(), body:JSON.stringify({
-        transcript: tscript, summary:`[HR MODE REPORT]\n${d2.reply||''}`,
+
+      // Hard 15s timeout — never let report spin forever
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 15000)
+
+      let reportText = ''
+      try {
+        const r2 = await fetch(`${API}/chat`, {
+          method: 'POST', headers: hdr(),
+          body: JSON.stringify({ messages:[{role:'user',content:'generate report'}], system:reportSys, max_tokens:400 }),
+          signal: controller.signal
+        })
+        clearTimeout(timeout)
+        if (r2.ok) {
+          const d2 = await r2.json()
+          reportText = d2.reply || d2.message || ''
+        }
+      } catch (fetchErr) {
+        clearTimeout(timeout)
+      }
+
+      // Fallback: generate a basic report from scores alone if LLM failed/timed out
+      if (!reportText) {
+        const highest = Object.entries(sc).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])[0]
+        const lowest  = Object.entries(sc).filter(([,v])=>v>0).sort((a,b)=>a[1]-b[1])[0]
+        const dimName = {tech:'Technical',comm:'Communication',crit:'Critical Thinking',pres:'Composure',lead:'Leadership'}
+        reportText = `VERDICT: ${overall>=70?'Candidate shows acceptable readiness but requires consistent improvement.':'Performance below expectations — significant preparation needed before placement.'}\n\nSTRENGTHS:\n• ${highest?`${dimName[highest[0]]} (${Math.round(highest[1])}/100) — best performing dimension`:'Session completed under pressure'}\n• Completed the structured interview process\n\nCRITICAL WEAKNESSES:\n• ${lowest?`${dimName[lowest[0]]} (${Math.round(lowest[1])}/100) — requires immediate focus`:'Insufficient session data for detailed analysis'}\n• Response depth and elaboration needs development\n\nIMPROVEMENT PLAN:\n• Practice structured STAR-format answers for each question type\n• Record and review mock interviews weekly\n• Focus on ${lowest?dimName[lowest[0]]:'communication clarity'} through targeted coursework`
+      }
+
+      setReport(reportText)
+
+      // Save session to backend (non-blocking — don't await)
+      fetch(`${API}/voice/save`, { method:'POST', headers:hdr(), body:JSON.stringify({
+        transcript: tscript, summary:`[HR MODE REPORT]\n${reportText}`,
         tab_warnings: tabViolRef.current, exchange_count: exchanges,
         scores: sc, overall_score: overall, mode:'hr_interview', forced_end: forced,
-      })})
+      })}).catch(()=>{})
+
       // Save recommended courses to backend so Dashboard courses tab shows them
       const weakDims = Object.entries(sc).filter(([,v])=>v>0&&v<65).sort((a,b)=>a[1]-b[1]).slice(0,2).map(([k])=>k)
       const COURSE_LIST = {
@@ -453,7 +450,10 @@ ${tscript}`
           })})
         } catch {}
       }
-    } catch { setReport('Report generation failed. Session data has been saved.') }
+    } catch {
+      // Last-resort fallback — should never reach here due to inner try/catch
+      setReport(`VERDICT: Session data saved. Report generation unavailable.\n\nOverall Score: ${overall}/100\n\nIMPROVEMENT PLAN:\n• Review your session performance and practice weak areas\n• Retake the HR session after targeted preparation`)
+    }
   }, [stopListening, stopCamera, stopTimer, clearSilence, clearCdown, cleanName, dept, year])
 
   // ── Start listening ───────────────────────────────────────────────────────────
