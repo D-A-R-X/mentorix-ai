@@ -11,13 +11,43 @@ DEMO_MODE = True  # Set to True for demo mode (no database)
 
 # ── Mock connection for demo mode ──────────────────────────────────
 class MockCursor:
-    def execute(self, *args, **kwargs): pass
-    def fetchone(self): return None
-    def fetchall(self): return []
+    def __init__(self):
+        self._query_count = 0
+    
+    def execute(self, query, *args, **kwargs):
+        self._query_count += 1
+    
+    def fetchone(self):
+        q = self._query_count
+        # Overview stats queries
+        if q == 1: return (5,)  # total users
+        if q == 2: return (12,)  # total sessions
+        if q == 3: return (2,)  # new users week
+        if q == 4: return (3,)  # active today
+        if q == 5: return (85,)  # avg honor score
+        if q == 6: return (156,)  # total courses
+        return None
+    
+    def fetchall(self):
+        # Return mock data for list queries
+        return [
+            (1, "demo@mentorix.ai", "Demo User", "email"),
+            (2, "admin@mentorix.ai", "Admin User", "email"),
+            (3, "student@test.com", "Test Student", "google"),
+        ]
+    
     def close(self): pass
 
 class MockConnection:
-    def cursor(self): return MockCursor()
+    def __init__(self):
+        self._cursor = None
+    
+    def cursor(self):
+        if not self._cursor:
+            self._cursor = MockCursor()
+        return self._cursor
+    
+    def commit(self): pass
     def close(self): pass
 
 # ── Connection ───────────────────────────────────────────────────
