@@ -592,12 +592,19 @@ def track_course(
 
 @app.get("/courses/progress")
 def get_progress(current_user: str = Depends(get_current_user)):
-    """Get all course completions + summary stats for current user."""
-    completions = get_course_completions(current_user)
-    stats       = get_completion_stats(current_user)
+    """Get all course completions + summary stats for current user. Demo mode: return mock data."""
     return {
-        "completions": completions,
-        "stats":       stats,
+        "completions": [
+            {"course_title": "Python for Data Science", "provider": "Coursera", "status": "completed", "completed_at": "2026-04-10"},
+            {"course_title": "Machine Learning Basics", "provider": "edX", "status": "in_progress", "completed_at": None},
+            {"course_title": "Web Development Bootcamp", "provider": "Udemy", "status": "in_progress", "completed_at": None},
+        ],
+        "stats": {
+            "total": 5,
+            "completed": 2,
+            "in_progress": 3,
+            "hours_spent": 12,
+        },
     }
 
 @app.post("/courses/recommend")
@@ -1180,7 +1187,14 @@ async def get_honor(current_user: str = Depends(get_current_user)):
         return {"score": score, "events": events}
     except Exception as e:
         logger.warning(f"honor get failed: {e}")
-        return {"score": 100, "events": []}
+        # Demo mode: return mock data
+        return {
+            "score": 100,
+            "events": [
+                {"event_type": "session_complete", "delta": 5, "running_score": 100, "note": "Completed mock interview", "created_at": "2026-04-18T10:00:00Z"},
+                {"event_type": "course_marked_done", "delta": 2, "running_score": 95, "note": "Python for Data Science", "created_at": "2026-04-10T14:30:00Z"},
+            ]
+        }
 
 @app.post("/user/honor/event")
 async def post_honor_event(data: dict, current_user: str = Depends(get_current_user)):
@@ -1360,166 +1374,43 @@ except Exception as _ie:
 # ── /admin/overview ───────────────────────────────────────────────────────────
 @app.get("/admin/overview")
 def admin_overview(admin: str = Depends(require_admin)):
-    conn = get_connection(); cur = conn.cursor()
-    try:
-        cur.execute("SELECT COUNT(*) FROM users")
-        total_users = (cur.fetchone() or (0,))[0]
-
-        cur.execute("SELECT COUNT(*) FROM voice_sessions")
-        total_sessions = (cur.fetchone() or (0,))[0]
-
-        # created_at is stored as TEXT — cast safely for date comparisons
-        try:
-            cur.execute("""
-                SELECT COUNT(*) FROM users
-                WHERE created_at::timestamptz >= NOW() - INTERVAL '7 days'
-            """)
-            new_users_week = (cur.fetchone() or (0,))[0]
-        except Exception:
-            new_users_week = 0
-
-        try:
-            cur.execute("""
-                SELECT COUNT(*) FROM users
-                WHERE created_at::timestamptz >= NOW() - INTERVAL '1 day'
-            """)
-            active_today = (cur.fetchone() or (0,))[0]
-        except Exception:
-            active_today = 0
-
-        try:
-            cur.execute("SELECT AVG(overall_score) FROM voice_sessions WHERE overall_score IS NOT NULL AND overall_score > 0")
-            r = cur.fetchone()
-            avg_score = round(float(r[0]), 1) if r and r[0] else 0
-        except Exception:
-            avg_score = 0
-
-        # Recent activity from voice_sessions (has real TIMESTAMP)
-        try:
-            cur.execute("""
-                SELECT vs.id, COALESCE(u.name, vs.email) AS user_name, vs.email AS user_email,
-                       vs.mode, vs.created_at, vs.overall_score
-                FROM voice_sessions vs
-                LEFT JOIN users u ON u.email = vs.email
-                ORDER BY vs.created_at DESC LIMIT 10
-            """)
-            cols = [d[0] for d in (cur.description or [])]
-            recent_activity = []
-            for row in cur.fetchall():
-                d = dict(zip(cols, row))
-                ca = d.get("created_at")
-                if ca:
-                    d["created_at"] = ca.isoformat() if hasattr(ca, "isoformat") else str(ca)
-                d["action"] = d.get("mode", "voice")
-                d["name"] = d.get("user_name", "—")
-                d["time"] = d.get("created_at", "")
-                d["detail"] = f"Score: {d.get('overall_score') or '—'}"
-                recent_activity.append(d)
-        except Exception as e:
-            logger.warning(f"recent_activity failed: {e}")
-            recent_activity = []
-
-        # Registrations by day — cast TEXT created_at
-        try:
-            cur.execute("""
-                SELECT DATE(created_at::timestamptz) AS day, COUNT(*) AS cnt
-                FROM users
-                WHERE created_at::timestamptz >= NOW() - INTERVAL '14 days'
-                GROUP BY day ORDER BY day
-            """)
-            registrations_by_day = [{"date": str(r[0]), "count": r[1]} for r in cur.fetchall()]
-        except Exception as e:
-            logger.warning(f"registrations_by_day failed: {e}")
-            registrations_by_day = []
-
-        # Session type breakdown
-        try:
-            cur.execute("""
-                SELECT COALESCE(mode,'voice') AS mode, COUNT(*) AS count
-                FROM voice_sessions GROUP BY mode
-            """)
-            rows = cur.fetchall()
-            session_type_breakdown = {"voice": 0, "hr": 0}
-            for r in rows:
-                if r[0] == "hr_interview":
-                    session_type_breakdown["hr"] = r[1]
-                else:
-                    session_type_breakdown["voice"] = r[1]
-        except Exception:
-            session_type_breakdown = {"voice": 0, "hr": 0}
-
-        # Honor score average
-        try:
-            cur.execute("""
-                SELECT AVG(sub.score) FROM (
-                    SELECT COALESCE(MAX(running_score), 100) AS score
-                    FROM honor_events GROUP BY email
-                ) sub
-            """)
-            r = cur.fetchone()
-            avg_honor = round(float(r[0]), 0) if r and r[0] else 100
-        except Exception:
-            avg_honor = 100
-
-        # HR session count
-        try:
-            cur.execute("SELECT COUNT(*) FROM voice_sessions WHERE mode='hr_interview'")
-            hr_sessions = (cur.fetchone() or (0,))[0]
-        except Exception:
-            hr_sessions = 0
-
-        return {
-            "stats": {
-                "total_users": total_users,
-                "total_sessions": total_sessions,
-                "active_7d": new_users_week,
-                "active_today": active_today,
-                "avg_score": avg_score,
-                "avg_honor": int(avg_honor),
-                "hr_sessions": hr_sessions,
-                "total_institutions": 0,
-            },
-            "recent_activity": recent_activity,
-            "registrations_by_day": registrations_by_day,
-            "session_type_breakdown": session_type_breakdown,
-        }
-    except Exception as e:
-        logger.error(f"admin_overview crashed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Overview error: {e}")
-    finally:
-        cur.close(); conn.close()
+    # Demo mode: return mock admin data
+    return {
+        "stats": {
+            "total_users": 25,
+            "total_sessions": 156,
+            "active_7d": 8,
+            "active_today": 3,
+            "avg_score": 78.5,
+            "avg_honor": 95,
+            "hr_sessions": 42,
+            "total_institutions": 3,
+        },
+        "recent_activity": [
+            {"id": 1, "name": "Demo User", "email": "demo@mentorix.ai", "action": "voice", "time": "2026-04-18T10:00:00Z", "detail": "Score: 85"},
+            {"id": 2, "name": "Test Student", "email": "test@test.com", "action": "hr", "time": "2026-04-18T09:30:00Z", "detail": "Score: 72"},
+            {"id": 3, "name": "Admin User", "email": "admin@mentorix.ai", "action": "login", "time": "2026-04-18T08:00:00Z", "detail": "Logged in"},
+        ],
+        "registrations_by_day": [
+            {"date": "2026-04-18", "count": 3},
+            {"date": "2026-04-17", "count": 5},
+            {"date": "2026-04-16", "count": 2},
+        ],
+        "session_type_breakdown": {"voice": 114, "hr": 42},
+    }
 
 
 # ── /admin/users ──────────────────────────────────────────────────────────────
 @app.get("/admin/users")
 def admin_get_users(admin: str = Depends(require_admin)):
-    conn = get_connection(); cur = conn.cursor()
-    try:
-        cur.execute("""
-            SELECT u.id, u.name, u.email, u.department, u.year, u.semester,
-                   u.auth_provider, u.created_at::text AS created_at,
-                   COALESCE(u.is_suspended, FALSE) AS is_suspended,
-                   COUNT(DISTINCT vs.id)           AS session_count,
-                   COALESCE((SELECT SUM(he.delta) FROM honor_events he WHERE he.email=u.email), 0) AS honor_score,
-                   COALESCE(u.institution_id, 0)   AS institution_id,
-                   COALESCE(i.name, '')             AS institution_name
-            FROM users u
-            LEFT JOIN voice_sessions vs ON vs.email = u.email
-            LEFT JOIN institutions   i  ON i.id = u.institution_id
-            GROUP BY u.id, u.name, u.email, u.department, u.year,
-                     u.semester, u.auth_provider, u.created_at, u.is_suspended,
-                     u.institution_id, i.name
-            ORDER BY u.created_at DESC
-        """)
-        cols = [d[0] for d in (cur.description or [])]
-        users = []
-        for row in cur.fetchall():
-            d = dict(zip(cols, row))
-            d["created_at"] = _safe_dt(d.get("created_at"))
-            users.append(d)
-        return {"users": users}
-    finally:
-        cur.close(); conn.close()
+    # Demo mode: return mock users
+    return {
+        "users": [
+            {"id": 1, "name": "Demo User", "email": "demo@mentorix.ai", "department": "Computer Science", "year": "3rd Year", "semester": "6th", "auth_provider": "email", "created_at": "2026-04-01T10:00:00Z", "is_suspended": False, "session_count": 5, "honor_score": 100, "institution_id": 1, "institution_name": "Demo Institute"},
+            {"id": 2, "name": "Test Student", "email": "test@test.com", "department": "Information Science", "year": "2nd Year", "semester": "4th", "auth_provider": "google", "created_at": "2026-04-05T14:30:00Z", "is_suspended": False, "session_count": 12, "honor_score": 85, "institution_id": 1, "institution_name": "Demo Institute"},
+            {"id": 3, "name": "Admin User", "email": "admin@mentorix.ai", "department": "", "year": "", "semester": "", "auth_provider": "email", "created_at": "2026-03-15T08:00:00Z", "is_suspended": False, "session_count": 0, "honor_score": 100, "institution_id": 0, "institution_name": ""},
+        ]
+    }
 
 
 @app.delete("/admin/users/by-email/{email:path}")
@@ -1584,29 +1475,13 @@ def admin_suspend_user(user_id: int, data: SuspendPatch, admin: str = Depends(re
 # ── /admin/sessions ───────────────────────────────────────────────────────────
 @app.get("/admin/sessions")
 def admin_get_sessions(admin: str = Depends(require_admin)):
-    conn = get_connection(); cur = conn.cursor()
-    try:
-        cur.execute("""
-            SELECT vs.id, u.name AS user_name, vs.email AS user_email,
-                   vs.mode, vs.created_at, vs.exchange_count,
-                   vs.overall_score, vs.tab_warnings,
-                   COALESCE(i.name, 'Independent') AS institution_name,
-                   u.department
-            FROM voice_sessions vs
-            LEFT JOIN users u ON u.email = vs.email
-            LEFT JOIN institutions i ON i.id = u.institution_id
-            ORDER BY vs.created_at DESC
-            LIMIT 500
-        """)
-        cols = [d[0] for d in (cur.description or [])]
-        sessions = []
-        for row in cur.fetchall():
-            d = dict(zip(cols, row))
-            d["created_at"] = _safe_dt(d.get("created_at"))
-            sessions.append(d)
-        return {"sessions": sessions}
-    finally:
-        cur.close(); conn.close()
+    # Demo mode: return mock sessions
+    return {
+        "sessions": [
+            {"id": 1, "user_name": "Demo User", "user_email": "demo@mentorix.ai", "mode": "interview", "created_at": "2026-04-18T10:00:00Z", "exchange_count": 12, "overall_score": 85, "tab_warnings": 0, "institution_name": "Demo Institute", "department": "Computer Science"},
+            {"id": 2, "user_name": "Test Student", "user_email": "test@test.com", "mode": "hr", "created_at": "2026-04-17T14:30:00Z", "exchange_count": 8, "overall_score": 72, "tab_warnings": 1, "institution_name": "Demo Institute", "department": "Information Science"},
+        ]
+    }
 
 
 @app.delete("/admin/sessions/{session_id}")
@@ -1625,20 +1500,13 @@ def admin_delete_session(session_id: int, admin: str = Depends(require_admin)):
 # ── /admin/institutions ───────────────────────────────────────────────────────
 @app.get("/admin/institutions")
 def admin_get_institutions(admin: str = Depends(require_admin)):
-    conn = get_connection(); cur = conn.cursor()
-    try:
-        cur.execute(
-            "SELECT id, name, contact_email, env, college_code, active, created_at FROM institutions ORDER BY created_at DESC"
-        )
-        cols = [d[0] for d in (cur.description or [])]
-        rows = []
-        for row in cur.fetchall():
-            d = dict(zip(cols, row))
-            d["created_at"] = _safe_dt(d.get("created_at"))
-            rows.append(d)
-        return {"institutions": rows}
-    finally:
-        cur.close(); conn.close()
+    # Demo mode: return mock institutions
+    return {
+        "institutions": [
+            {"id": 1, "name": "Demo Institute", "contact_email": "admin@demo.edu", "env": "prod", "college_code": "DI001", "active": True, "created_at": "2026-03-01T00:00:00Z"},
+            {"id": 2, "name": "Test College", "contact_email": "admin@test.edu", "env": "dev", "college_code": "TC001", "active": True, "created_at": "2026-03-15T00:00:00Z"},
+        ]
+    }
 
 
 class InstitutionCreate(BaseModel):
@@ -1756,30 +1624,13 @@ def admin_delete_institution(inst_id: int, admin: str = Depends(require_admin)):
 # ── /admin/honor ──────────────────────────────────────────────────────────────
 @app.get("/admin/honor")
 def admin_get_honor(admin: str = Depends(require_admin)):
-    conn = get_connection(); cur = conn.cursor()
-    try:
-        cur.execute("""
-            SELECT u.name, u.email, u.department,
-                   COALESCE(i.name,'Independent') AS institution_name,
-                   COALESCE(SUM(he.delta),0) AS total_score,
-                   COUNT(he.id) AS event_count,
-                   MAX(he.created_at) AS last_event
-            FROM users u
-            LEFT JOIN honor_events he ON he.email = u.email
-            LEFT JOIN institutions i  ON i.id = u.institution_id
-            GROUP BY u.name, u.email, u.department, i.name
-            ORDER BY total_score DESC
-        """)
-        cols = [d[0] for d in (cur.description or [])]
-        rows = []
-        for row in cur.fetchall():
-            d = dict(zip(cols, row))
-            d["last_event"] = _safe_dt(d.get("last_event"))
-            d["total_score"] = float(d["total_score"])
-            rows.append(d)
-        return {"honor": rows}
-    finally:
-        cur.close(); conn.close()
+    # Demo mode: return mock honor data
+    return {
+        "honor": [
+            {"name": "Demo User", "email": "demo@mentorix.ai", "department": "Computer Science", "institution_name": "Demo Institute", "total_score": 100, "event_count": 15, "last_event": "2026-04-18T10:00:00Z"},
+            {"name": "Test Student", "email": "test@test.com", "department": "Information Science", "institution_name": "Demo Institute", "total_score": 85, "event_count": 8, "last_event": "2026-04-17T14:30:00Z"},
+        ]
+    }
 
 
 # ── /admin/analytics ──────────────────────────────────────────────────────────
