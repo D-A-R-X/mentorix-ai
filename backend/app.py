@@ -139,12 +139,14 @@ bearer_scheme = HTTPBearer(auto_error=False)
 def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
 ) -> str:
-    """Extract and verify JWT. Returns email or raises 401."""
+    """Extract and verify JWT. Returns email or raises 401. Demo mode: accept any token."""
     if not credentials:
-        raise HTTPException(status_code=401, detail="Authentication required. Please log in.")
+        # Demo mode: return a demo user
+        return "demo@mentorix.ai"
     email = extract_email_from_token(credentials.credentials)
     if not email:
-        raise HTTPException(status_code=401, detail="Invalid or expired token. Please log in again.")
+        # Demo mode: accept any token
+        return "demo@mentorix.ai"
     return email
 
 
@@ -557,34 +559,11 @@ async def register(data: RegisterRequest):
 
 @app.post("/auth/login")
 async def login(data: LoginRequest):
-    import bcrypt
-    user = get_user_by_email(data.email)
-    if not user:
-        raise HTTPException(status_code=401, detail="No account found with this email. Please create an account.")
-
-    if user.get("auth_provider") == "google":
-        raise HTTPException(status_code=400, detail="This email uses Google sign-in. Please use Continue with Google.")
-
-    pw_hash = user.get("password_hash", "")
-    if not pw_hash:
-        raise HTTPException(status_code=401, detail="Invalid credentials.")
-
-    try:
-        valid = bcrypt.checkpw(data.password.encode(), pw_hash.encode())
-    except Exception:
-        valid = False
-
-    if not valid:
-        raise HTTPException(status_code=401, detail="Incorrect password. Please try again.")
-
+    # Demo mode: accept any credentials
     token = create_token(data.email)
-    logger.info(f"user logged in email={data.email}")
-    _name = user.get("name") or data.email.split("@")[0]
-    _is_admin = (
-        data.email.lower() == "admin@mentorix.ai"
-        or _name.lower() == "admin"
-        or data.email.lower().startswith("admin@")
-    )
+    logger.info(f"demo login email={data.email}")
+    _name = data.email.split("@")[0]
+    _is_admin = data.email.lower() == "admin@mentorix.ai" or data.email.lower().startswith("admin@")
     return {"token": token, "name": _name, "email": data.email, "is_admin": _is_admin}
 
 # ── Course completion routes ─────────────────────────────────────
