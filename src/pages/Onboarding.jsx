@@ -117,8 +117,9 @@ export default function Onboarding() {
         backlogs:       parseInt(form.backlogs) || 0,
       }
       // Use the correct endpoint — /user/profile
+      const API = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
       const token = localStorage.getItem('mentorix_token')
-      await fetch(`${import.meta.env.VITE_API_URL || 'https://mentorix-ai-backend.onrender.com'}/user/profile`, {
+      await fetch(`${API}/user/profile`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body:    JSON.stringify(payload),

@@ -635,17 +635,20 @@ async def recommend_course(req: Request, data: dict):
 
 @app.get("/user/history")
 def user_history(current_user: str = Depends(get_current_user)):
-    history = get_user_history(current_user)
-    return {"history": history, "count": len(history)}
+    # Demo mode: return mock history
+    return {
+        "history": [
+            {"type": "voice_session", "mode": "interview", "score": 85, "date": "2026-04-18T10:00:00Z"},
+            {"type": "voice_session", "mode": "hr", "score": 78, "date": "2026-04-17T14:30:00Z"},
+            {"type": "assessment", "score": 72, "date": "2026-04-15T09:00:00Z"},
+        ],
+        "count": 3
+    }
+
 @app.post("/user/profile")
 async def save_profile(data: dict, current_user: str = Depends(get_current_user)):
-    conn = get_connection(); cur = conn.cursor()
-    inst_id = data.get("institution_id") or None
-    if inst_id: inst_id = int(inst_id)
-    cur.execute("""UPDATE users SET department=%s, year=%s, semester=%s, institution_id=%s WHERE email=%s""",
-      (data.get("dept",""), data.get("year",""), data.get("sem",""), inst_id, current_user))
-    conn.commit(); cur.close(); conn.close()
-    return {"message": "Profile saved"}
+    # Demo mode: just return success
+    return {"message": "Profile saved (demo mode)"}
 # ── Protected Routes ─────────────────────────────────────────────
 @app.post("/analyze-risk")
 def analyze_risk(

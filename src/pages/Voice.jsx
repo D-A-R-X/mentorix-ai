@@ -7,7 +7,7 @@ import { voiceApi } from '../lib/api'
 const MAX_W         = 3
 const MAX_Q         = 8
 const INACTIVITY_MS = 50000
-const API = import.meta.env.VITE_API_URL || 'https://mentorix-ai-backend.onrender.com'
+const API = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 const QUESTIONS = [
   "Tell me about your current academic focus and what you find most challenging.",

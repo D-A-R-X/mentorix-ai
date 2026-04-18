@@ -11,7 +11,7 @@ const NAV = [
   { id: 'chat',     label: 'AI Chat',   icon: 'message-circle' },
 ]
 
-const API = import.meta.env.VITE_API_URL || 'https://mentorix-ai-backend.onrender.com'
+const API = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 const CHAT_CACHE_KEY = 'mentorix_chat_cache'
 const CACHE_TTL = 24 * 60 * 60 * 1000  // 24 hours
 

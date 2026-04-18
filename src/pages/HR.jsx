@@ -13,7 +13,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth.jsx'
 
-const API = import.meta.env.VITE_API_URL || 'https://mentorix-ai-backend.onrender.com'
+const API = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 // All Bytez calls go through our own backend — API key stays server-side, never exposed
 // Backend routes: POST /bytez/posture  /bytez/emotion  /bytez/similarity

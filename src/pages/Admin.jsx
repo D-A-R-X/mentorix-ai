@@ -3,7 +3,7 @@ import AdminAI from './AdminAI'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 
-const API = import.meta.env.VITE_API_URL || 'https://mentorix-ai-backend.onrender.com'
+const API = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 // ── Design tokens (matches main app) ─────────────────────────────────────────
 const C = {

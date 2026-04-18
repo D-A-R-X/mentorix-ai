@@ -169,8 +169,7 @@ export default function Login() {
         if (selectedInst) setInstitution(selectedInst.id, selectedInst.name)
         login(data)
         if (data.is_admin) nav('/admin', { replace: true })
-        else if (!data.profile) nav('/onboarding', { replace: true })
-        else nav('/dashboard', { replace: true })
+        else nav('/dashboard', { replace: true })  // Direct to dashboard in demo mode
       } catch (e) {
         setError(e.message || 'Authentication failed')
       } finally { setLoading(false) }
