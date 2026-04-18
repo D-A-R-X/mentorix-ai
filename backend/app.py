@@ -1124,7 +1124,7 @@ async def get_user_sessions(current_user: str = Depends(get_current_user)):
     cur = conn.cursor()
     import json
     cur.execute("""
-        SELECT id, summary, mode, overall_score, exchange_count, tab_warnings, created_at
+        SELECT DISTINCT id, summary, mode, overall_score, exchange_count, tab_warnings, created_at
         FROM voice_sessions WHERE email = ? ORDER BY created_at DESC LIMIT 20
     """, (current_user,))
     rows = cur.fetchall()

@@ -63,11 +63,13 @@ export default function Dashboard() {
   const chatEndRef = useRef(null)
 
   useEffect(() => {
+    let cancelled = false
     Promise.all([
-      userApi.sessions().then(d => setSessions(d?.sessions || [])).catch(() => {}),
-      userApi.honor().then(setHonor).catch(() => {}),
-      coursesApi.progress().then(d => setCourses(d?.completions || [])).catch(() => {}),
-    ]).finally(() => setLoading(false))
+      userApi.sessions().then(d => { if (!cancelled) setSessions(d?.sessions || []) }).catch(() => {}),
+      userApi.honor().then(d => { if (!cancelled) setHonor(d) }).catch(() => {}),
+      coursesApi.progress().then(d => { if (!cancelled) setCourses(d?.completions || []) }).catch(() => {}),
+    ]).finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [])
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chatMsgs])
