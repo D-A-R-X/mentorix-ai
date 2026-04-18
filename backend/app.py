@@ -1319,8 +1319,6 @@ def require_admin(current_user: str = Depends(get_current_user)):
     if not is_admin:
         raise HTTPException(status_code=403, detail="Admin access required")
     return current_user
-        raise HTTPException(status_code=403, detail="Admin access required.")
-    return current_user
 
 
 # Bootstrap extra tables + columns
