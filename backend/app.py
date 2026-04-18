@@ -329,7 +329,7 @@ async def update_name(
     conn = get_connection()
     cur  = conn.cursor()
     cur.execute(
-        "UPDATE users SET name = %s WHERE email = %s",
+        "UPDATE users SET name = %s WHERE email = ?",
         ((data.name or "").strip(), current_user)
     )
     conn.commit()
@@ -1184,7 +1184,7 @@ HONOR_RULES = {
 def get_honor_score(email: str) -> int:
     try:
         conn = get_connection(); cur = conn.cursor()
-        cur.execute("SELECT running_score FROM honor_events WHERE email=%s ORDER BY created_at DESC LIMIT 1", (email,))
+        cur.execute("SELECT running_score FROM honor_events WHERE email = ? ORDER BY created_at DESC LIMIT 1", (email,))
         row = cur.fetchone(); cur.close(); conn.close()
         return row[0] if row else 100
     except: return 100
@@ -1540,10 +1540,10 @@ def admin_delete_user(user_id: int, admin: str = Depends(require_admin)):
         if not row:
             raise HTTPException(status_code=404, detail="User not found.")
         email = row[0]
-        cur.execute("DELETE FROM voice_sessions  WHERE email = %s", (email,))
-        cur.execute("DELETE FROM honor_events    WHERE email = %s", (email,))
-        cur.execute("DELETE FROM assessments     WHERE email = %s", (email,))
-        cur.execute("DELETE FROM course_completions WHERE email = %s", (email,))
+        cur.execute("DELETE FROM voice_sessions  WHERE email = ?", (email,))
+        cur.execute("DELETE FROM honor_events    WHERE email = ?", (email,))
+        cur.execute("DELETE FROM assessments     WHERE email = ?", (email,))
+        cur.execute("DELETE FROM course_completions WHERE email = ?", (email,))
         cur.execute("DELETE FROM users           WHERE id    = %s", (user_id,))
         conn.commit()
         return {"ok": True, "deleted_email": email}
@@ -1559,7 +1559,7 @@ class SuspendPatch(BaseModel):
 def admin_suspend_user(user_id: int, data: SuspendPatch, admin: str = Depends(require_admin)):
     conn = get_connection(); cur = conn.cursor()
     try:
-        cur.execute("UPDATE users SET is_suspended=%s WHERE id=%s RETURNING email",
+        cur.execute("UPDATE users SET is_suspended=%s WHERE id = ? RETURNING email",
                     (data.suspended, user_id))
         row = cur.fetchone()
         if not row:
@@ -1574,38 +1574,77 @@ def admin_suspend_user(user_id: int, data: SuspendPatch, admin: str = Depends(re
 # ── /admin/sessions ───────────────────────────────────────────────────────────
 @app.get("/admin/sessions")
 def admin_get_sessions(admin: str = Depends(require_admin)):
-    # Demo mode: return mock sessions
-    return {
-        "sessions": [
-            {"id": 1, "user_name": "Demo User", "user_email": "demo@mentorix.ai", "mode": "interview", "created_at": "2026-04-18T10:00:00Z", "exchange_count": 12, "overall_score": 85, "tab_warnings": 0, "institution_name": "Demo Institute", "department": "Computer Science"},
-            {"id": 2, "user_name": "Test Student", "user_email": "test@test.com", "mode": "hr", "created_at": "2026-04-17T14:30:00Z", "exchange_count": 8, "overall_score": 72, "tab_warnings": 1, "institution_name": "Demo Institute", "department": "Information Science"},
-        ]
-    }
+    """Get all voice sessions from database."""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT vs.id, COALESCE(u.name, vs.email) as user_name, vs.email as user_email,
+               vs.mode, vs.created_at, vs.exchange_count, vs.overall_score, vs.tab_warnings,
+               COALESCE(i.name, 'Independent') as institution_name, u.department
+        FROM voice_sessions vs
+        LEFT JOIN users u ON u.email = vs.email
+        LEFT JOIN institutions i ON i.id = u.institution_id
+        ORDER BY vs.created_at DESC LIMIT 100
+    """)
+    
+    sessions = []
+    for r in cur.fetchall():
+        sessions.append({
+            "id": r[0],
+            "user_name": r[1] or "—",
+            "user_email": r[2] or "",
+            "mode": r[3] or "voice",
+            "created_at": r[4] or "",
+            "exchange_count": r[5] or 0,
+            "overall_score": r[6] or 0,
+            "tab_warnings": r[7] or 0,
+            "institution_name": r[8] or "Independent",
+            "department": r[9] or ""
+        })
+    
+    cur.close()
+    conn.close()
+    return {"sessions": sessions}
 
 
 @app.delete("/admin/sessions/{session_id}")
 def admin_delete_session(session_id: int, admin: str = Depends(require_admin)):
-    conn = get_connection(); cur = conn.cursor()
+    conn = get_connection()
+    cur = conn.cursor()
     try:
-        cur.execute("DELETE FROM voice_sessions WHERE id = %s RETURNING id", (session_id,))
-        if not cur.fetchone():
+        cur.execute("DELETE FROM voice_sessions WHERE id = ?", (session_id,))
+        if cur.rowcount == 0:
             raise HTTPException(status_code=404, detail="Session not found.")
         conn.commit()
         return {"ok": True}
     finally:
-        cur.close(); conn.close()
+        cur.close()
+        conn.close()
 
 
 # ── /admin/institutions ───────────────────────────────────────────────────────
 @app.get("/admin/institutions")
 def admin_get_institutions(admin: str = Depends(require_admin)):
-    # Demo mode: return mock institutions
-    return {
-        "institutions": [
-            {"id": 1, "name": "Demo Institute", "contact_email": "admin@demo.edu", "env": "prod", "college_code": "DI001", "active": True, "created_at": "2026-03-01T00:00:00Z"},
-            {"id": 2, "name": "Test College", "contact_email": "admin@test.edu", "env": "dev", "college_code": "TC001", "active": True, "created_at": "2026-03-15T00:00:00Z"},
-        ]
-    }
+    """Get all institutions from database."""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id, name, contact_email, env, college_code, active, created_at FROM institutions ORDER BY created_at DESC")
+    
+    institutions = []
+    for r in cur.fetchall():
+        institutions.append({
+            "id": r[0],
+            "name": r[1] or "",
+            "contact_email": r[2] or "",
+            "env": r[3] or "dev",
+            "college_code": r[4] or "",
+            "active": bool(r[5]) if r[5] is not None else True,
+            "created_at": r[6] or ""
+        })
+    
+    cur.close()
+    conn.close()
+    return {"institutions": institutions}
 
 
 class InstitutionCreate(BaseModel):
@@ -1660,7 +1699,7 @@ def admin_patch_institution(inst_id: int, data: InstitutionPatch, admin: str = D
         if not updates:
             raise HTTPException(status_code=400, detail="No fields to update.")
         vals.append(inst_id)
-        cur.execute(f"UPDATE institutions SET {', '.join(updates)} WHERE id = %s RETURNING id", vals)
+        cur.execute(f"UPDATE institutions SET {', '.join(updates)} WHERE id = ? RETURNING id", vals)
         if not cur.fetchone():
             raise HTTPException(status_code=404, detail="Institution not found.")
         conn.commit()
@@ -1676,42 +1715,48 @@ class ServiceToggleRequest(BaseModel):
 
 @app.patch("/admin/institutions/{inst_id}/service")
 def admin_toggle_service(inst_id: int, data: ServiceToggleRequest, admin: str = Depends(require_admin)):
-    """Toggle whether an institution's service is active (students can register)."""
-    conn = get_connection(); cur = conn.cursor()
+    """Toggle whether an institution's service is active."""
+    conn = get_connection()
+    cur = conn.cursor()
     try:
-        cur.execute("UPDATE institutions SET active = %s WHERE id = %s RETURNING id, name, active",
-                    (data.active, inst_id))
-        row = cur.fetchone()
-        if not row:
+        cur.execute("UPDATE institutions SET active = ? WHERE id = ?", (1 if data.active else 0, inst_id))
+        if cur.rowcount == 0:
             raise HTTPException(status_code=404, detail="Institution not found.")
         conn.commit()
+        
+        cur.execute("SELECT name FROM institutions WHERE id = ?", (inst_id,))
+        row = cur.fetchone()
         status = "activated" if data.active else "deactivated"
-        logger.info(f"Institution {row[1]} (id={inst_id}) service {status} by admin")
+        logger.info(f"Institution {row[0] if row else inst_id} (id={inst_id}) service {status} by admin")
         return {"ok": True, "id": inst_id, "active": data.active}
     finally:
-        cur.close(); conn.close()
+        cur.close()
+        conn.close()
 
 @app.patch("/admin/institutions/{inst_id}/toggle")
 def admin_toggle_institution(inst_id: int, admin: str = Depends(require_admin)):
     """Toggle institution active/inactive (prod = active, dev = inactive)."""
-    conn = get_connection(); cur = conn.cursor()
+    conn = get_connection()
+    cur = conn.cursor()
     try:
-        cur.execute("SELECT env FROM institutions WHERE id=%s", (inst_id,))
+        cur.execute("SELECT env FROM institutions WHERE id = ?", (inst_id,))
         row = cur.fetchone()
-        if not row: raise HTTPException(status_code=404, detail="Institution not found.")
+        if not row:
+            raise HTTPException(status_code=404, detail="Institution not found.")
         new_env = "dev" if row[0] == "prod" else "prod"
-        cur.execute("UPDATE institutions SET env=%s WHERE id=%s", (new_env, inst_id))
+        cur.execute("UPDATE institutions SET env = ? WHERE id = ?", (new_env, inst_id))
         conn.commit()
         return {"ok": True, "id": inst_id, "env": new_env, "active": new_env == "prod"}
     finally:
-        cur.close(); conn.close()
+        cur.close()
+        conn.close()
 
 
 @app.delete("/admin/institutions/{inst_id}")
 def admin_delete_institution(inst_id: int, admin: str = Depends(require_admin)):
     conn = get_connection(); cur = conn.cursor()
     try:
-        cur.execute("DELETE FROM institutions WHERE id = %s RETURNING id", (inst_id,))
+        cur.execute("DELETE FROM institutions WHERE id = ? RETURNING id", (inst_id,))
         if not cur.fetchone():
             raise HTTPException(status_code=404, detail="Institution not found.")
         conn.commit()
@@ -1723,13 +1768,37 @@ def admin_delete_institution(inst_id: int, admin: str = Depends(require_admin)):
 # ── /admin/honor ──────────────────────────────────────────────────────────────
 @app.get("/admin/honor")
 def admin_get_honor(admin: str = Depends(require_admin)):
-    # Demo mode: return mock honor data
-    return {
-        "honor": [
-            {"name": "Demo User", "email": "demo@mentorix.ai", "department": "Computer Science", "institution_name": "Demo Institute", "total_score": 100, "event_count": 15, "last_event": "2026-04-18T10:00:00Z"},
-            {"name": "Test Student", "email": "test@test.com", "department": "Information Science", "institution_name": "Demo Institute", "total_score": 85, "event_count": 8, "last_event": "2026-04-17T14:30:00Z"},
-        ]
-    }
+    """Get honor leaderboard from database."""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT u.name, u.email, u.department,
+               COALESCE(i.name, 'Independent') as institution_name,
+               COALESCE(SUM(he.delta), 0) as total_score,
+               COUNT(he.id) as event_count,
+               MAX(he.created_at) as last_event
+        FROM users u
+        LEFT JOIN honor_events he ON he.email = u.email
+        LEFT JOIN institutions i ON i.id = u.institution_id
+        GROUP BY u.name, u.email, u.department, i.name
+        ORDER BY total_score DESC
+    """)
+    
+    honor = []
+    for r in cur.fetchall():
+        honor.append({
+            "name": r[0] or "",
+            "email": r[1] or "",
+            "department": r[2] or "",
+            "institution_name": r[3] or "Independent",
+            "total_score": r[4] or 0,
+            "event_count": r[5] or 0,
+            "last_event": r[6] or ""
+        })
+    
+    cur.close()
+    conn.close()
+    return {"honor": honor}
 
 
 # ── /admin/analytics ──────────────────────────────────────────────────────────
@@ -2097,7 +2166,7 @@ Produce the action plan JSON."""
                 if not email:
                     outcome["result"] = "error"; outcome["data"] = "No email provided"
                 else:
-                    cur.execute("DELETE FROM users WHERE email = %s", (email.lower(),))
+                    cur.execute("DELETE FROM users WHERE email = ?", (email.lower(),))
                     conn.commit()
                     outcome["data"] = f"Deleted user: {email}"
                     logger.info(f"AI admin deleted user {email}")
@@ -2106,7 +2175,7 @@ Produce the action plan JSON."""
                 emails = params.get("emails", [])
                 deleted = []
                 for email in emails:
-                    cur.execute("DELETE FROM users WHERE email = %s", (email.lower(),))
+                    cur.execute("DELETE FROM users WHERE email = ?", (email.lower(),))
                     deleted.append(email)
                 conn.commit()
                 outcome["data"] = f"Deleted {len(deleted)} users: {deleted}"
@@ -2114,19 +2183,19 @@ Produce the action plan JSON."""
 
             elif action == "suspend_user":
                 email = params.get("email", "")
-                cur.execute("UPDATE users SET suspended = TRUE WHERE email = %s", (email.lower(),))
+                cur.execute("UPDATE users SET suspended = TRUE WHERE email = ?", (email.lower(),))
                 conn.commit()
                 outcome["data"] = f"Suspended: {email}"
 
             elif action == "unsuspend_user":
                 email = params.get("email", "")
-                cur.execute("UPDATE users SET suspended = FALSE WHERE email = %s", (email.lower(),))
+                cur.execute("UPDATE users SET suspended = FALSE WHERE email = ?", (email.lower(),))
                 conn.commit()
                 outcome["data"] = f"Unsuspended: {email}"
 
             elif action == "delete_session":
                 sid = params.get("session_id")
-                cur.execute("DELETE FROM voice_sessions WHERE id = %s", (sid,))
+                cur.execute("DELETE FROM voice_sessions WHERE id = ?", (sid,))
                 conn.commit()
                 outcome["data"] = f"Deleted session {sid}"
 
@@ -2145,17 +2214,17 @@ Produce the action plan JSON."""
 
             elif action == "delete_institution":
                 inst_id = params.get("institution_id")
-                cur.execute("DELETE FROM institutions WHERE id = %s", (inst_id,))
+                cur.execute("DELETE FROM institutions WHERE id = ?", (inst_id,))
                 conn.commit()
                 outcome["data"] = f"Deleted institution {inst_id}"
 
             elif action == "toggle_institution":
                 inst_id = params.get("institution_id")
-                cur.execute("SELECT env FROM institutions WHERE id = %s", (inst_id,))
+                cur.execute("SELECT env FROM institutions WHERE id = ?", (inst_id,))
                 row = cur.fetchone()
                 if row:
                     new_env = "prod" if row[0] == "dev" else "dev"
-                    cur.execute("UPDATE institutions SET env = %s WHERE id = %s", (new_env, inst_id))
+                    cur.execute("UPDATE institutions SET env = %s WHERE id = ?", (new_env, inst_id))
                     conn.commit()
                     outcome["data"] = f"Institution {inst_id} toggled to {new_env}"
 
