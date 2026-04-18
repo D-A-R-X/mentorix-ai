@@ -74,9 +74,12 @@ export function AuthProvider({ children }) {
     setSession({ token: tok, email: data.email, name: cleanName })
     if (data.institution_id) setInstitution(data.institution_id, data.institution_name || '')
 
+    const isAdmin = data.email.toLowerCase().startsWith('admin@')
+    
     const userObj = {
       name: cleanName,
       email: data.email,
+      is_admin: isAdmin,
       ...(data.profile || {}),
     }
     storeProfile(userObj)

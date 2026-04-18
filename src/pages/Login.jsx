@@ -166,19 +166,19 @@ export default function Login() {
       setLoading(true); setError('')
       try {
         const data = await authApi.login(form.email.trim().toLowerCase(), form.password)
-        if (selectedInst) setInstitution(selectedInst.id, selectedInst.name)
         
-        // Store session
-        localStorage.setItem('mentorix_token', data.token)
-        localStorage.setItem('mentorix_email', data.email)
-        localStorage.setItem('mentorix_name', data.name || data.email.split('@')[0])
+        // Use auth context login function
+        login(data)
         
-        // Navigate
-        if (data.is_admin) nav('/admin', { replace: true })
-        else nav('/dashboard', { replace: true })
+        // Force state update then navigate
+        setTimeout(() => {
+          const isAdmin = deriveAdmin(data.email)
+          if (isAdmin) nav('/admin', { replace: true })
+          else nav('/dashboard', { replace: true })
+        }, 50)
       } catch (e) {
         console.error('Login error:', e)
-        setError(e.message || 'Login failed - check credentials')
+        setError(e.message || 'Login failed')
       } finally { setLoading(false) }
       return
     }
