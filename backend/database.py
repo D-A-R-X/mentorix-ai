@@ -1,377 +1,311 @@
 import os
+import sqlite3
 import logging
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 
 logger = logging.getLogger("mentorix-api")
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://mentorix_db_user:eGSul5Yl3hPi11eQRncFyhIxVBpdCx9o@dpg-d6l6katm5p6s73979qjg-a.virginia-postgres.render.com/mentorix_db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "..", "mentorix.db")
 
-DEMO_MODE = True  # Set to True for demo mode (no database)
-
-# ── Mock connection for demo mode ──────────────────────────────────
-class MockCursor:
-    def __init__(self):
-        self._query_count = 0
-    
-    def execute(self, query, *args, **kwargs):
-        self._query_count += 1
-    
-    def fetchone(self):
-        q = self._query_count
-        # Overview stats queries
-        if q == 1: return (5,)  # total users
-        if q == 2: return (12,)  # total sessions
-        if q == 3: return (2,)  # new users week
-        if q == 4: return (3,)  # active today
-        if q == 5: return (85,)  # avg honor score
-        if q == 6: return (156,)  # total courses
-        return None
-    
-    def fetchall(self):
-        # Return mock data for list queries
-        return [
-            (1, "demo@mentorix.ai", "Demo User", "email"),
-            (2, "admin@mentorix.ai", "Admin User", "email"),
-            (3, "student@test.com", "Test Student", "google"),
-        ]
-    
-    def close(self): pass
-
-class MockConnection:
-    def __init__(self):
-        self._cursor = None
-    
-    def cursor(self):
-        if not self._cursor:
-            self._cursor = MockCursor()
-        return self._cursor
-    
-    def commit(self): pass
-    def close(self): pass
-
-# ── Connection ───────────────────────────────────────────────────
+DEMO_MODE = False  # Set to False to use SQLite
 
 def get_connection():
     if DEMO_MODE:
+        from database_demo import MockConnection
         return MockConnection()
-    import psycopg2
-    import psycopg2.extras
-    logger.info(f"Connecting to database... (DATABASE_URL set: {bool(os.getenv('DATABASE_URL'))})")
-    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+    
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
     return conn
 
 
 def init_db():
     conn = get_connection()
-    cur  = conn.cursor()
+    cur = conn.cursor()
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            id            SERIAL PRIMARY KEY,
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
             email         TEXT NOT NULL UNIQUE,
             password_hash TEXT,
             name          TEXT,
             picture       TEXT,
             auth_provider TEXT NOT NULL DEFAULT 'email',
-            created_at    TEXT
+            department    TEXT,
+            year          TEXT,
+            semester      TEXT,
+            institution_id INTEGER,
+            is_suspended  INTEGER DEFAULT 0,
+            created_at    TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS voice_sessions (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            email           TEXT NOT NULL,
+            summary         TEXT,
+            tab_warnings    INTEGER DEFAULT 0,
+            tab_switches    INTEGER DEFAULT 0,
+            exchange_count  INTEGER DEFAULT 0,
+            scores          TEXT,
+            overall_score   INTEGER,
+            mode            TEXT DEFAULT 'voice',
+            forced_end      INTEGER DEFAULT 0,
+            questions_answered INTEGER DEFAULT 0,
+            department      TEXT,
+            answers         TEXT,
+            created_at      TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS honor_events (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            email           TEXT NOT NULL,
+            event_type      TEXT NOT NULL,
+            delta           INTEGER NOT NULL,
+            running_score   INTEGER,
+            note            TEXT,
+            created_at      TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS course_completions (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            email           TEXT NOT NULL,
+            course_title    TEXT,
+            course_url      TEXT,
+            provider        TEXT,
+            track           TEXT,
+            status          TEXT,
+            completed_at    TEXT
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS institutions (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            name            TEXT NOT NULL,
+            contact_email   TEXT,
+            env             TEXT DEFAULT 'dev',
+            college_code    TEXT,
+            active          INTEGER DEFAULT 1,
+            created_at      TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS assessments (
-            id              SERIAL PRIMARY KEY,
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
             email           TEXT NOT NULL,
-            risk_level      TEXT NOT NULL,
-            stability_score REAL NOT NULL,
-            scan_result     TEXT,
-            track           TEXT NOT NULL DEFAULT 'unknown',
-            created_at      TEXT
-        )
-    """)
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS voice_sessions (
-        id             SERIAL PRIMARY KEY,
-        email          TEXT NOT NULL,
-        transcript     TEXT,
-        summary        TEXT,
-        tab_warnings   INTEGER DEFAULT 0,
-        exchange_count INTEGER DEFAULT 0,
-        scores         TEXT DEFAULT '{}',
-        overall_score  INTEGER DEFAULT 0,
-        mode           TEXT DEFAULT 'voice',
-        created_at     TIMESTAMP DEFAULT NOW()
-    )
-""")
-
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS honor_events (
-            id           SERIAL PRIMARY KEY,
-            email        TEXT NOT NULL,
-            event_type   TEXT NOT NULL,
-            delta        INTEGER NOT NULL,
-            running_score INTEGER NOT NULL,
-            note         TEXT,
-            created_at   TIMESTAMP DEFAULT NOW()
-        )
-""")
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS course_completions (
-            id           SERIAL PRIMARY KEY,
-            email        TEXT NOT NULL,
-            course_title TEXT NOT NULL,
-            course_url   TEXT NOT NULL,
-            provider     TEXT,
-            track        TEXT,
-            status       TEXT NOT NULL DEFAULT 'started',
-            started_at   TEXT NOT NULL,
-            completed_at TEXT,
-            UNIQUE(email, course_url)
+            department      TEXT,
+            score           INTEGER,
+            answers         TEXT,
+            submitted_at    TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
-    # Indexes
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_assessments_email ON assessments (email)")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users (email)")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_completions_email ON course_completions (email)")
-
-    conn.commit()
-    cur.close()
-    conn.close()
-    logger.info("PostgreSQL database initialized")
-
-
-def migrate_db():
-    """Safe column additions for schema upgrades."""
-    conn = get_connection()
-    cur  = conn.cursor()
-    migrations = [
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS picture TEXT",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider TEXT NOT NULL DEFAULT 'email'",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS department TEXT",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS year TEXT",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS semester TEXT",
-        "ALTER TABLE course_completions ADD COLUMN IF NOT EXISTS provider TEXT",
-        "ALTER TABLE course_completions ADD COLUMN IF NOT EXISTS track TEXT",
-        "ALTER TABLE assessments ADD COLUMN IF NOT EXISTS scan_result TEXT",  # ← ADD THIS
-    ]
-    for sql in migrations:
-        try:
-            cur.execute(sql)
-            conn.commit()
-        except Exception:
-            conn.rollback()
-
-    # Migration: fix created_at columns
+    # Add default demo user
     try:
-        cur.execute("ALTER TABLE users ALTER COLUMN created_at DROP NOT NULL")
-        cur.execute("ALTER TABLE users ALTER COLUMN created_at SET DEFAULT NOW()")
+        cur.execute("INSERT OR IGNORE INTO users (email, name, auth_provider) VALUES (?, ?, ?)", 
+                   ("demo@mentorix.ai", "Demo User", "email"))
+        cur.execute("INSERT OR IGNORE INTO users (email, name, auth_provider) VALUES (?, ?, ?)", 
+                   ("admin@mentorix.ai", "Admin User", "email"))
+        
+        # Add sample voice session
+        cur.execute("INSERT OR IGNORE INTO voice_sessions (email, summary, mode, overall_score, exchange_count) VALUES (?, ?, ?, ?, ?)",
+                   ("demo@mentorix.ai", "Practice interview session", "interview", 85, 12))
+        
         conn.commit()
-    except Exception:
-        conn.rollback()
+        logger.info("Database initialized with demo data")
+    except Exception as e:
+        logger.warning(f"Init data warning: {e}")
 
     cur.close()
     conn.close()
 
 
-# ── User functions ───────────────────────────────────────────────
-
-def create_user(
-    email: str,
-    password_hash: Optional[str] = None,
-    name: str = None,
-    picture: str = None,
-    auth_provider: str = "email"
-) -> bool:
-    try:
-        conn = get_connection()
-        cur  = conn.cursor()
-        cur.execute("""
-            INSERT INTO users (email, password_hash, name, picture, auth_provider, created_at)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """, (
-            email.lower().strip(), password_hash, name, picture,
-            auth_provider, datetime.now(timezone.utc).isoformat()
-        ))
-        conn.commit()
-        cur.close()
-        conn.close()
-        return True
-    except Exception:
-        return False
-
-
-def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
+def get_user_by_email(email: str) -> Optional[Dict]:
     conn = get_connection()
-    cur  = conn.cursor()
-    cur.execute(
-        "SELECT id, email, password_hash, name, picture, auth_provider, created_at FROM users WHERE email = %s",
-        (email.lower().strip(),)
-    )
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users WHERE email = ?", (email,))
     row = cur.fetchone()
     cur.close()
     conn.close()
-    if not row:
-        return None
-    return {
-        "id": row[0], "email": row[1], "password_hash": row[2],
-        "name": row[3], "picture": row[4], "auth_provider": row[5], "created_at": row[6]
-    }
+    return dict(row) if row else None
 
 
-def upsert_google_user(email: str, name: str, picture: str) -> Dict[str, Any]:
-    existing = get_user_by_email(email)
-    if existing:
-        conn = get_connection()
-        cur  = conn.cursor()
-        cur.execute(
-            "UPDATE users SET name = %s, picture = %s, auth_provider = 'google' WHERE email = %s",
-            (name, picture, email.lower().strip())
-        )
+def create_user(email: str, name: str = "", password_hash: str = "", auth_provider: str = "email") -> bool:
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("INSERT INTO users (email, name, password_hash, auth_provider) VALUES (?, ?, ?, ?)",
+                   (email, name, password_hash, auth_provider))
         conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
         cur.close()
         conn.close()
-        existing["name"]    = name
-        existing["picture"] = picture
-        return existing
-    create_user(email=email, name=name, picture=picture, auth_provider="google")
-    return get_user_by_email(email)
 
 
-# ── Assessment functions ─────────────────────────────────────────
-
-def save_assessment(
-    email: str,
-    risk_level: str,
-    stability_score: float,
-    track: str = "unknown",
-    scan_result: dict = None
-) -> None:
+def save_assessment(email: str, department: str, score: int, answers: dict) -> bool:
+    conn = get_connection()
+    cur = conn.cursor()
     import json
-    conn = get_connection()
-    cur  = conn.cursor()
-    cur.execute("""
-        INSERT INTO assessments (email, risk_level, stability_score, track, scan_result, created_at)
-        VALUES (%s, %s, %s, %s, %s, %s)
-    """, (email, risk_level, round(stability_score, 4), track,
-          json.dumps(scan_result) if scan_result else None,
-          datetime.now(timezone.utc).isoformat()))
-    conn.commit()
-    cur.close()
-    conn.close()
-
-
-def get_user_history(email: str, limit: int = 10) -> List[Dict[str, Any]]:
-    conn = get_connection()
-    cur  = conn.cursor()
-    cur.execute("""
-        SELECT risk_level, stability_score, track, scan_result, created_at
-        FROM assessments WHERE email = %s
-        ORDER BY created_at DESC LIMIT %s
-    """, (email, limit))
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    import json
-    return [
-        {"risk_level": r[0], "stability_score": r[1], "track": r[2],
-         "scan_result": json.loads(r[3]) if r[3] else None, "created_at": r[4]}
-        for r in rows
-    ]
-
-
-def get_assessment_count(email: str) -> int:
-    conn = get_connection()
-    cur  = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM assessments WHERE email = %s", (email,))
-    count = cur.fetchone()[0]
-    cur.close()
-    conn.close()
-    return count
-
-
-# ── Course completion functions ──────────────────────────────────
-
-def upsert_course_completion(
-    email: str, course_title: str, course_url: str,
-    provider: str, track: str, status: str
-) -> None:
-    conn = get_connection()
-    cur  = conn.cursor()
-    now  = datetime.now(timezone.utc).isoformat()
-
-    cur.execute(
-        "SELECT id, status FROM course_completions WHERE email = %s AND course_url = %s",
-        (email, course_url)
-    )
-    existing = cur.fetchone()
-
-    if existing:
-        if status == "completed":
-            cur.execute(
-                "UPDATE course_completions SET status = 'completed', completed_at = %s WHERE email = %s AND course_url = %s",
-                (now, email, course_url)
-            )
-        else:
-            cur.execute(
-                "UPDATE course_completions SET status = %s WHERE email = %s AND course_url = %s AND status != 'completed'",
-                (status, email, course_url)
-            )
-    else:
-        cur.execute("""
-            INSERT INTO course_completions
-                (email, course_title, course_url, provider, track, status, started_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (email, course_title, course_url, provider, track, status, now))
-
-    conn.commit()
-    cur.close()
-    conn.close()
-
-
-def get_course_completions(email: str) -> List[Dict[str, Any]]:
-    conn = get_connection()
-    cur  = conn.cursor()
-    cur.execute("""
-        SELECT course_title, course_url, provider, track, status, started_at, completed_at
-        FROM course_completions WHERE email = %s
-        ORDER BY started_at DESC
-    """, (email,))
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    return [
-        {"course_title": r[0], "course_url": r[1], "provider": r[2],
-         "track": r[3], "status": r[4], "started_at": r[5], "completed_at": r[6]}
-        for r in rows
-    ]
-
-
-def get_completion_stats(email: str) -> Dict[str, Any]:
-    completions = get_course_completions(email)
-    total     = len(completions)
-    completed = sum(1 for c in completions if c["status"] == "completed")
-    started   = sum(1 for c in completions if c["status"] == "started")
-    by_track  = {}
-    for c in completions:
-        t = c["track"] or "unknown"
-        if t not in by_track:
-            by_track[t] = {"started": 0, "completed": 0}
-        by_track[t][c["status"]] = by_track[t].get(c["status"], 0) + 1
-    return {
-        "total": total, "started": started, "completed": completed,
-        "pct": round((completed / total * 100) if total else 0, 1),
-        "by_track": by_track,
-    }
-
-# Migration: add new columns to voice_sessions if not exist
-def migrate_voice_sessions():
     try:
-        conn = get_connection(); cur = conn.cursor()
-        for col, typ in [("scores","TEXT"),("overall_score","INTEGER"),("mode","TEXT")]:
-            try:
-                cur.execute(f"ALTER TABLE voice_sessions ADD COLUMN IF NOT EXISTS {col} {typ}")
-            except: pass
-        conn.commit(); cur.close(); conn.close()
+        cur.execute("INSERT INTO assessments (email, department, score, answers) VALUES (?, ?, ?, ?)",
+                   (email, department, score, json.dumps(answers)))
+        conn.commit()
+        return True
     except Exception as e:
-        print(f"Migration warning: {e}")
+        logger.warning(f"save_assessment failed: {e}")
+        return False
+    finally:
+        cur.close()
+        conn.close()
+
+
+def get_user_history(email: str) -> List[Dict]:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT 'voice_session' as type, mode, overall_score as score, created_at
+        FROM voice_sessions WHERE email = ? ORDER BY created_at DESC LIMIT 20
+    """, (email,))
+    rows = [dict(r) for r in cur.fetchall()]
+    cur.close()
+    conn.close()
+    return rows
+
+
+def get_course_completions(email: str) -> List[Dict]:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM course_completions WHERE email = ?", (email,))
+    rows = [dict(r) for r in cur.fetchall()]
+    cur.close()
+    conn.close()
+    return rows
+
+
+def get_completion_stats(email: str) -> Dict:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT status, COUNT(*) as cnt FROM course_completions WHERE email = ? GROUP BY status", (email,))
+    stats = {r[0]: r[1] for r in cur.fetchall()}
+    cur.execute("SELECT COUNT(*) FROM course_completions WHERE email = ?", (email,))
+    total = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+    return {"total": total, "completed": stats.get("completed", 0), "in_progress": stats.get("in_progress", 0)}
+
+
+def upsert_course_completion(email: str, course_title: str, course_url: str = "", provider: str = "", track: str = "", status: str = "in_progress"):
+    conn = get_connection()
+    cur = conn.cursor()
+    from datetime import datetime
+    cur.execute("""
+        INSERT INTO course_completions (email, course_title, course_url, provider, track, status, completed_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (email, course_title, course_url, provider, track, status, datetime.now().isoformat() if status == "completed" else None))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def save_voice_session(email: str, summary: str, mode: str, overall: int, scores: dict, exchange_count: int, tab_warnings: int = 0) -> bool:
+    conn = get_connection()
+    cur = conn.cursor()
+    import json
+    try:
+        cur.execute("""
+            INSERT INTO voice_sessions (email, summary, mode, overall_score, scores, exchange_count, tab_warnings)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (email, summary, mode, overall, json.dumps(scores), exchange_count, tab_warnings))
+        conn.commit()
+        return True
+    except Exception as e:
+        logger.warning(f"save_voice_session failed: {e}")
+        return False
+    finally:
+        cur.close()
+        conn.close()
+
+
+def get_honor_score(email: str) -> int:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT MAX(running_score) FROM honor_events WHERE email = ?", (email,))
+    row = cur.fetchone()
+    score = row[0] if row and row[0] else 100
+    cur.close()
+    conn.close()
+    return score
+
+
+def add_honor_event(email: str, event_type: str, delta: int, note: str = "") -> bool:
+    conn = get_connection()
+    cur = conn.cursor()
+    current = get_honor_score(email)
+    new_score = current + delta
+    try:
+        cur.execute("INSERT INTO honor_events (email, event_type, delta, running_score, note) VALUES (?, ?, ?, ?, ?)",
+                   (email, event_type, delta, new_score, note))
+        conn.commit()
+        return True
+    except Exception as e:
+        logger.warning(f"add_honor_event failed: {e}")
+        return False
+    finally:
+        cur.close()
+        conn.close()
+
+
+def upsert_google_user(email: str, name: str = "", picture: str = "") -> Dict:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users WHERE email = ?", (email,))
+    existing = cur.fetchone()
+    
+    if existing:
+        cur.execute("UPDATE users SET name = ?, picture = ? WHERE email = ?", (name, picture, email))
+    else:
+        cur.execute("INSERT INTO users (email, name, picture, auth_provider) VALUES (?, ?, ?, 'google')", 
+                   (email, name, picture))
+    
+    conn.commit()
+    cur.execute("SELECT * FROM users WHERE email = ?", (email,))
+    user = dict(cur.fetchone())
+    cur.close()
+    conn.close()
+    return user
+
+
+def create_institution(name: str, contact_email: str = "", env: str = "dev", college_code: str = "") -> int:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("INSERT INTO institutions (name, contact_email, env, college_code) VALUES (?, ?, ?, ?)",
+               (name, contact_email, env, college_code))
+    conn.commit()
+    new_id = cur.lastrowid
+    cur.close()
+    conn.close()
+    return new_id
+
+
+def get_institutions(env: str = None) -> List[Dict]:
+    conn = get_connection()
+    cur = conn.cursor()
+    if env:
+        cur.execute("SELECT * FROM institutions WHERE active = 1 AND env = ?", (env,))
+    else:
+        cur.execute("SELECT * FROM institutions WHERE active = 1")
+    rows = [dict(r) for r in cur.fetchall()]
+    cur.close()
+    conn.close()
+    return rows
