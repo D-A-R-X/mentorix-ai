@@ -379,11 +379,11 @@ async def google_callback(request: Request, code: Optional[str] = None, error: O
     )
 class RegisterRequest(BaseModel):
     name:     str
-    email:    EmailStr
+    email:    str
     password: str
 
 class LoginRequest(BaseModel):
-    email:    EmailStr
+    email:    str
     password: str
 
 
