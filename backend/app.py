@@ -1160,7 +1160,6 @@ async def get_user_sessions(current_user: str = Depends(get_current_user)):
     cur.close()
     conn.close()
     return {"sessions": sessions, "profile": profile}
-    }
 
 
 # ── Honor Score System ────────────────────────────────────
