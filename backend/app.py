@@ -55,19 +55,25 @@ logger = logging.getLogger("mentorix-api")
 init_db()
 try:
     from database import migrate_voice_sessions; migrate_voice_sessions()
-except: pass
-migrate_db()
+except Exception as e:
+    print(f"Warning: migrate_voice_sessions failed: {e}")
+try:
+    migrate_db()
+except Exception as e:
+    print(f"Warning: migrate_db failed: {e}")
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "model", "risk_model.pkl")
 model = None
 
 try:
-    with open(MODEL_PATH, "rb") as f:
-        model = pickle.load(f)
-    logger.info(f"Model loaded from {MODEL_PATH}")
+    if os.path.exists(MODEL_PATH):
+        with open(MODEL_PATH, "rb") as f:
+            model = pickle.load(f)
+        logger.info(f"Model loaded from {MODEL_PATH}")
+    else:
+        logger.warning(f"Model file not found at {MODEL_PATH}, skipping ML model load")
 except Exception as e:
-    logger.exception("Failed to load ML model")
-    raise RuntimeError("Model file missing or corrupted.") from e
+    logger.warning(f"Failed to load ML model: {e}")
 
 # ── CORS ─────────────────────────────────────────────────────────
 # Dynamic origin check: allow any Vercel preview URL + localhost on any port
