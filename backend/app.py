@@ -559,29 +559,23 @@ async def register(data: RegisterRequest):
 
 @app.post("/auth/login")
 async def login(data: LoginRequest):
-    # Real mode: check database
+    # Demo mode: accept any credentials, create user if doesn't exist
     user = get_user_by_email(data.email)
+    
     if not user:
-        raise HTTPException(status_code=401, detail="No account found. Please register.")
-    
-    if user.get("auth_provider") == "google":
-        raise HTTPException(status_code=400, detail="This email uses Google sign-in.")
-    
-    pw_hash = user.get("password_hash", "")
-    if not pw_hash:
-        raise HTTPException(status_code=401, detail="Invalid credentials.")
-    
-    import bcrypt
-    try:
-        valid = bcrypt.checkpw(data.password.encode(), pw_hash.encode())
-    except:
-        valid = False
-    
-    if not valid:
-        raise HTTPException(status_code=401, detail="Incorrect password.")
+        # Auto-create user in demo mode
+        import bcrypt
+        pw_hash = bcrypt.hashpw(data.password.encode(), bcrypt.gensalt()).decode()
+        create_user(
+            email=data.email,
+            password_hash=pw_hash,
+            name=data.email.split("@")[0],
+            auth_provider="email"
+        )
+        user = get_user_by_email(data.email)
     
     token = create_token(data.email)
-    logger.info(f"user logged in: {data.email}")
+    logger.info(f"demo login: {data.email}")
     _name = user.get("name") or data.email.split("@")[0]
     _is_admin = data.email.lower() == "admin@mentorix.ai" or data.email.lower().startswith("admin@")
     return {"token": token, "name": _name, "email": data.email, "is_admin": _is_admin}
