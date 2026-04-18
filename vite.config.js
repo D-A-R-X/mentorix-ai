@@ -21,7 +21,6 @@ export default defineConfig({
     proxy: {
       '/auth':         'http://127.0.0.1:8000',
       '/user':         'http://127.0.0.1:8000',
-      '/admin':        'http://127.0.0.1:8000',
       '/voice':        'http://127.0.0.1:8000',
       '/assessment':   'http://127.0.0.1:8000',
       '/courses':      'http://127.0.0.1:8000',
