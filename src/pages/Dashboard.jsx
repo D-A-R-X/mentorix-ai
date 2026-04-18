@@ -121,7 +121,7 @@ export default function Dashboard() {
 
   const S = {
     sidebar: { position: 'fixed', top: 0, left: 0, bottom: 0, width: 220, background: '#fff', borderRight: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', zIndex: 10, padding: '20px 0' },
-    navItem: (active) => ({ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 20px', cursor: 'pointer', background: active ? '#EFF6FF' : 'transparent', borderLeft: `2px solid ${active ? '#2563EB' : 'transparent'}`, border: 'none', width: '100%', textAlign: 'left', color: active ? '#1D4ED8' : '#64748B', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: active ? 600 : 400, transition: 'all 0.15s' }),
+    navItem: (active) => ({ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 20px', cursor: 'pointer', background: active ? '#EFF6FF' : 'transparent', borderLeft: `2px solid ${active ? '#2563EB' : 'transparent'}`, borderRight: 'none', borderTop: 'none', borderBottom: 'none', width: '100%', textAlign: 'left', color: active ? '#1D4ED8' : '#64748B', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: active ? 600 : 400, transition: 'all 0.15s' }),
   }
 
   return (

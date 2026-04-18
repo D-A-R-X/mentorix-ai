@@ -1060,7 +1060,7 @@ Scores must reflect cumulative performance.`
                 const color = val >= 70 ? C.green : val >= 45 ? C.amber : C.red
                 return (
                   <div key={label} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 0', borderBottom:`1px solid ${C.border}` }}>
-                    <span style={{ fontSize:11, fontWeight:600, color:C.muted, width:90, flexShrink:0, textTransform:'uppercase', letterSpacing:'0.3px', fontSize:10 }}>{label}</span>
+                    <span style={{ fontSize:10, fontWeight:600, color:C.muted, width:90, flexShrink:0, textTransform:'uppercase', letterSpacing:'0.3px' }}>{label}</span>
                     <div style={{ flex:1, height:3, background:C.surface2, borderRadius:2, overflow:'hidden' }}>
                       <div style={{ height:'100%', width:`${val||0}%`, background: val ? color : C.border, borderRadius:2, transition:'width 0.8s ease' }} />
                     </div>
