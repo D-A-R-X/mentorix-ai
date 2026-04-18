@@ -1104,20 +1104,6 @@ async def get_user_sessions(current_user: str = Depends(get_current_user)):
         ],
         "profile": {"name": "Demo User", "dept": "Computer Science", "year": "3rd Year", "sem": "6th"}
     }
-            except: pass
-            sessions.append({
-                "summary":        r[0] or "",
-                "tab_warnings":   r[1] or 0,
-                "exchange_count": r[2] or 0,
-                "scores":         sc,
-                "overall_score":  r[4] or 0,
-                "mode":           r[5] or "voice",
-                "created_at":     r[6].isoformat() if r[6] else ""
-            })
-        return {"sessions": sessions, "profile": profile}
-    except Exception as e:
-        logger.warning(f"get sessions failed: {e}")
-        return {"sessions": []}
 
 
 # ── Honor Score System ────────────────────────────────────
