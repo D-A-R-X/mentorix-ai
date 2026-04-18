@@ -1393,29 +1393,32 @@ def admin_overview(admin: str = Depends(require_admin)):
     
     # User count
     cur.execute("SELECT COUNT(*) FROM users")
-    total_users = cur.fetchone()[0] if cur.fetchone() else 0
+    result = cur.fetchone()
+    total_users = result[0] if result else 0
     
     # Session count
     cur.execute("SELECT COUNT(*) FROM voice_sessions")
-    total_sessions = cur.fetchone()[0] if cur.fetchone() else 0
+    result = cur.fetchone()
+    total_sessions = result[0] if result else 0
     
-    # Active today (since we don't track last login, use new users today)
+    # Active today
     cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= date('now')")
-    active_today = cur.fetchone()[0] if cur.fetchone() else 0
+    result = cur.fetchone()
+    active_today = result[0] if result else 0
     
     # Avg score
     cur.execute("SELECT AVG(overall_score) FROM voice_sessions WHERE overall_score > 0")
-    avg_score_row = cur.fetchone()
-    avg_score = round(float(avg_score_row[0]), 1) if avg_score_row and avg_score_row[0] else 0
+    result = cur.fetchone()
+    avg_score = round(float(result[0]), 1) if result and result[0] else 0
     
     # Honor avg
     cur.execute("SELECT AVG(running_score) FROM honor_events")
-    avg_honor_row = cur.fetchone()
-    avg_honor = int(avg_honor_row[0]) if avg_honor_row and avg_honor_row[0] else 100
+    result = cur.fetchone()
+    avg_honor = int(result[0]) if result and result[0] else 100
     
     # Session breakdown
     cur.execute("SELECT mode, COUNT(*) FROM voice_sessions GROUP BY mode")
-    rows = cur.fetchall()
+    rows = cur.fetchall() or []
     session_breakdown = {"voice": 0, "hr": 0}
     for r in rows:
         if r[0] == "hr_interview":
@@ -1430,8 +1433,9 @@ def admin_overview(admin: str = Depends(require_admin)):
         LEFT JOIN users u ON u.email = vs.email
         ORDER BY vs.created_at DESC LIMIT 10
     """)
+    rows = cur.fetchall() or []
     recent = []
-    for r in cur.fetchall():
+    for r in rows:
         recent.append({
             "id": r[0],
             "name": r[1] or "—",
@@ -1477,8 +1481,9 @@ def admin_get_users(admin: str = Depends(require_admin)):
         ORDER BY u.created_at DESC
     """)
     
+    rows = cur.fetchall() or []
     users = []
-    for r in cur.fetchall():
+    for r in rows:
         users.append({
             "id": r[0],
             "name": r[1] or "",
@@ -1488,7 +1493,7 @@ def admin_get_users(admin: str = Depends(require_admin)):
             "semester": r[5] or "",
             "auth_provider": r[6] or "email",
             "created_at": r[7] or "",
-            "is_suspended": bool(r[8]),
+            "is_suspended": bool(r[8]) if r[8] is not None else False,
             "session_count": r[9] or 0,
             "honor_score": r[10] or 0,
             "institution_id": 0,
@@ -1581,8 +1586,9 @@ def admin_get_sessions(admin: str = Depends(require_admin)):
         ORDER BY vs.created_at DESC LIMIT 100
     """)
     
+    rows = cur.fetchall() or []
     sessions = []
-    for r in cur.fetchall():
+    for r in rows:
         sessions.append({
             "id": r[0],
             "user_name": r[1] or "—",
@@ -1624,8 +1630,9 @@ def admin_get_institutions(admin: str = Depends(require_admin)):
     cur = conn.cursor()
     cur.execute("SELECT id, name, contact_email, env, college_code, active, created_at FROM institutions ORDER BY created_at DESC")
     
+    rows = cur.fetchall() or []
     institutions = []
-    for r in cur.fetchall():
+    for r in rows:
         institutions.append({
             "id": r[0],
             "name": r[1] or "",
@@ -1778,8 +1785,9 @@ def admin_get_honor(admin: str = Depends(require_admin)):
         ORDER BY total_score DESC
     """)
     
+    rows = cur.fetchall() or []
     honor = []
-    for r in cur.fetchall():
+    for r in rows:
         honor.append({
             "name": r[0] or "",
             "email": r[1] or "",
