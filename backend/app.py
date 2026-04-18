@@ -1658,18 +1658,20 @@ class InstitutionCreate(BaseModel):
 
 @app.post("/admin/institutions")
 def admin_create_institution(data: InstitutionCreate, admin: str = Depends(require_admin)):
-    conn = get_connection(); cur = conn.cursor()
+    conn = get_connection()
+    cur = conn.cursor()
     try:
         cur.execute(
-            "INSERT INTO institutions (name, contact_email, env, college_code, active) VALUES (%s, %s, %s, %s, %s) RETURNING id",
+            "INSERT INTO institutions (name, contact_email, env, college_code, active) VALUES (?, ?, ?, ?, ?)",
             (data.name.strip(), data.contact_email or None, data.env or "dev",
-             (data.college_code or "").strip() or None, data.active if data.active is not None else True)
+             (data.college_code or "").strip() or None, 1 if data.active is not None else 1)
         )
-        new_id = (cur.fetchone() or (None,))[0]
+        new_id = cur.lastrowid
         conn.commit()
         return {"ok": True, "id": new_id}
     finally:
-        cur.close(); conn.close()
+        cur.close()
+        conn.close()
 
 
 class InstitutionPatch(BaseModel):
@@ -1682,26 +1684,27 @@ class InstitutionPatch(BaseModel):
 
 @app.patch("/admin/institutions/{inst_id}")
 def admin_patch_institution(inst_id: int, data: InstitutionPatch, admin: str = Depends(require_admin)):
-    conn = get_connection(); cur = conn.cursor()
+    conn = get_connection()
+    cur = conn.cursor()
     try:
         updates, vals = [], []
         if data.env is not None:
             if data.env not in ("dev", "prod"):
                 raise HTTPException(status_code=400, detail="env must be 'dev' or 'prod'")
-            updates.append("env = %s"); vals.append(data.env)
+            updates.append("env = ?"); vals.append(data.env)
         if data.name is not None:
-            updates.append("name = %s"); vals.append(data.name.strip())
+            updates.append("name = ?"); vals.append(data.name.strip())
         if data.contact_email is not None:
-            updates.append("contact_email = %s"); vals.append(data.contact_email)
+            updates.append("contact_email = ?"); vals.append(data.contact_email)
         if data.college_code is not None:
-            updates.append("college_code = %s"); vals.append((data.college_code or "").strip() or None)
+            updates.append("college_code = ?"); vals.append((data.college_code or "").strip() or None)
         if data.active is not None:
-            updates.append("active = %s"); vals.append(data.active)
+            updates.append("active = ?"); vals.append(1 if data.active else 0)
         if not updates:
             raise HTTPException(status_code=400, detail="No fields to update.")
         vals.append(inst_id)
-        cur.execute(f"UPDATE institutions SET {', '.join(updates)} WHERE id = ? RETURNING id", vals)
-        if not cur.fetchone():
+        cur.execute(f"UPDATE institutions SET {', '.join(updates)} WHERE id = ?", vals)
+        if cur.rowcount == 0:
             raise HTTPException(status_code=404, detail="Institution not found.")
         conn.commit()
         return {"ok": True}
@@ -1755,15 +1758,17 @@ def admin_toggle_institution(inst_id: int, admin: str = Depends(require_admin)):
 
 @app.delete("/admin/institutions/{inst_id}")
 def admin_delete_institution(inst_id: int, admin: str = Depends(require_admin)):
-    conn = get_connection(); cur = conn.cursor()
+    conn = get_connection()
+    cur = conn.cursor()
     try:
-        cur.execute("DELETE FROM institutions WHERE id = ? RETURNING id", (inst_id,))
-        if not cur.fetchone():
+        cur.execute("DELETE FROM institutions WHERE id = ?", (inst_id,))
+        if cur.rowcount == 0:
             raise HTTPException(status_code=404, detail="Institution not found.")
         conn.commit()
         return {"ok": True}
     finally:
-        cur.close(); conn.close()
+        cur.close()
+        conn.close()
 
 
 # ── /admin/honor ──────────────────────────────────────────────────────────────
