@@ -46,7 +46,7 @@ export function AuthProvider({ children }) {
       setUser(cached ? { ...cached, name: cleanName } : { name: cleanName, email: getEmail() })
       setIsLoggedIn(true)
 
-      // Best-effort background refresh
+      // Best-effort background refresh - don't block UI
       userApi.sessions()
         .then(d => {
           if (d?.profile) {
@@ -60,7 +60,7 @@ export function AuthProvider({ children }) {
             setUser(merged)
           }
         })
-        .catch(() => {})
+        .catch(() => {}) // Silent fail - don't block UI
     }
     setReady(true)
   }, [])

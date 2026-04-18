@@ -167,11 +167,18 @@ export default function Login() {
       try {
         const data = await authApi.login(form.email.trim().toLowerCase(), form.password)
         if (selectedInst) setInstitution(selectedInst.id, selectedInst.name)
-        login(data)
+        
+        // Store session
+        localStorage.setItem('mentorix_token', data.token)
+        localStorage.setItem('mentorix_email', data.email)
+        localStorage.setItem('mentorix_name', data.name || data.email.split('@')[0])
+        
+        // Navigate
         if (data.is_admin) nav('/admin', { replace: true })
-        else nav('/dashboard', { replace: true })  // Direct to dashboard in demo mode
+        else nav('/dashboard', { replace: true })
       } catch (e) {
-        setError(e.message || 'Authentication failed')
+        console.error('Login error:', e)
+        setError(e.message || 'Login failed - check credentials')
       } finally { setLoading(false) }
       return
     }
