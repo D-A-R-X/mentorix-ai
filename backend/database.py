@@ -117,12 +117,12 @@ def init_db():
     demo_pw = bcrypt.hashpw("demo123".encode(), bcrypt.gensalt()).decode()
     cur.execute("INSERT OR IGNORE INTO users (email, name, password_hash, auth_provider) VALUES (?, ?, ?, ?)", 
                ("demo@mentorix.ai", "Demo User", demo_pw, "email"))
-        
-        # Add sample voice session
-        cur.execute("INSERT OR IGNORE INTO voice_sessions (email, summary, mode, overall_score, exchange_count) VALUES (?, ?, ?, ?, ?)",
-                   ("demo@mentorix.ai", "Practice interview session", "interview", 85, 12))
-        
-        conn.commit()
+    
+    # Add sample voice session
+    cur.execute("INSERT OR IGNORE INTO voice_sessions (email, summary, mode, overall_score, exchange_count) VALUES (?, ?, ?, ?, ?)",
+               ("demo@mentorix.ai", "Practice interview session", "interview", 85, 12))
+    
+    conn.commit()
     logger.info("Database initialized with demo data")
 
     cur.close()
