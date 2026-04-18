@@ -40,8 +40,12 @@ from auth import (hash_password, verify_password, create_token,
 from database import (init_db, save_assessment, get_user_history,
                       create_user, get_user_by_email, upsert_google_user,
                       upsert_course_completion, get_course_completions,
-                      get_completion_stats,migrate_db,
-                      get_connection)
+                      get_completion_stats, get_connection)
+try:
+    from database import migrate_db
+    _has_migrate_db = True
+except ImportError:
+    _has_migrate_db = False
 from explainer import generate_explanation, score_latency
 # ── App ─────────────────────────────────────────────────────────
 app = FastAPI(title="Mentorix AI")
@@ -52,13 +56,19 @@ logging.basicConfig(
 )
 logger = logging.getLogger("mentorix-api")
 
-init_db()
+try:
+    init_db()
+    print("Database initialized successfully")
+except Exception as e:
+    print(f"WARNING: Failed to initialize database: {e}. App will run without DB.")
+
 try:
     from database import migrate_voice_sessions; migrate_voice_sessions()
 except Exception as e:
     print(f"Warning: migrate_voice_sessions failed: {e}")
 try:
-    migrate_db()
+    if _has_migrate_db:
+        migrate_db()
 except Exception as e:
     print(f"Warning: migrate_db failed: {e}")
 
