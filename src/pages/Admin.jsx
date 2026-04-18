@@ -825,12 +825,12 @@ export default function Admin() {
                 <div style={card}>
                   <div style={{ fontWeight:700, fontSize:14, color:C.navy, marginBottom:16 }}>Service Health</div>
                   {[
-                    { label:'Backend API (Render)',  val:'Online', latency:sysLatency, color:C.green },
-                    { label:'PostgreSQL Database',   val:'Connected', color:C.green },
-                    { label:'Netlify Frontend',      val:'Online', color:C.green },
-                    { label:'Groq LLM (Primary)',    val:'Active', color:C.green },
-                    { label:'Gemini (Fallback)',      val:'Active', color:C.green },
-                    { label:'ElevenLabs TTS',         val:'Active', color:C.green },
+                    { label:'Backend API',  val:sysLatency ? 'Running (localhost)' : 'Offline', color:sysLatency ? C.green : C.red, latency:sysLatency },
+                    { label:'Frontend',     val:'Running (localhost)', color:C.green },
+                    { label:'SQLite DB',    val:'Connected', color:C.green },
+                    { label:'Groq LLM',     val:sysLatency ? 'Active (demo)' : 'Inactive', color:sysLatency ? C.amber : C.red },
+                    { label:'Gemini',       val:sysLatency ? 'Active (demo)' : 'Inactive', color:sysLatency ? C.amber : C.red },
+                    { label:'TTS (gTTS)',   val:sysLatency ? 'Active' : 'Inactive', color:sysLatency ? C.green : C.red },
                   ].map(({ label, val, color, latency }) => (
                     <div key={label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 0', borderBottom:`1px solid ${C.surface2}` }}>
                       <span style={{ fontSize:13 }}>{label}</span>
@@ -841,11 +841,12 @@ export default function Admin() {
                 <div style={card}>
                   <div style={{ fontWeight:700, fontSize:14, color:C.navy, marginBottom:16 }}>Config & Stats</div>
                   {[
-                    { label:'API Response',   val:sysLatency },
-                    { label:'Render Region',  val:'Oregon, US' },
-                    { label:'Auth',           val:'Google OAuth + JWT' },
+                    { label:'API Response',   val:sysLatency || 'N/A' },
+                    { label:'Environment',     val:'Local Development' },
+                    { label:'Auth',           val:'Demo Mode (no auth)' },
                     { label:'STT',            val:'Web Speech API' },
-                    { label:'TTS',            val:'ElevenLabs / Browser' },
+                    { label:'TTS',            val:'gTTS (free)' },
+                    { label:'Database',       val:'SQLite (local)' },
                     { label:'Total Users',    val:String(ov.total_users||users.length||0) },
                     { label:'Total Sessions', val:String(ov.total_sessions||sessions.length||0) },
                   ].map(({ label, val }) => (
