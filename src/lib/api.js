@@ -1,6 +1,6 @@
 import { authHeaders, getToken } from './auth'
 
-export const API = import.meta.env.VITE_API_URL || 'https://mentorix-ai-backend.onrender.com'
+export const API = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 // ── Base fetch ────────────────────────────────────────────────────────────────
 async function req(method, path, body = null, extraHeaders = {}) {

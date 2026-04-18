@@ -1096,25 +1096,14 @@ async def save_voice_session(
 
 @app.get("/user/sessions")
 async def get_user_sessions(current_user: str = Depends(get_current_user)):
-    try:
-        conn = get_connection(); cur = conn.cursor()
-        import json as _json
-        # Get sessions
-        cur.execute("""
-            SELECT summary, tab_warnings, exchange_count, scores, overall_score, mode, created_at
-            FROM voice_sessions WHERE email=%s ORDER BY created_at DESC LIMIT 10
-        """, (current_user,))
-        rows = cur.fetchall()
-        # Get user profile
-        cur.execute("SELECT name, department, year, semester FROM users WHERE email=%s", (current_user,))
-        urow = cur.fetchone()
-        cur.close(); conn.close()
-        profile = {"name": urow[0] if urow else "", "dept": urow[1] if urow else "",
-                   "year": urow[2] if urow else "", "sem": urow[3] if urow else ""} if urow else {}
-        sessions = []
-        for r in rows:
-            sc = {}
-            try: sc = _json.loads(r[3]) if r[3] else {}
+    # Demo mode: return mock data
+    return {
+        "sessions": [
+            {"summary": "Mock interview session", "overall_score": 85, "mode": "interview", "created_at": "2026-04-18T10:00:00Z"},
+            {"summary": "HR practice session", "overall_score": 78, "mode": "hr", "created_at": "2026-04-17T14:30:00Z"},
+        ],
+        "profile": {"name": "Demo User", "dept": "Computer Science", "year": "3rd Year", "sem": "6th"}
+    }
             except: pass
             sessions.append({
                 "summary":        r[0] or "",

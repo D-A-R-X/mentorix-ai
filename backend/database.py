@@ -7,9 +7,24 @@ logger = logging.getLogger("mentorix-api")
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://mentorix_db_user:eGSul5Yl3hPi11eQRncFyhIxVBpdCx9o@dpg-d6l6katm5p6s73979qjg-a.virginia-postgres.render.com/mentorix_db")
 
+DEMO_MODE = True  # Set to True for demo mode (no database)
+
+# ── Mock connection for demo mode ──────────────────────────────────
+class MockCursor:
+    def execute(self, *args, **kwargs): pass
+    def fetchone(self): return None
+    def fetchall(self): return []
+    def close(self): pass
+
+class MockConnection:
+    def cursor(self): return MockCursor()
+    def close(self): pass
+
 # ── Connection ───────────────────────────────────────────────────
 
 def get_connection():
+    if DEMO_MODE:
+        return MockConnection()
     import psycopg2
     import psycopg2.extras
     logger.info(f"Connecting to database... (DATABASE_URL set: {bool(os.getenv('DATABASE_URL'))})")
