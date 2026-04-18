@@ -108,21 +108,22 @@ def init_db():
         )
     """)
 
-    # Add default demo user
-    try:
-        cur.execute("INSERT OR IGNORE INTO users (email, name, auth_provider) VALUES (?, ?, ?)", 
-                   ("demo@mentorix.ai", "Demo User", "email"))
-        cur.execute("INSERT OR IGNORE INTO users (email, name, auth_provider) VALUES (?, ?, ?)", 
-                   ("admin@mentorix.ai", "Admin User", "email"))
+    # Add default demo user with passwords
+    import bcrypt
+    pw_hash = bcrypt.hashpw("admin123".encode(), bcrypt.gensalt()).decode()
+    cur.execute("INSERT OR IGNORE INTO users (email, name, password_hash, auth_provider) VALUES (?, ?, ?, ?)", 
+               ("admin@mentorix.ai", "Admin User", pw_hash, "email"))
+    
+    demo_pw = bcrypt.hashpw("demo123".encode(), bcrypt.gensalt()).decode()
+    cur.execute("INSERT OR IGNORE INTO users (email, name, password_hash, auth_provider) VALUES (?, ?, ?, ?)", 
+               ("demo@mentorix.ai", "Demo User", demo_pw, "email"))
         
         # Add sample voice session
         cur.execute("INSERT OR IGNORE INTO voice_sessions (email, summary, mode, overall_score, exchange_count) VALUES (?, ?, ?, ?, ?)",
                    ("demo@mentorix.ai", "Practice interview session", "interview", 85, 12))
         
         conn.commit()
-        logger.info("Database initialized with demo data")
-    except Exception as e:
-        logger.warning(f"Init data warning: {e}")
+    logger.info("Database initialized with demo data")
 
     cur.close()
     conn.close()
